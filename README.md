@@ -1,5 +1,7 @@
 # AutoRoute
 
+[![CI](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml/badge.svg)](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml)
+
 **Wire your PipeWire audio once, and keep it wired.**
 
 AutoRoute is a background service and GUI for Linux that remembers your PipeWire connections and re-applies them as apps come and go. It's a *persistent* [Helvum](https://gitlab.freedesktop.org/pipewire/helvum): you patch things the way you want, and AutoRoute keeps them that way — even though PipeWire hands out fresh node IDs every time an app restarts.
