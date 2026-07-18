@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AutoRoute.App/AutoRoute.App.csproj" />
+    <Project Path="src/AutoRoute.Engine/AutoRoute.Engine.csproj" />
+    <Project Path="src/AutoRoute.PipeWire/AutoRoute.PipeWire.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AutoRoute.Tests/AutoRoute.Tests.csproj" />
+  </Folder>
+</Solution>

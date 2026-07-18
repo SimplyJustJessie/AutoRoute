@@ -1,0 +1,132 @@
+using System.Collections.Generic;
+using AutoRoute.PipeWire.Models;
+
+namespace AutoRoute.App.Design;
+
+/// <summary>
+/// A small, deterministic hand-built <see cref="PwGraph"/> mirroring the fixture's shape
+/// (Zen fan-out, Spotify, the four null sinks, a capture device, a Discord recStream app-input
+/// target, a couple of external unowned Links, and one managed Link). Used for XAML design-time
+/// previews and as a fallback when the real fixture can't be located.
+/// </summary>
+public static class DesignGraph
+{
+    private static int _port = 1000;
+
+    public static PwGraph Build()
+    {
+        _port = 1000;
+        var nodes = new Dictionary<int, PwNode>();
+        var ports = new Dictionary<int, PwPort>();
+        var links = new Dictionary<int, PwLink>();
+
+        // --- Target Sinks (null sinks + one hardware sink) ---
+        var headset = Sink(nodes, ports, 55, "alsa_output.pro-x-2.analog-stereo", "PRO X 2 Analog Stereo");
+        var music = Sink(nodes, ports, 87, "MusicSink", "Music");
+        var discord = Sink(nodes, ports, 88, "DiscordSink", "Discord");
+        var game = Sink(nodes, ports, 89, "GameSink", "Game");
+        Sink(nodes, ports, 90, "DesktopSink", "Desktop");
+
+        // --- App-input target (ephemeral, matched by stable key like a Source) ---
+        var recStream = StreamInput(nodes, ports, 300, "recStream", "Discord", "WEBRTC VoiceEngine");
+
+        // --- Sources ---
+        var zen1 = AppStream(nodes, ports, 170, "Zen", "Zen", "zen-bin", "Home / X");
+        AppStream(nodes, ports, 185, "Zen", "Zen", "zen-bin", "Docs / Y"); // second Zen stream (app granularity)
+        var spotify = AppStream(nodes, ports, 135, "spotify", "Spotify", "spotify", "Some Song");
+        MonoCapture(nodes, ports, 56, "alsa_input.pro-x-2.mono", "PRO X 2 Mono");
+
+        // --- Existing Links: external unowned (render "unsaved") + one managed ---
+        Link(links, 501, zen1, headset, unmanaged: true);   // Zen → headset (WirePlumber default)
+        Link(links, 502, spotify, music, unmanaged: true);  // Spotify → MusicSink (manual)
+        Link(links, 503, zen1, game, unmanaged: false, ruleId: "design-rule-zen-game"); // managed
+
+        return new PwGraph(nodes, ports, links);
+    }
+
+    // ---- node builders -----------------------------------------------------------------
+
+    private static PwNode Sink(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string desc)
+    {
+        var list = new List<PwPort>
+        {
+            P(ports, id, PortDirection.Input, "playback_FL", "FL", 0),
+            P(ports, id, PortDirection.Input, "playback_FR", "FR", 1),
+            P(ports, id, PortDirection.Output, "monitor_FL", "FL", 2),
+            P(ports, id, PortDirection.Output, "monitor_FR", "FR", 3),
+        };
+        var node = new PwNode(id, name, desc, "Audio/Sink", null, null, null, list);
+        nodes[id] = node;
+        return node;
+    }
+
+    private static PwNode StreamInput(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string app, string mediaName)
+    {
+        var list = new List<PwPort>
+        {
+            P(ports, id, PortDirection.Input, "input_FL", "FL", 0),
+            P(ports, id, PortDirection.Input, "input_FR", "FR", 1),
+        };
+        var node = new PwNode(id, name, null, "Stream/Input/Audio", app, null, mediaName, list);
+        nodes[id] = node;
+        return node;
+    }
+
+    private static PwNode AppStream(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string app, string binary, string mediaName)
+    {
+        var list = new List<PwPort>
+        {
+            P(ports, id, PortDirection.Output, "output_FL", "FL", 0),
+            P(ports, id, PortDirection.Output, "output_FR", "FR", 1),
+        };
+        var node = new PwNode(id, name, null, "Stream/Output/Audio", app, binary, mediaName, list);
+        nodes[id] = node;
+        return node;
+    }
+
+    private static PwNode MonoCapture(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string desc)
+    {
+        var list = new List<PwPort> { P(ports, id, PortDirection.Output, "capture_MONO", "MONO", 0) };
+        var node = new PwNode(id, name, desc, "Audio/Source", null, null, null, list);
+        nodes[id] = node;
+        return node;
+    }
+
+    private static PwPort P(IDictionary<int, PwPort> ports, int nodeId, PortDirection dir,
+        string portName, string channel, int index)
+    {
+        var pid = _port++;
+        var port = new PwPort(pid, nodeId, dir, portName, channel, index);
+        ports[pid] = port;
+        return port;
+    }
+
+    private static void Link(IDictionary<int, PwLink> links, int id, PwNode source, PwNode target,
+        bool unmanaged, string? ruleId = null)
+    {
+        // Pair the first output of source to the first input of target (FL), plus FR if present.
+        var outs = new List<PwPort>();
+        foreach (var p in source.OutputPorts) outs.Add(p);
+        var ins = new List<PwPort>();
+        foreach (var p in target.InputPorts) ins.Add(p);
+
+        var props = unmanaged
+            ? (IReadOnlyDictionary<string, string>)new Dictionary<string, string>()
+            : new Dictionary<string, string>
+            {
+                [PwLink.ManagedPropKey] = "true",
+                [PwLink.RulePropKey] = ruleId ?? "design-rule",
+            };
+
+        var count = System.Math.Min(outs.Count, ins.Count);
+        for (var i = 0; i < count; i++)
+        {
+            var lid = id * 10 + i;
+            links[lid] = new PwLink(lid, source.Id, outs[i].Id, target.Id, ins[i].Id, "active", props);
+        }
+    }
+}

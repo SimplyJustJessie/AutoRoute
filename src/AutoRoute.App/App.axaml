@@ -1,0 +1,47 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AutoRoute.App.App"
+             xmlns:local="using:AutoRoute.App"
+             RequestedThemeVariant="Default">
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="PanelBrush" Color="#F1F1F3" />
+                    <SolidColorBrush x:Key="ColumnBrush" Color="#FAFAFB" />
+                    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#DEDEE2" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#6A6A70" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#2D6CDF" />
+                    <SolidColorBrush x:Key="UnsavedBrush" Color="#C77700" />
+                    <SolidColorBrush x:Key="ManualBrush" Color="#8A9098" />
+                    <SolidColorBrush x:Key="ProtectedBrush" Color="#7A5AF0" />
+                    <SolidColorBrush x:Key="DropHighlightBrush" Color="#2D6CDF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="PanelBrush" Color="#1E1E20" />
+                    <SolidColorBrush x:Key="ColumnBrush" Color="#252528" />
+                    <SolidColorBrush x:Key="CardBrush" Color="#2D2D31" />
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#3B3B40" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#A2A2AA" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#5A93FF" />
+                    <SolidColorBrush x:Key="UnsavedBrush" Color="#E0A030" />
+                    <SolidColorBrush x:Key="ManualBrush" Color="#828892" />
+                    <SolidColorBrush x:Key="ProtectedBrush" Color="#A78BFA" />
+                    <SolidColorBrush x:Key="DropHighlightBrush" Color="#5A93FF" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://AutoRoute.App/Styles/CardStyles.axaml" />
+    </Application.Styles>
+</Application>

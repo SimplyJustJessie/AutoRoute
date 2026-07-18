@@ -1,0 +1,29 @@
+# .NET build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+artifacts/
+publish/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+coverage/
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime / local
+*.log

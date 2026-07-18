@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoRoute.App.ViewModels"
+             xmlns:views="using:AutoRoute.App.Views"
+             xmlns:behaviors="using:AutoRoute.App.Behaviors"
+             xmlns:design="using:AutoRoute.App.Design"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="272" d:DesignHeight="560"
+             x:Class="AutoRoute.App.Views.PaletteView"
+             x:DataType="vm:SourcesPaletteViewModel"
+             d:DataContext="{x:Static design:DesignData.Palette}">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <StackPanel Grid.Row="0" Margin="12,10,12,8" Spacing="2">
+            <TextBlock Text="Sources" FontWeight="Bold" FontSize="14" />
+            <TextBlock Classes="subtitle" TextWrapping="Wrap"
+                       Text="Drag a Source onto a Target Sink to route it. The card stays here, so one Source can feed many sinks (fan-out)." />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Padding="12,0,12,12" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SourceItemViewModel">
+                        <Border Classes="paletteItem"
+                                Classes.protected="{Binding IsProtected}"
+                                IsVisible="{Binding IsVisible}"
+                                behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
+                                ToolTip.Tip="Drag onto a Target Sink to route this Source">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Border Grid.Column="0" Classes="badge kind"
+                                        VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding KindLabel}" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                   FontSize="13" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="🔒" FontSize="10" VerticalAlignment="Center"
+                                                   IsVisible="{Binding IsProtected}" />
+                                    </StackPanel>
+                                    <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
+                                               IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="2" Classes="cardAction"
+                                        Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
+                                        Command="{Binding ToggleProtectCommand}"
+                                        ToolTip.Tip="Protect / unprotect this Source (do not touch)" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="1" Classes="hint" VerticalAlignment="Center"
+                   IsVisible="{Binding IsEmpty}" Text="No Sources in the graph." />
+    </Grid>
+</UserControl>

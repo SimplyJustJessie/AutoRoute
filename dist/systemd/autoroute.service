@@ -1,0 +1,19 @@
+[Unit]
+Description=AutoRoute — automated PipeWire routing manager
+Documentation=https://github.com/  (AutoRoute)
+# PipeWire + WirePlumber are themselves user services; order after them so the graph exists.
+After=pipewire.service wireplumber.service
+Wants=pipewire.service wireplumber.service
+# Tie the lifetime to the graphical session so the tray (StatusNotifier/DBus) has a session bus.
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Adjust the path if you install the published binary somewhere else on your PATH.
+ExecStart=%h/.local/bin/AutoRoute --background
+Restart=on-failure
+RestartSec=2
+# journald captures stdout/stderr — the app logs one line per record (see journalctl below).
+
+[Install]
+WantedBy=default.target

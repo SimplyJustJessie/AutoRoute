@@ -1,0 +1,142 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:behaviors="using:AutoRoute.App.Behaviors">
+
+    <!-- ============================ Board layout ============================ -->
+
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.column">
+        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Width" Value="252" />
+        <Setter Property="Margin" Value="0,0,10,0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- Drop hover highlight (attached IsDragOver flag set by DropTargetBehavior). -->
+    <Style Selector="Border.column[(behaviors|DropTargetBehavior.IsDragOver)=True]">
+        <Setter Property="BorderBrush" Value="{DynamicResource DropHighlightBrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <Style Selector="Border.column.protected">
+        <Setter Property="Opacity" Value="0.85" />
+    </Style>
+
+    <Style Selector="TextBlock.columnTitle">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style Selector="TextBlock.subtitle">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style Selector="TextBlock.hint">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontStyle" Value="Italic" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <!-- ============================ Source card ============================ -->
+
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+
+    <!-- Managed: accent border (a Managed Link ⇔ one positive Rule). -->
+    <Style Selector="Border.card.managed">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+    <!-- Unsaved: warm border for an external Link not yet persisted. -->
+    <Style Selector="Border.card.unsaved">
+        <Setter Property="BorderBrush" Value="{DynamicResource UnsavedBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+    <!-- Manual: neutral (kept as-is). Protected: muted + locked. -->
+    <Style Selector="Border.card.protected">
+        <Setter Property="BorderBrush" Value="{DynamicResource ProtectedBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="Opacity" Value="0.9" />
+    </Style>
+
+    <!-- ============================ Badges ============================ -->
+
+    <Style Selector="Border.badge">
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="5,1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.badge > TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.badge.managed">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.badge.unsaved">
+        <Setter Property="Background" Value="{DynamicResource UnsavedBrush}" />
+    </Style>
+    <Style Selector="Border.badge.manual">
+        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
+    </Style>
+    <Style Selector="Border.badge.protected">
+        <Setter Property="Background" Value="{DynamicResource ProtectedBrush}" />
+    </Style>
+    <Style Selector="Border.badge.kind">
+        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
+    </Style>
+
+    <!-- ============================ Palette ============================ -->
+
+    <Style Selector="Border.paletteItem">
+        <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.paletteItem:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.paletteItem.protected">
+        <Setter Property="BorderBrush" Value="{DynamicResource ProtectedBrush}" />
+        <Setter Property="Opacity" Value="0.9" />
+    </Style>
+
+    <!-- Compact icon buttons on cards. -->
+    <Style Selector="Button.cardAction">
+        <Setter Property="Padding" Value="4,1" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.cardAction.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource UnsavedBrush}" />
+    </Style>
+
+</Styles>

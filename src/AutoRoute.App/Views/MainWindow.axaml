@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AutoRoute.App.ViewModels"
+        xmlns:views="using:AutoRoute.App.Views"
+        xmlns:design="using:AutoRoute.App.Design"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="640"
+        x:Class="AutoRoute.App.Views.MainWindow"
+        x:DataType="vm:BoardViewModel"
+        d:DataContext="{x:Static design:DesignData.Board}"
+        Width="1100" Height="640"
+        MinWidth="720" MinHeight="420"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AutoRoute">
+
+    <views:BoardView />
+</Window>

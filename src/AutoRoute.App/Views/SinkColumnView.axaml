@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoRoute.App.ViewModels"
+             xmlns:views="using:AutoRoute.App.Views"
+             xmlns:behaviors="using:AutoRoute.App.Behaviors"
+             xmlns:design="using:AutoRoute.App.Design"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="252" d:DesignHeight="520"
+             x:Class="AutoRoute.App.Views.SinkColumnView"
+             x:DataType="vm:SinkColumnViewModel"
+             d:DataContext="{x:Static design:DesignData.Column}">
+
+    <Border Classes="column"
+            Classes.protected="{Binding IsProtected}"
+            behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
+            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- Header = the Target Sink -->
+            <Border Grid.Row="0" Padding="10,8"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="columnTitle" Text="{Binding Title}" />
+                            <TextBlock Text="🔒" FontSize="11" VerticalAlignment="Center"
+                                       IsVisible="{Binding IsProtected}"
+                                       ToolTip.Tip="Protected — AutoRoute will not touch this Target Sink" />
+                        </StackPanel>
+                        <TextBlock Classes="subtitle" Text="{Binding Subtitle}" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Classes="cardAction"
+                            Command="{Binding ToggleProtectCommand}"
+                            Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
+                            ToolTip.Tip="Protect / unprotect this Target Sink (do not touch)" />
+                </Grid>
+            </Border>
+
+            <!-- Body = Source cards feeding this Target Sink -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="10">
+                <Panel>
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:SourceCardViewModel">
+                                <views:SourceCardView IsVisible="{Binding IsVisible}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Classes="hint" Margin="4,24"
+                               IsVisible="{Binding IsEmpty}"
+                               Text="Drop a Source here to route it into this Target Sink." />
+                </Panel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoRoute.App.ViewModels"
+             xmlns:views="using:AutoRoute.App.Views"
+             xmlns:design="using:AutoRoute.App.Design"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="232"
+             x:Class="AutoRoute.App.Views.SourceCardView"
+             x:DataType="vm:SourceCardViewModel"
+             d:DataContext="{x:Static design:DesignData.Card}">
+
+    <Border Classes="card"
+            Classes.managed="{Binding IsManaged}"
+            Classes.unsaved="{Binding IsUnsaved}"
+            Classes.manual="{Binding IsManual}"
+            Classes.protected="{Binding IsProtected}"
+            ToolTip.Tip="{Binding Tooltip}">
+        <Grid ColumnDefinitions="*,Auto">
+
+            <StackPanel Grid.Column="0" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <Border Classes="badge managed" IsVisible="{Binding IsManaged}">
+                        <TextBlock Text="MANAGED" />
+                    </Border>
+                    <Border Classes="badge unsaved" IsVisible="{Binding IsUnsaved}">
+                        <TextBlock Text="UNSAVED" />
+                    </Border>
+                    <Border Classes="badge manual" IsVisible="{Binding IsManual}">
+                        <TextBlock Text="MANUAL" />
+                    </Border>
+                    <Border Classes="badge protected" IsVisible="{Binding IsProtected}">
+                        <TextBlock Text="PROTECTED" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Classes="subtitle" Text="{Binding Subtitle}" IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="1" VerticalAlignment="Top">
+                <Button Classes="cardAction" Content="Save"
+                        Command="{Binding SaveCommand}" IsVisible="{Binding CanSave}"
+                        ToolTip.Tip="Save as a Rule — persist this Link so it returns after relaunch" />
+                <Button Classes="cardAction" Content="Keep"
+                        Command="{Binding KeepManualCommand}" IsVisible="{Binding CanKeepManual}"
+                        ToolTip.Tip="Keep as a Manual Link — stop offering to save it" />
+                <Button Classes="cardAction"
+                        Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
+                        Command="{Binding ToggleProtectCommand}"
+                        ToolTip.Tip="Protect / unprotect this Source (do not touch)" />
+                <Button Classes="cardAction danger" Content="✕"
+                        Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
+                        ToolTip.Tip="Remove — delete the Rule (managed) or add a Suppression (manual/external)" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

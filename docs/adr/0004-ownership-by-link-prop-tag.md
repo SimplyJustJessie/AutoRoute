@@ -1,0 +1,7 @@
+# Ownership by link prop-tag; no ledger in v1
+
+**Context.** Stale-cleanup must delete only AutoRoute's own links and never the user's manual Helvum patches (verified live: Spotify fanned to Ryzen + MusicSink). A ledger cannot reliably distinguish the two: link IDs are ephemeral (useless across a restart), and a ledger keyed by logical identity (`source-key + sink + channel`) can't tell an AutoRoute link from an identical manual one. Only a marker AutoRoute alone sets establishes provenance. Verified live that `pw-link -p, --props=PROPS` accepts an arbitrary JSON object and that Link objects expose an `.info.props` bag.
+
+**Decision.** Every AutoRoute-created link is tagged at creation with `autoroute.managed=true` and `autoroute.rule=<id>` via `pw-link -p`. That tag is the **sole** ownership record (plus a free in-memory set of link IDs created in the current session). Milestone 1 must empirically confirm the tag round-trips through `pw-dump`. `ManagedLinkLedger` is **dropped from v1**; a persisted ledger is introduced only if the round-trip test fails — and if so, it may "adopt" a manual link identical to a managed one, which is harmless because such a link matches a live rule anyway.
+
+**Consequences.** One fewer component to build. Ownership survives an AutoRoute restart because lingering links keep their tag in the graph. Creates a hard dependency on custom link props surviving `pw-dump`, gated by the milestone-1 test; only a failed test resurrects the ledger.

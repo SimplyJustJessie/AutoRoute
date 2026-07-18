@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoRoute.App.ViewModels"
+             xmlns:views="using:AutoRoute.App.Views"
+             xmlns:behaviors="using:AutoRoute.App.Behaviors"
+             xmlns:design="using:AutoRoute.App.Design"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="640"
+             x:Class="AutoRoute.App.Views.BoardView"
+             x:DataType="vm:BoardViewModel"
+             d:DataContext="{x:Static design:DesignData.Board}">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- ===================== Toolbar / filter ===================== -->
+        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="12,8">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="AutoRoute" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+                    <TextBlock Classes="subtitle" Text="{Binding StatusText}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBox Grid.Column="1"
+                         Margin="16,0"
+                         MaxWidth="360"
+                         HorizontalAlignment="Stretch"
+                         Watermark="Filter Sources and Target Sinks…"
+                         Text="{Binding Filter.Text}" />
+
+                <CheckBox Grid.Column="2"
+                          Margin="8,0"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding Filter.ShowMonitors}"
+                          Content="Show sink monitors" />
+            </Grid>
+        </Border>
+
+        <!-- ===================== Palette + Board ===================== -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+
+            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="272">
+                <views:PaletteView DataContext="{Binding Palette}" />
+            </Border>
+
+            <Panel Grid.Column="1">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              Padding="12">
+                    <ItemsControl ItemsSource="{Binding Columns}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:SinkColumnViewModel">
+                                <views:SinkColumnView IsVisible="{Binding IsVisible}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBlock Classes="hint"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           MaxWidth="360"
+                           IsVisible="{Binding !HasColumns}"
+                           Text="No Target Sinks in the graph yet. A Target Sink is any node with audio input ports (a hardware or null sink, or an app's recording stream)." />
+            </Panel>
+        </Grid>
+    </Grid>
+</UserControl>
