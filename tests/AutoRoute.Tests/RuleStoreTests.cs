@@ -42,6 +42,10 @@ public sealed class RuleStoreTests : IDisposable
         {
             new ProtectedMatch("p0",
                 new MatchCriteria(new[] { new Predicate(Field.MediaClass, Op.Regex, "^Stream/Input") })),
+        },
+        new[]
+        {
+            new VirtualSinkSpec("vs0", "GameSink", "Game Sink", SinkChannels.Stereo),
         });
 
     private static async Task<bool> WaitUntil(Func<bool> condition, int timeoutMs = 4000)
@@ -161,6 +165,71 @@ public sealed class RuleStoreTests : IDisposable
         Assert.Single(observed!.Rules);
         Assert.Equal("ext", observed!.Rules[0].Id);
         Assert.Equal("ext", store.Current.Rules[0].Id);
+    }
+
+    [Fact]
+    public async Task V1_file_loads_normalized_to_v2_with_empty_virtualSinks()
+    {
+        // A pre-v2 rules.json: version 1, no "virtualSinks" key at all.
+        const string v1 = """
+        {
+          "version": 1,
+          "rules": [],
+          "suppressions": [],
+          "protected": []
+        }
+        """;
+        await File.WriteAllTextAsync(_path, v1);
+
+        using var store = new RuleStore(_path);
+        var doc = await store.LoadAsync();
+
+        Assert.Equal(RulesDocument.CurrentVersion, doc.Version); // silently upgraded in memory
+        Assert.NotNull(doc.VirtualSinks);
+        Assert.Empty(doc.VirtualSinks);
+    }
+
+    [Fact]
+    public async Task VirtualSinks_roundtrip_with_frozen_keys_and_enum_names()
+    {
+        using (var writer = new RuleStore(_path))
+            await writer.SaveAsync(SampleDoc());
+
+        var json = await File.ReadAllTextAsync(_path);
+        Assert.Contains("\"virtualSinks\"", json);
+        Assert.Contains("\"Stereo\"", json); // channels enum by NAME
+
+        using var reader = new RuleStore(_path);
+        var loaded = await reader.LoadAsync();
+
+        var sink = Assert.Single(loaded.VirtualSinks);
+        Assert.Equal("GameSink", sink.Name);
+        Assert.Equal("Game Sink", sink.Description);
+        Assert.Equal(SinkChannels.Stereo, sink.Channels);
+    }
+
+    [Fact]
+    public async Task External_virtualSinks_edit_raises_Changed_hot_reload()
+    {
+        using var store = new RuleStore(_path);
+        await store.LoadAsync();
+
+        RulesDocument? observed = null;
+        store.Changed += (_, d) => observed = d;
+
+        const string external = """
+        {
+          "version": 2,
+          "rules": [], "suppressions": [], "protected": [],
+          "virtualSinks": [ { "id": "vs-ext", "name": "MusicSink", "description": "Music", "channels": "Mono" } ]
+        }
+        """;
+        await File.WriteAllTextAsync(_path, external);
+
+        Assert.True(await WaitUntil(() => observed is not null), "Changed did not fire for the external edit");
+        var sink = Assert.Single(observed!.VirtualSinks);
+        Assert.Equal("MusicSink", sink.Name);
+        Assert.Equal(SinkChannels.Mono, sink.Channels);
     }
 
     [Fact]

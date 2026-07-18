@@ -206,7 +206,9 @@ public sealed class RuleStore : IRuleStore, IDisposable
         if (string.IsNullOrWhiteSpace(text)) return RulesDocument.Empty;
         try
         {
-            return JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument);
+            // Normalized(): a v1 file loads with virtualSinks null → empty, version bumped to
+            // current, so every consumer sees the v2 shape and the next save writes it.
+            return JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument)?.Normalized();
         }
         catch (JsonException ex)
         {

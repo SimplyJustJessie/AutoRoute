@@ -258,7 +258,8 @@ public static class StressTest
             new("prot-2", One(Field.ApplicationName, Op.Equals, "App7")),
         };
 
-        return new RulesDocument(RulesDocument.CurrentVersion, rules, suppressions, @protected);
+        return new RulesDocument(
+            RulesDocument.CurrentVersion, rules, suppressions, @protected, Array.Empty<VirtualSinkSpec>());
     }
 
     private sealed class NoopLinker : IPwLinker
