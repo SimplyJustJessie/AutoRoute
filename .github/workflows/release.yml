@@ -47,5 +47,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          files: out/*.AppImage
+          files: out/AutoRoute-*.AppImage
           generate_release_notes: true

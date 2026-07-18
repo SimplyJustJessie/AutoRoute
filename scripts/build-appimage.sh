@@ -44,7 +44,10 @@ cp "$ROOT/packaging/autoroute.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps
 TOOL="${APPIMAGETOOL:-}"
 if [ -z "$TOOL" ] && command -v appimagetool >/dev/null 2>&1; then TOOL=appimagetool; fi
 if [ -z "$TOOL" ]; then
-    TOOL="$OUT/appimagetool-x86_64.AppImage"
+    # Kept out of $OUT's top level so out/*.AppImage globs (CI artifact upload, release
+    # attachment) only ever match the built AutoRoute image, not the tool itself.
+    mkdir -p "$OUT/.tools"
+    TOOL="$OUT/.tools/appimagetool-x86_64.AppImage"
     if [ ! -x "$TOOL" ]; then
         curl -fsSL -o "$TOOL" \
             https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
