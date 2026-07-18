@@ -30,6 +30,7 @@ public partial class SourceItemViewModel : ViewModelBase
     private string _subtitle = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(KindLabel), nameof(IsAppKind), nameof(IsCaptureKind), nameof(IsMonitorKind))]
     private SourceKind _kind;
 
     [ObservableProperty]
@@ -59,6 +60,11 @@ public partial class SourceItemViewModel : ViewModelBase
         IsMonitor = model.IsMonitor;
         IsProtected = model.Protected;
     }
+
+    /// <summary>Kind flags for XAML style triggers (icon tile tinting).</summary>
+    public bool IsAppKind => Kind == SourceKind.AppStream;
+    public bool IsCaptureKind => Kind == SourceKind.Capture;
+    public bool IsMonitorKind => Kind == SourceKind.Monitor;
 
     public string KindLabel => Kind switch
     {

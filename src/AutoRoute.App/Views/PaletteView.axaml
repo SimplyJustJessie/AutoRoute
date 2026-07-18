@@ -6,20 +6,22 @@
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="272" d:DesignHeight="560"
+             mc:Ignorable="d" d:DesignWidth="280" d:DesignHeight="560"
              x:Class="AutoRoute.App.Views.PaletteView"
              x:DataType="vm:SourcesPaletteViewModel"
              d:DataContext="{x:Static design:DesignData.Palette}">
 
     <Grid RowDefinitions="Auto,*">
 
-        <StackPanel Grid.Row="0" Margin="12,10,12,8" Spacing="2">
-            <TextBlock Text="Sources" FontWeight="Bold" FontSize="14" />
-            <TextBlock Classes="subtitle" TextWrapping="Wrap"
-                       Text="Drag a Source onto a Target Sink to route it. The card stays here, so one Source can feed many sinks (fan-out)." />
+        <StackPanel Grid.Row="0" Margin="14,14,14,10" Spacing="4">
+            <TextBlock Classes="sectionLabel" Text="SOURCES" />
+            <TextBlock Classes="subtitle" TextWrapping="Wrap" LineHeight="16"
+                       Text="Drag onto a Target Sink to route. Cards stay here — one Source can feed many sinks." />
         </StackPanel>
 
-        <ScrollViewer Grid.Row="1" Padding="12,0,12,12" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" Padding="14,0,14,14"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:SourceItemViewModel">
@@ -29,27 +31,36 @@
                                 behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
                                 ToolTip.Tip="Drag onto a Target Sink to route this Source">
                             <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0" Classes="badge kind"
-                                        VerticalAlignment="Center" Margin="0,0,8,0">
-                                    <TextBlock Text="{Binding KindLabel}" />
+
+                                <!-- Kind tile: tinted icon (app / capture / monitor) -->
+                                <Border Grid.Column="0" Classes="kindTile"
+                                        Classes.app="{Binding IsAppKind}"
+                                        Classes.capture="{Binding IsCaptureKind}"
+                                        Classes.monitor="{Binding IsMonitorKind}"
+                                        Margin="0,0,10,0"
+                                        ToolTip.Tip="{Binding KindLabel}">
+                                    <Panel>
+                                        <Path Data="{StaticResource IconWave}" IsVisible="{Binding IsAppKind}" />
+                                        <Path Data="{StaticResource IconMic}" IsVisible="{Binding IsCaptureKind}" />
+                                        <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding IsMonitorKind}" />
+                                    </Panel>
                                 </Border>
 
-                                <StackPanel Grid.Column="1" Spacing="1">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
-                                                   FontSize="13" TextTrimming="CharacterEllipsis"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="🔒" FontSize="10" VerticalAlignment="Center"
-                                                   IsVisible="{Binding IsProtected}" />
-                                    </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                    <TextBlock Classes="cardTitle" Text="{Binding Title}" />
                                     <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
                                                IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
 
-                                <Button Grid.Column="2" Classes="cardAction"
-                                        Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
+                                <Button Grid.Column="2" Classes="icon" Margin="6,0,0,0"
+                                        Classes.locked="{Binding IsProtected}"
                                         Command="{Binding ToggleProtectCommand}"
-                                        ToolTip.Tip="Protect / unprotect this Source (do not touch)" />
+                                        ToolTip.Tip="Protect / unprotect this Source (do not touch)">
+                                    <Panel>
+                                        <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
+                                        <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
+                                    </Panel>
+                                </Button>
                             </Grid>
                         </Border>
                     </DataTemplate>

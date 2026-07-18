@@ -2,37 +2,31 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:behaviors="using:AutoRoute.App.Behaviors">
 
-    <!-- ============================ Board layout ============================ -->
+    <!-- ============================ Chrome / panels ============================ -->
 
     <Style Selector="Border.panel">
         <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
     </Style>
 
-    <Style Selector="Border.column">
-        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Width" Value="252" />
-        <Setter Property="Margin" Value="0,0,10,0" />
-        <Setter Property="Padding" Value="0" />
+    <!-- Body text color: set per-class (a global TextBlock style would stomp on
+         button/presenter foregrounds via style priority). -->
+    <Style Selector="TextBlock.body">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     </Style>
-
-    <!-- Drop hover highlight (attached IsDragOver flag set by DropTargetBehavior). -->
-    <Style Selector="Border.column[(behaviors|DropTargetBehavior.IsDragOver)=True]">
-        <Setter Property="BorderBrush" Value="{DynamicResource DropHighlightBrush}" />
-        <Setter Property="BorderThickness" Value="2" />
-    </Style>
-
-    <Style Selector="Border.column.protected">
-        <Setter Property="Opacity" Value="0.85" />
-    </Style>
-
-    <Style Selector="TextBlock.columnTitle">
+    <Style Selector="TextBlock.cardTitle">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Small-caps section label ("SOURCES", toolbar groups). -->
+    <Style Selector="TextBlock.sectionLabel">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="1.4" />
+        <Setter Property="Foreground" Value="{DynamicResource FaintBrush}" />
     </Style>
 
     <Style Selector="TextBlock.subtitle">
@@ -42,70 +36,210 @@
     </Style>
 
     <Style Selector="TextBlock.hint">
-        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource FaintBrush}" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontStyle" Value="Italic" />
         <Setter Property="HorizontalAlignment" Value="Center" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="LineHeight" Value="18" />
     </Style>
 
-    <!-- ============================ Source card ============================ -->
+    <!-- Status pill in the toolbar. -->
+    <Style Selector="Border.statusPill">
+        <Setter Property="Background" Value="{DynamicResource ColumnHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="9,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ============================ Board columns ============================ -->
+
+    <Style Selector="Border.column">
+        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Width" Value="280" />
+        <Setter Property="Margin" Value="0,0,12,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.column[(behaviors|DropTargetBehavior.IsDragOver)=True]">
+        <Setter Property="BorderBrush" Value="{DynamicResource DropHighlightBrush}" />
+    </Style>
+
+    <Style Selector="Border.column.protected">
+        <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <Style Selector="Border.columnHeader">
+        <Setter Property="Background" Value="{DynamicResource ColumnHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="CornerRadius" Value="9,9,0,0" />
+        <Setter Property="Padding" Value="12,10" />
+    </Style>
+
+    <Style Selector="TextBlock.columnTitle">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Card-count chip in a column header. -->
+    <Style Selector="Border.countChip">
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="MinWidth" Value="20" />
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.countChip > TextBlock">
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <!-- Drop overlay: invisible glow sheet that pulses while a drag hovers the column. -->
+    <Style Selector="Border.dropOverlay">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.column[(behaviors|DropTargetBehavior.IsDragOver)=True] Border.dropOverlay">
+        <Setter Property="Opacity" Value="1" />
+        <Style.Animations>
+            <Animation Duration="0:0:1" IterationCount="INFINITE" PlaybackDirection="Alternate">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0.45" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="1" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+    <!-- Dashed drop-zone hint inside an empty column. -->
+    <Style Selector="Rectangle.dropZone">
+        <Setter Property="Stroke" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeDashArray" Value="4,4" />
+        <Setter Property="RadiusX" Value="8" />
+        <Setter Property="RadiusY" Value="8" />
+        <Setter Property="Fill" Value="Transparent" />
+    </Style>
+
+    <!-- ============================ Source cards ============================ -->
 
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource CardBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Padding" Value="8,6" />
-        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="BoxShadow" Value="0 1 3 0 #30000000" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+        <!-- Entrance: new cards (a link appearing live) fade-slide in. -->
+        <Style.Animations>
+            <Animation Duration="0:0:0.22" Easing="CubicEaseOut">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0" />
+                    <Setter Property="TranslateTransform.Y" Value="6" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="TranslateTransform.Y" Value="0" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
     </Style>
 
-    <!-- Managed: accent border (a Managed Link ⇔ one positive Rule). -->
-    <Style Selector="Border.card.managed">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-        <Setter Property="BorderThickness" Value="1.5" />
+    <Style Selector="Border.card:pointerover">
+        <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="BoxShadow" Value="0 4 12 0 #45000000" />
     </Style>
 
-    <!-- Unsaved: warm border for an external Link not yet persisted. -->
-    <Style Selector="Border.card.unsaved">
-        <Setter Property="BorderBrush" Value="{DynamicResource UnsavedBrush}" />
-        <Setter Property="BorderThickness" Value="1.5" />
+    <!-- 3px state bar down the card's left edge, colored per state. -->
+    <Style Selector="Border.stateBar">
+        <Setter Property="Width" Value="3" />
+        <Setter Property="CornerRadius" Value="7,0,0,7" />
+        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
     </Style>
-
-    <!-- Manual: neutral (kept as-is). Protected: muted + locked. -->
-    <Style Selector="Border.card.protected">
-        <Setter Property="BorderBrush" Value="{DynamicResource ProtectedBrush}" />
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="Opacity" Value="0.9" />
-    </Style>
-
-    <!-- ============================ Badges ============================ -->
-
-    <Style Selector="Border.badge">
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Padding" Value="5,1" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Border.badge > TextBlock">
-        <Setter Property="FontSize" Value="10" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="White" />
-    </Style>
-    <Style Selector="Border.badge.managed">
+    <Style Selector="Border.card.managed Border.stateBar">
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
     </Style>
-    <Style Selector="Border.badge.unsaved">
+    <Style Selector="Border.card.unsaved Border.stateBar">
         <Setter Property="Background" Value="{DynamicResource UnsavedBrush}" />
     </Style>
-    <Style Selector="Border.badge.manual">
-        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
-    </Style>
-    <Style Selector="Border.badge.protected">
+    <Style Selector="Border.card.protected Border.stateBar">
         <Setter Property="Background" Value="{DynamicResource ProtectedBrush}" />
     </Style>
-    <Style Selector="Border.badge.kind">
-        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
+
+    <Style Selector="Border.card.protected">
+        <Setter Property="Opacity" Value="0.75" />
+    </Style>
+
+    <!-- ============================ State chips ============================ -->
+    <!-- Tinted pills: translucent state color behind state-colored text. -->
+
+    <Style Selector="Border.chip">
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.chip > TextBlock">
+        <Setter Property="FontSize" Value="9.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="0.8" />
+    </Style>
+    <Style Selector="Border.chip.managed">
+        <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+    </Style>
+    <Style Selector="Border.chip.managed > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.chip.unsaved">
+        <Setter Property="Background" Value="{DynamicResource UnsavedDimBrush}" />
+    </Style>
+    <Style Selector="Border.chip.unsaved > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource UnsavedBrush}" />
+    </Style>
+    <Style Selector="Border.chip.manual">
+        <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
+    </Style>
+    <Style Selector="Border.chip.manual > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource ManualBrush}" />
+    </Style>
+    <Style Selector="Border.chip.protected">
+        <Setter Property="Background" Value="{DynamicResource ProtectedDimBrush}" />
+    </Style>
+    <Style Selector="Border.chip.protected > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource ProtectedBrush}" />
     </Style>
 
     <!-- ============================ Palette ============================ -->
@@ -114,29 +248,152 @@
         <Setter Property="Background" Value="{DynamicResource CardBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Padding" Value="8,6" />
-        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Margin" Value="0,0,0,7" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="RenderTransform" Value="translateX(0px)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
     </Style>
     <Style Selector="Border.paletteItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="RenderTransform" Value="translateX(3px)" />
     </Style>
     <Style Selector="Border.paletteItem.protected">
-        <Setter Property="BorderBrush" Value="{DynamicResource ProtectedBrush}" />
-        <Setter Property="Opacity" Value="0.9" />
+        <Setter Property="Opacity" Value="0.75" />
     </Style>
 
-    <!-- Compact icon buttons on cards. -->
-    <Style Selector="Button.cardAction">
-        <Setter Property="Padding" Value="4,1" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="Background" Value="Transparent" />
+    <!-- Kind tile: rounded square holding the source-kind icon, tinted per kind. -->
+    <Style Selector="Border.kindTile">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Button.cardAction.danger:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource UnsavedBrush}" />
+    <Style Selector="Border.kindTile Path">
+        <Setter Property="Fill" Value="{DynamicResource ManualBrush}" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.kindTile.app">
+        <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+    </Style>
+    <Style Selector="Border.kindTile.app Path">
+        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.kindTile.capture">
+        <Setter Property="Background" Value="#265BC98F" />
+    </Style>
+    <Style Selector="Border.kindTile.capture Path">
+        <Setter Property="Fill" Value="{DynamicResource OnlineBrush}" />
+    </Style>
+    <Style Selector="Border.kindTile.monitor">
+        <Setter Property="Background" Value="{DynamicResource ProtectedDimBrush}" />
+    </Style>
+    <Style Selector="Border.kindTile.monitor Path">
+        <Setter Property="Fill" Value="{DynamicResource ProtectedBrush}" />
+    </Style>
+
+    <!-- ============================ Buttons ============================ -->
+
+    <!-- Ghost icon button (lock, remove ×). -->
+    <Style Selector="Button.icon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="5" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.icon Path">
+        <Setter Property="Fill" Value="{DynamicResource FaintBrush}" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Fill" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
+    </Style>
+    <Style Selector="Button.icon:pointerover Path">
+        <Setter Property="Fill" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DangerDimBrush}" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover Path">
+        <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <!-- Active (locked) protect toggle reads violet even at rest. -->
+    <Style Selector="Button.icon.locked Path">
+        <Setter Property="Fill" Value="{DynamicResource ProtectedBrush}" />
+    </Style>
+
+    <!-- Small text action ("Save" / "Keep") on unsaved cards. -->
+    <Style Selector="Button.chipAction">
+        <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="9,3" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.chipAction:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Foreground" Value="#101014" />
+    </Style>
+    <Style Selector="Button.chipAction.quiet">
+        <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
+    <Style Selector="Button.chipAction.quiet:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ManualBrush}" />
+        <Setter Property="Foreground" Value="#101014" />
+    </Style>
+
+    <!-- ============================ Toolbar ============================ -->
+
+    <Style Selector="Border.logoMark">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Background" Value="{DynamicResource LogoBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="TextBox.search">
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="6,6" />
+    </Style>
+
+    <Style Selector="ToggleSwitch.compact">
+        <Setter Property="OnContent" Value="{x:Null}" />
+        <Setter Property="OffContent" Value="{x:Null}" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
 </Styles>
