@@ -4,8 +4,11 @@
 #   scripts/build-appimage.sh [output-dir]     # default output dir: out/
 #
 # Env:
-#   VERSION       version string baked into the file name (default: git describe)
-#   APPIMAGETOOL  path to appimagetool (default: found on PATH, else downloaded to out/)
+#   AUTOROUTE_VERSION  version string baked into the file name (default: git describe).
+#                      Deliberately NOT named "VERSION": MSBuild maps environment variables
+#                      onto build properties, so an exported VERSION=v0.1.0 would override
+#                      $(Version) and break dotnet publish ("not a valid version string").
+#   APPIMAGETOOL       path to appimagetool (default: found on PATH, else downloaded to out/)
 #
 # The publish is self-contained (runtime bundled), so the resulting AppImage has no
 # .NET dependency; its glibc floor is .NET's own (~Ubuntu 22.04+), not this builder's.
@@ -14,7 +17,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/out}"
 APPDIR="$OUT/AutoRoute.AppDir"
-VERSION="${VERSION:-$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo dev)}"
+VERSION="${AUTOROUTE_VERSION:-$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo dev)}"
 
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/lib/autoroute" "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \

@@ -1,9 +1,17 @@
 name: Release
 
 # Push a v* tag (e.g. v0.1.0) to build the AppImage and attach it to a GitHub Release.
+# The manual trigger rebuilds and (re)attaches the asset for an EXISTING tag's release —
+# for when a release run failed after the tag was already created.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build the release asset for (e.g. v0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -26,7 +34,8 @@ jobs:
       - name: Build AppImage
         run: scripts/build-appimage.sh
         env:
-          VERSION: ${{ github.ref_name }}
+          # Not "VERSION": MSBuild would map that env var onto $(Version) and fail the publish.
+          AUTOROUTE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
       - name: Smoke test the AppImage
         run: |
@@ -37,5 +46,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: out/*.AppImage
           generate_release_notes: true
