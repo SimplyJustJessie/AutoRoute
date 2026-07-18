@@ -22,3 +22,14 @@
 **Deleting a sink** prompts with the Rules/Suppressions referencing it and offers to delete them in the same save (default on); declining leaves them dormant — they re-match if a same-named sink ever returns.
 
 **Consequences.** Removes the manual config/script and makes sink management a first-class in-app action. Virtual sinks remain AutoRoute-independent at boot via the generated drop-in; runtime create/delete is instant via pactl; the two paths cannot double-create.
+
+## Gate evidence (M1 — run live, 2026-07-18: **8 pass, 0 fail**)
+
+`scripts/v2-gate.sh` against the real PipeWire session:
+
+- **Step 1 PASS** — `pactl load-module` returned module index 536870920; the node appeared in `pw-dump` as `media.class=Audio/Sink` **with `autoroute.managed` round-tripping (as a JSON boolean `true`**, same normalization as the v1 link tag — ownership is name-based anyway, so nothing depends on it beyond stale-module cleanup, which stands). Captured `tests/AutoRoute.Tests/fixtures/pw-dump.managed-sink.json`.
+- **Step 2 PASS** — `pactl list modules short` row carries `sink_name=` and the ownership tag in its args. Live capture written (`pactl-modules.short.sample.txt.live`) for review/replacement of the hand-authored sample.
+- **Step 3 PASS** — `unload-module` removed the node.
+- **Step 4 SKIPPED** — drop-in boot check requires `--restart` (restarts pipewire-pulse); run when convenient.
+- **Step 5 PASS** — one-shot `pw-cli create-node` node vanished on process exit, confirming why pactl was chosen.
+- **Step 6 INFO** — a duplicate `load-module` with the same `sink_name` **did create a second module** (536870920, 536870921) — the reconciler's modules-list guard before every load is confirmed REQUIRED, and is implemented.
