@@ -93,16 +93,18 @@ public class PactlSinkControllerTests
         var call = Assert.Single(runner.Calls);
         Assert.Equal(new[] { "list", "modules", "short" }, call.Arguments);
 
-        // Only module-null-sink rows WITH a parseable sink_name survive; loopback,
-        // non-module rows, the nameless null sink, and garbage are all skipped.
-        Assert.Equal(new[] { "GameSink", "MusicSink", "LegacySink" },
+        // The fixture is the REAL v2-gate capture. Only module-null-sink rows with a parseable
+        // sink_name survive; libpipewire modules (including ones whose args span multiple lines)
+        // and arg-less pulse modules are all skipped without error.
+        Assert.Equal(new[] { "MusicSink", "DiscordSink", "GameSink", "DesktopSink", "autoroute_gate_sink" },
             modules.Select(m => m.SinkName).ToArray());
-        Assert.Equal(536870913, modules[0].ModuleIndex);
+        Assert.Equal(536870916, modules[0].ModuleIndex);
 
-        // The ownership stamp distinguishes ours from the user's legacy modules.
-        Assert.True(modules.Single(m => m.SinkName == "GameSink").IsAutoRouteTagged);
-        Assert.True(modules.Single(m => m.SinkName == "MusicSink").IsAutoRouteTagged);
-        Assert.False(modules.Single(m => m.SinkName == "LegacySink").IsAutoRouteTagged);
+        // The ownership stamp distinguishes ours (the gate sink) from the user's legacy modules,
+        // whose unquoted sink_properties shape must also parse.
+        Assert.True(modules.Single(m => m.SinkName == "autoroute_gate_sink").IsAutoRouteTagged);
+        Assert.All(modules.Where(m => m.SinkName != "autoroute_gate_sink"),
+            m => Assert.False(m.IsAutoRouteTagged));
     }
 
     [Fact]

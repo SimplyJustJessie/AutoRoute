@@ -1,9 +1,10 @@
-# The user's historical static declaration, shape per ADR-0011:
+# The user's historical static declaration (arg shape matches the live v2-gate module capture:
+# unquoted sink_properties, single-quoted description, explicit media.class).
 # ~/.config/pipewire/pipewire-pulse.conf.d/virtual-sinks.conf
 pulse.cmd = [
-    { cmd = "load-module" args = "module-null-sink sink_name=GameSink sink_properties=\"device.description='Game Sink'\"" flags = [ ] }
-    { cmd = "load-module" args = "module-null-sink sink_name=MusicSink sink_properties=\"device.description='Music Sink'\"" flags = [ ] }
-    { cmd = "load-module" args = "module-null-sink sink_name=DiscordSink sink_properties=\"device.description='Discord Sink'\"" flags = [ ] }
-    { cmd = "load-module" args = "module-null-sink sink_name=DesktopSink sink_properties=\"device.description='Desktop Sink'\"" flags = [ ] }
+    { cmd = "load-module" args = "module-null-sink sink_name=MusicSink media.class=Audio/Sink sink_properties=device.description='Music Sink'" flags = [ ] }
+    { cmd = "load-module" args = "module-null-sink sink_name=DiscordSink media.class=Audio/Sink sink_properties=device.description='Discord Sink'" flags = [ ] }
+    { cmd = "load-module" args = "module-null-sink sink_name=GameSink media.class=Audio/Sink sink_properties=device.description='Game Sink'" flags = [ ] }
+    { cmd = "load-module" args = "module-null-sink sink_name=DesktopSink media.class=Audio/Sink sink_properties=device.description='Desktop Sink'" flags = [ ] }
     { cmd = "load-module" args = "module-loopback source=GameSink.monitor sink=alsa_output.usb-headset" flags = [ ] }
 ]

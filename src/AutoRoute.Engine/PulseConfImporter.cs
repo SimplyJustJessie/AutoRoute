@@ -56,8 +56,10 @@ public sealed class PulseConfImporter
         "cmd\\s*=\\s*\"load-module\"[^}]*?args\\s*=\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
         RegexOptions.Singleline | RegexOptions.Compiled);
 
+    // Runs on the raw args string, so the unquoted branch must stop at any quote as well as
+    // whitespace (e.g. a bare description that ends right before sink_properties' closing quote).
     private static readonly Regex DescriptionProp = new(
-        "device\\.description=(?:'([^']*)'|\"([^\"]*)\"|(\\S+))",
+        "device\\.description=(?:'([^']*)'|\"([^\"]*)\"|([^\\s\"']+))",
         RegexOptions.Compiled);
 
     /// <summary>Pure, tolerant scan of one conf file's text for null-sink declarations.</summary>
@@ -71,27 +73,27 @@ public sealed class PulseConfImporter
             var tokens = SplitRespectingQuotes(args);
             if (tokens.Count == 0 || tokens[0] != "module-null-sink") continue;
 
-            string? name = null, properties = null;
+            string? name = null;
             var mono = false;
             foreach (var token in tokens.Skip(1))
             {
                 if (token.StartsWith("sink_name=", StringComparison.Ordinal))
                     name = token["sink_name=".Length..];
-                else if (token.StartsWith("sink_properties=", StringComparison.Ordinal))
-                    properties = token["sink_properties=".Length..];
                 else if (token is "channels=1" or "channel_map=mono")
                     mono = true;
             }
 
             if (name is null) continue; // no stable identity — nothing to import
 
+            // Description is extracted from the RAW args, not a tokenized value: real configs use
+            // both sink_properties="device.description='X Y' …" (our drop-in) and the bare
+            // sink_properties=device.description='X Y' (the user's legacy file, per the live gate
+            // capture) — tokenization strips the quotes in the bare shape, which would truncate a
+            // description with spaces to its first word.
             string? description = null;
-            if (properties is not null)
-            {
-                var m = DescriptionProp.Match(properties);
-                if (m.Success)
-                    description = m.Groups.Cast<Group>().Skip(1).First(g => g.Success).Value;
-            }
+            var m = DescriptionProp.Match(args);
+            if (m.Success)
+                description = m.Groups.Cast<Group>().Skip(1).First(g => g.Success).Value;
             sinks.Add(new ImportedSink(name, description, mono));
         }
         return sinks;

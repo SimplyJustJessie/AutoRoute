@@ -15,10 +15,17 @@ public static class Fixtures
     public static string GateTaggedLinkPath => Path.Combine(Dir, "pw-dump.gate-tagged-link.json");
 
     /// <summary>
-    /// `pactl list modules short` shape (index\tname\targs) with null-sink, tagged/untagged,
-    /// no-sink_name, and junk rows. Re-capture live via scripts/v2-gate.sh (M1).
+    /// Real `pactl list modules short` output captured by scripts/v2-gate.sh (v2 M1, 11/11 pass):
+    /// libpipewire modules with multi-line args, the user's four legacy null sinks (unquoted
+    /// sink_properties, untagged), and the tagged gate sink.
     /// </summary>
     public static string PactlModulesShortPath => Path.Combine(Dir, "pactl-modules.short.sample.txt");
+
+    /// <summary>
+    /// Real pw-dump slice of the gate's pactl-created null sink (v2 M1): Audio/Sink node whose
+    /// props carry <c>autoroute.managed</c> as a JSON boolean.
+    /// </summary>
+    public static string PwDumpManagedSinkPath => Path.Combine(Dir, "pw-dump.managed-sink.json");
 
     public static string PwDumpSampleJson => File.ReadAllText(PwDumpSamplePath);
     public static string GateTaggedLinkJson => File.ReadAllText(GateTaggedLinkPath);

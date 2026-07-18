@@ -35,10 +35,27 @@ public sealed class PulseConfImporterTests : IDisposable
             Path.Combine(Fixtures.Dir, "virtual-sinks.conf.sample")));
 
         // The four null sinks — the loopback module is not a sink and is ignored.
-        Assert.Equal(new[] { "GameSink", "MusicSink", "DiscordSink", "DesktopSink" },
+        Assert.Equal(new[] { "MusicSink", "DiscordSink", "GameSink", "DesktopSink" },
             sinks.Select(s => s.Name).ToArray());
-        Assert.Equal("Game Sink", sinks[0].Description);
+        // Bare sink_properties=device.description='…' (the real legacy shape, per the live gate
+        // capture): the space-containing description must survive whole, not truncate at the space.
+        Assert.Equal(new[] { "Music Sink", "Discord Sink", "Game Sink", "Desktop Sink" },
+            sinks.Select(s => s.Description).ToArray());
         Assert.All(sinks, s => Assert.False(s.Mono));
+    }
+
+    [Fact]
+    public void Parse_recovers_our_own_dropin_shape_too()
+    {
+        // The double-quoted sink_properties form the generated drop-in writes.
+        var sinks = PulseConfImporter.Parse(SinkDropInWriter.Generate(new[]
+        {
+            new VirtualSinkSpec("x", "StreamSink", "Stream Sink", SinkChannels.Stereo),
+        }));
+
+        var sink = Assert.Single(sinks);
+        Assert.Equal("StreamSink", sink.Name);
+        Assert.Equal("Stream Sink", sink.Description);
     }
 
     [Fact]
@@ -77,7 +94,7 @@ public sealed class PulseConfImporterTests : IDisposable
 
         var result = await NewImporter().ImportAsync(store);
 
-        Assert.Equal(new[] { "GameSink", "DiscordSink", "DesktopSink" },
+        Assert.Equal(new[] { "DiscordSink", "GameSink", "DesktopSink" },
             result.Imported.Select(s => s.Name).ToArray());
         Assert.Equal(new[] { Path.Combine(_confD, "virtual-sinks.conf") }, result.LegacyFilesStillPresent);
         Assert.Equal(4, store.Current.VirtualSinks.Count);
