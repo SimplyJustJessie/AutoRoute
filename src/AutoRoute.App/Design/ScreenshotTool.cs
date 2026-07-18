@@ -66,6 +66,19 @@ public static class ScreenshotTool
             Capture(window, Path.Combine(dir, "board-states.png"));
         }
 
+        // Card-state legend: open the toolbar help flyout and capture it. Taken before the
+        // drag-over shot so that state's brush transitions can't linger into this frame.
+        var help = window.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => b.Name == "HelpButton");
+        if (help?.Flyout is not null)
+        {
+            help.Flyout.ShowAt(help);
+            Dispatcher.UIThread.RunJobs();
+            Capture(window, Path.Combine(dir, "board-help.png"));
+            help.Flyout.Hide();
+            Dispatcher.UIThread.RunJobs();
+        }
+
         // Simulated drag-over: light up the drop highlight on the last droppable column
         // (visible at the scrolled-right position).
         var column = window.GetVisualDescendants().OfType<SinkColumnView>()

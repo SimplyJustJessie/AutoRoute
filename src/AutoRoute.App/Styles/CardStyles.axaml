@@ -388,6 +388,50 @@
         <Setter Property="Padding" Value="6,6" />
     </Style>
 
+    <!-- Circled "?" that opens the card-state legend. -->
+    <Style Selector="Border.helpBadge">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="BorderBrush" Value="{DynamicResource FaintBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.helpBadge > TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,-1,0,0" />
+    </Style>
+    <Style Selector="Button.icon:pointerover Border.helpBadge">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Button.icon:pointerover Border.helpBadge > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+
+    <!-- Legend body text inside the help flyout. -->
+    <Style Selector="TextBlock.legendText">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="16" />
+    </Style>
+
+    <Style Selector="FlyoutPresenter">
+        <Setter Property="Background" Value="{DynamicResource ColumnHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
     <Style Selector="ToggleSwitch.compact">
         <Setter Property="OnContent" Value="{x:Null}" />
         <Setter Property="OffContent" Value="{x:Null}" />

@@ -48,12 +48,61 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
 
-                <!-- Monitors toggle -->
+                <!-- Monitors toggle + help -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock Classes="subtitle" Text="Sink monitors" FontSize="12"
                                VerticalAlignment="Center" />
                     <ToggleSwitch Classes="compact" IsChecked="{Binding Filter.ShowMonitors}"
                                   ToolTip.Tip="Show each sink's monitor as a draggable Source" />
+
+                    <Button Classes="icon" Name="HelpButton" Margin="4,0,0,0"
+                            ToolTip.Tip="What do the card states mean?">
+                        <Border Classes="helpBadge">
+                            <TextBlock Text="?" />
+                        </Border>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="330" Spacing="12" Margin="6">
+                                    <TextBlock Classes="sectionLabel" Text="CARD STATES" />
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip managed" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="MANAGED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Saved as a Rule. AutoRoute re-creates this Link automatically whenever the matching apps come back — it survives relaunches." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip unsaved" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="UNSAVED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="A Link made outside AutoRoute. It works now, but it won't come back after a relaunch — Save it as a Rule, or Keep it as manual." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip manual" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="MANUAL" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Kept as-is. AutoRoute leaves this Link alone and won't restore it if it disappears." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip protected" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="PROTECTED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Do not touch. AutoRoute never creates or removes Links on this node — for routing another tool owns (e.g. an EasyEffects chain)." />
+                                    </Grid>
+
+                                    <TextBlock Classes="legendText" Foreground="{DynamicResource FaintBrush}"
+                                               Text="Removing a card deletes its Rule (managed) or suppresses the Link so it stays disconnected (manual / unsaved)." />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
