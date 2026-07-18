@@ -223,3 +223,66 @@ made `A.monitor.FL → B.playback.FL` with `pw-link -w -p '{"autoroute.managed":
 The tag survived. Link + both modules were then removed and the system verified clean. The real
 captured Link object is committed at `tests/AutoRoute.Tests/fixtures/pw-dump.gate-tagged-link.json`
 and asserted by `PwDumpReaderResilienceTests.Reads_ownership_tag_from_REAL_gate_dump_...`.
+
+---
+
+## 6. v2 surfaces — app-managed virtual sinks (ADR-0011, PLAN.v2.md)
+
+The sections above are the frozen v1 contract (impls long since real, not stubs). v2 adds:
+
+### Engine model — `rules.json` **v2**
+```csharp
+enum SinkChannels { Stereo, Mono }                                    // serialized by name
+sealed record VirtualSinkSpec(string Id, string Name,                  // {"id","name","description","channels"}
+                              string Description, SinkChannels Channels);
+sealed record RulesDocument(..., IReadOnlyList<VirtualSinkSpec> VirtualSinks)  // + {"virtualSinks"}
+    { const int CurrentVersion = 2; RulesDocument Normalized(); }
+```
+A v1 file deserializes with `VirtualSinks` null; `RuleStore` applies `Normalized()` on every parse
+(null → empty, version → 2), so consumers always see the v2 shape and the next save upgrades the file.
+
+### PipeWire services
+```csharp
+sealed record NullSinkModule(int ModuleIndex, string SinkName, string Args) { bool IsAutoRouteTagged; }
+sealed record NullSinkRequest(string Name, string Description, bool Mono);
+readonly record struct SinkOpResult(bool Success, int? ModuleIndex, string? Error) { static Ok(int?); static Fail(string); }
+
+interface IVirtualSinkController {                       // impl PactlSinkController.cs (Tool = "pactl")
+    Task<IReadOnlyList<NullSinkModule>> ListNullSinkModulesAsync(CancellationToken ct = default);
+    Task<SinkOpResult> LoadAsync(NullSinkRequest request, CancellationToken ct = default);
+    Task<SinkOpResult> UnloadAsync(int moduleIndex, CancellationToken ct = default);
+}
+```
+`static PactlSinkController.BuildModuleArgs(NullSinkRequest)` is the single source of the module-args
+tokens — shared verbatim by the runtime pactl argv and the generated drop-in, so both paths create
+byte-identical modules. Module indexes are ephemeral; identity is always `sink_name`.
+
+### Engine services
+```csharp
+interface ISinkReconciler {                              // impl SinkReconciler.cs
+    Task EnsureAsync(PwGraph graph, RulesDocument rules, CancellationToken ct = default);
+}
+sealed class SinkDropInWriter {                          // owns pipewire-pulse.conf.d/autoroute-sinks.conf
+    static string DefaultPath();  static string Generate(IReadOnlyList<VirtualSinkSpec>);
+    Task SyncAsync(IReadOnlyList<VirtualSinkSpec>, CancellationToken ct = default);   // write-if-changed, atomic
+}
+sealed class PulseConfImporter {                         // one-shot legacy import at startup
+    static IReadOnlyList<ImportedSink> Parse(string confText);          // pure, tolerant
+    Task<ImportResult> ImportAsync(IRuleStore store, CancellationToken ct = default);
+}
+static class SinkNameValidator { bool IsValidName(string?); bool IsValidDescription(string?); }
+static class AtomicFile { Task WriteAsync(string path, string text, UnixFileMode mode, ct); }
+```
+`RoutingWorker.ReconcileNowAsync` runs `ISinkReconciler.EnsureAsync` **before** `IReconciler.ReconcileAsync`
+each pass; the halves fail independently. Ownership = name membership in `VirtualSinks`; the
+`autoroute.managed=true` stamp in `sink_properties` only gates stale-module auto-unload (untagged
+modules are never auto-unloaded).
+
+### v2 gate (M1) — run `scripts/v2-gate.sh` on the live machine
+Verifies: load-module index + node props round-trip (step 1), module-list args shape (2), unload (3),
+drop-in boot + pactl visibility of boot-loaded modules (4, `--restart`), pw-cli one-shot node dies
+with the process (5 — why pactl was chosen), duplicate-name behaviour (6 — why the modules-list
+guard exists). If step 1 shows `sink_properties` custom keys stripped: drop stale auto-cleanup only;
+everything else stands. Fixture captures land in `tests/AutoRoute.Tests/fixtures/` — the committed
+`pactl-modules.short.sample.txt` is hand-authored to the documented `index\tname\targs` shape until
+the gate's live capture replaces it.

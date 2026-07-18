@@ -1,12 +1,24 @@
 # App-managed virtual sinks
 
-> **Status: proposed — v2.** Not part of v1. Recorded to preserve the decision and its open fork.
+> **Status: accepted — v2.** The mechanism fork below is settled: **hybrid**, with `pactl` as the
+> runtime tool. Build spec: [PLAN.v2.md](../../PLAN.v2.md). Gate script: `scripts/v2-gate.sh` (M1).
 
-**Context.** Today the null sinks (GameSink, MusicSink, DiscordSink, DesktopSink) are declared statically in `~/.config/pipewire/pipewire-pulse.conf.d/virtual-sinks.conf` and created at launch by that config. The user wants to create and remove virtual sinks from a button inside AutoRoute, retiring that static config — so AutoRoute would own the **virtual-sink lifecycle**, not only the links between existing nodes.
+**Context.** Historically the null sinks (GameSink, MusicSink, DiscordSink, DesktopSink) were declared statically in `~/.config/pipewire/pipewire-pulse.conf.d/virtual-sinks.conf` and created at launch by that config. The user wants to create and remove virtual sinks from a button inside AutoRoute, retiring that static config — so AutoRoute owns the **virtual-sink lifecycle**, not only the links between existing nodes.
 
-**Decision (proposed).** AutoRoute gains UI to create and delete virtual (null) sinks. **Open fork — the creation mechanism:**
-- *Declarative:* write a `pipewire-pulse` conf.d drop-in and reload; PipeWire creates the sinks, which persist independently of whether AutoRoute is running (matches today's "always present" behaviour). The genuine script replacement.
-- *Imperative:* create sinks at runtime via `pactl`/`pw-cli` and recreate them after a PipeWire restart from the always-on watcher; no config editing, but sink existence becomes dependent on AutoRoute running — a regression from today.
-- *Hybrid (current lean):* write the drop-in for persistence **and** load immediately for instant effect.
+**Decision.** AutoRoute gains UI to create and delete virtual (null) sinks. The creation-mechanism fork is settled as **hybrid**:
 
-**Consequences.** Removes the manual config/script and makes sink management a first-class in-app action. Whether virtual sinks remain AutoRoute-independent depends on which mechanism is chosen — to be settled when v2 begins.
+- Declared sinks persist in `rules.json` (schema v2, `virtualSinks` array) — the single source of truth, so "delete sink + delete its rules" is one atomic save.
+- AutoRoute generates `~/.config/pipewire/pipewire-pulse.conf.d/autoroute-sinks.conf` (write-if-changed, atomic, fully owned/overwritten) so sinks are recreated at boot by pipewire-pulse itself — **sink existence stays independent of AutoRoute running**, matching the old static behaviour.
+- Instant effect comes from `pactl load-module module-null-sink` / `pactl unload-module` at runtime; the always-on `SinkReconciler` pass converges live state to the declared set on every graph/rules change.
+
+**Why `pactl`, not `pw-cli`:** a one-shot `pw-cli create-node` binds the created object to the pw-cli client connection — the node dies when the process exits (gate step 5 re-verifies this live). `pactl` modules load into pipewire-pulse, so they outlive AutoRoute and die exactly when the drop-in recreates them; both the drop-in's `pulse.cmd` entries and runtime loads produce the *same* module kind, visible and unloadable via `pactl list modules` (load-path symmetry, gate step 4).
+
+**Ownership:** a sink is AutoRoute-managed iff its `node.name`/`sink_name` is in the declared set. `autoroute.managed=true` is additionally stamped into `sink_properties` on both paths — used for diagnostics and as the safety guard for stale-module auto-cleanup (only *tagged* modules whose name is no longer declared are auto-unloaded; untagged modules are never touched). If the gate shows the custom prop stripped, only that auto-cleanup is dropped; ownership was never prop-based.
+
+**Double-creation guard:** before loading a declared-but-absent sink, the reconciler checks `pactl list modules short` for an existing `module-null-sink` with that `sink_name` — covering the boot race (drop-in loads while AutoRoute starts) and the load→snapshot window. Gate step 6 documents that a duplicate `load-module` would otherwise create a second same-named sink.
+
+**Migration:** at startup AutoRoute parses the legacy conf files (tolerantly, skip-on-failure) and imports their sinks into the declared set, but only **warns** about files still creating sinks statically — removing them stays the user's action, so AutoRoute never edits config it doesn't own.
+
+**Deleting a sink** prompts with the Rules/Suppressions referencing it and offers to delete them in the same save (default on); declining leaves them dormant — they re-match if a same-named sink ever returns.
+
+**Consequences.** Removes the manual config/script and makes sink management a first-class in-app action. Virtual sinks remain AutoRoute-independent at boot via the generated drop-in; runtime create/delete is instant via pactl; the two paths cannot double-create.
