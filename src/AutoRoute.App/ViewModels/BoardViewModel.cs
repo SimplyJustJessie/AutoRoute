@@ -10,6 +10,7 @@ using AutoRoute.PipeWire;
 using AutoRoute.PipeWire.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AutoRoute.App.ViewModels;
 
@@ -27,6 +28,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private readonly IRuleStore _ruleStore;
     private readonly IReconciler _reconciler;
     private readonly IRuleMatcher _matcher;
+    private readonly IVirtualSinkController? _sinkController;
+    private readonly AppNotices? _notices;
 
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
@@ -41,22 +44,35 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     [ObservableProperty]
     private string _statusText = "Loading graph…";
 
+    /// <summary>Legacy static conf warning (ADR-0011 migration: warn until the user retires the file).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLegacyNotice))]
+    private string _legacyNoticeText = string.Empty;
+
+    public bool HasLegacyNotice => LegacyNoticeText.Length > 0;
+
     public BoardViewModel(
         IPwGraphService graph,
         IPwLinker linker,
         IRuleStore ruleStore,
         IReconciler reconciler,
-        IRuleMatcher matcher)
+        IRuleMatcher matcher,
+        IVirtualSinkController? sinkController = null,
+        AppNotices? notices = null)
     {
         _graph = graph;
         _linker = linker;
         _ruleStore = ruleStore;
         _reconciler = reconciler;
         _matcher = matcher;
+        _sinkController = sinkController;
+        _notices = notices;
         Palette = new SourcesPaletteViewModel(this);
 
         Filter.Changed += (_, _) => ApplyFilter();
         Filter.MonitorsToggled += (_, _) => RebuildFromCurrent();
+        if (_notices is not null)
+            _notices.Changed += (_, _) => PostToUi(RefreshLegacyNotice);
     }
 
     /// <summary>Load policy, start the graph service, render the first board, then go live.</summary>
@@ -68,7 +84,16 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _graph.GraphUpdated += OnGraphUpdated;
         _ruleStore.Changed += OnRulesChanged;
 
+        RefreshLegacyNotice();
         RebuildFromCurrent();
+    }
+
+    private void RefreshLegacyNotice()
+    {
+        var files = _notices?.LegacySinkFiles ?? Array.Empty<string>();
+        LegacyNoticeText = files.Count == 0
+            ? string.Empty
+            : $"Sinks are also created statically by {string.Join(", ", files)} — remove the file(s) to let AutoRoute own them (they're already imported).";
     }
 
     // GraphUpdated fires on a background thread — marshal before touching ObservableCollections.
@@ -271,6 +296,127 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         RebuildFromCurrent();
     }
 
+    // ===== Virtual sinks (ADR-0011) =====================================================
+
+    /// <summary>True when a sink controller is wired — gates the whole sink-management UI.</summary>
+    public bool CanManageSinks => _sinkController is not null;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewSinkValidationMessage))]
+    [NotifyCanExecuteChangedFor(nameof(SubmitNewSinkCommand))]
+    private string _newSinkName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewSinkValidationMessage))]
+    [NotifyCanExecuteChangedFor(nameof(SubmitNewSinkCommand))]
+    private string _newSinkDescription = string.Empty;
+
+    [ObservableProperty]
+    private bool _newSinkMono;
+
+    public string? NewSinkValidationMessage => ValidateNewSink();
+
+    private string? ValidateNewSink()
+    {
+        var name = NewSinkName.Trim();
+        if (name.Length == 0) return null; // pristine form — no scolding, just a disabled button
+
+        if (!SinkNameValidator.IsValidName(name))
+            return "Name can only use letters, digits, '.', '_' and '-'.";
+        if (_ruleStore.Current.VirtualSinks.Any(s => s.Name == name))
+            return $"A sink named {name} is already declared.";
+        if (_graph.Current.Nodes.Any(n => n.NodeName == name && NodeRoles.IsAudio(n)))
+            return $"An audio node named {name} already exists.";
+
+        var description = NewSinkDescription.Trim();
+        if (description.Length > 0 && !SinkNameValidator.IsValidDescription(description))
+            return "Description cannot contain quotes.";
+        return null;
+    }
+
+    private bool CanSubmitNewSink => NewSinkName.Trim().Length > 0 && ValidateNewSink() is null;
+
+    [RelayCommand(CanExecute = nameof(CanSubmitNewSink))]
+    private async Task SubmitNewSink()
+    {
+        var name = NewSinkName.Trim();
+        var description = NewSinkDescription.Trim();
+        await CreateSinkAsync(name, description.Length > 0 ? description : name, NewSinkMono)
+            .ConfigureAwait(true);
+        NewSinkName = string.Empty;
+        NewSinkDescription = string.Empty;
+        NewSinkMono = false;
+    }
+
+    public async Task CreateSinkAsync(string name, string description, bool mono)
+    {
+        if (_sinkController is null) return;
+        if (!SinkNameValidator.IsValidName(name) || !SinkNameValidator.IsValidDescription(description)) return;
+        if (_ruleStore.Current.VirtualSinks.Any(s => s.Name == name)) return;
+
+        var spec = new VirtualSinkSpec(Guid.NewGuid().ToString("N"), name, description,
+            mono ? SinkChannels.Mono : SinkChannels.Stereo);
+        await SaveDocAsync(doc => doc with { VirtualSinks = doc.VirtualSinks.Append(spec).ToList() })
+            .ConfigureAwait(true);
+
+        // Instant effect (the always-on SinkReconciler pass would also catch up, but this makes the
+        // column appear within one snapshot — mirrors ConnectAsync's optimistic linking).
+        try { await _sinkController.LoadAsync(new NullSinkRequest(name, description, mono)).ConfigureAwait(true); }
+        catch { /* transient — SinkReconciler self-heals next pass */ }
+
+        RebuildFromCurrent();
+    }
+
+    public SinkDeletionImpact PreviewDeleteSink(string sinkName)
+    {
+        var doc = _ruleStore.Current;
+        var node = _graph.Current.Nodes.FirstOrDefault(n =>
+            n.NodeName == sinkName && NodeRoles.IsTargetSink(n));
+
+        // A criterion references the sink when it matches the live node, or — for robustness while
+        // the node is absent — when it names it textually.
+        bool Refs(MatchCriteria c) =>
+            (node is not null && _matcher.Matches(c, node)) ||
+            c.Predicates.Any(p => p.Field == Field.NodeName && p.Op == Op.Equals && p.Value == sinkName);
+
+        return new SinkDeletionImpact(
+            doc.Rules.Where(r => Refs(r.Target) || Refs(r.Source)).ToList(),
+            doc.Suppressions.Where(s => Refs(s.Target) || Refs(s.Source)).ToList());
+    }
+
+    public async Task DeleteSinkAsync(string sinkName, bool deleteAffectedPolicy)
+    {
+        if (_sinkController is null) return;
+        var impact = PreviewDeleteSink(sinkName);
+
+        // One atomic save: the sink and (if chosen) everything referencing it go together.
+        await SaveDocAsync(doc =>
+        {
+            var next = doc with { VirtualSinks = doc.VirtualSinks.Where(s => s.Name != sinkName).ToList() };
+            if (!deleteAffectedPolicy) return next;
+
+            var ruleIds = impact.Rules.Select(r => r.Id).ToHashSet();
+            var suppressionIds = impact.Suppressions.Select(s => s.Id).ToHashSet();
+            return next with
+            {
+                Rules = next.Rules.Where(r => !ruleIds.Contains(r.Id)).ToList(),
+                Suppressions = next.Suppressions.Where(s => !suppressionIds.Contains(s.Id)).ToList(),
+            };
+        }).ConfigureAwait(true);
+
+        // Instant effect: unload every module carrying this sink_name (SinkReconciler's stale pass
+        // is the safety net if this races a restart).
+        try
+        {
+            var modules = await _sinkController.ListNullSinkModulesAsync().ConfigureAwait(true);
+            foreach (var module in modules.Where(m => m.SinkName == sinkName))
+                await _sinkController.UnloadAsync(module.ModuleIndex).ConfigureAwait(true);
+        }
+        catch { /* transient — SinkReconciler self-heals next pass */ }
+
+        RebuildFromCurrent();
+    }
+
     // ===== helpers ======================================================================
 
     private async Task SaveDocAsync(Func<RulesDocument, RulesDocument> edit)
@@ -310,7 +456,6 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private async Task SafeReconcile()
     {
         try { await _reconciler.ReconcileAsync(_graph.Current, _ruleStore.Current).ConfigureAwait(true); }
-        catch (NotImplementedException) { /* Engine stub in Wave 1 — real reconciler lands in Wave 3 */ }
         catch { /* reconcile is best-effort from the UI; graph service remains source of truth */ }
     }
 

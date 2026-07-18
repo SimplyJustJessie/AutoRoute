@@ -22,6 +22,9 @@ public partial class SinkColumnViewModel : ViewModelBase
 
     public int TargetNodeId { get; }
 
+    /// <summary>The node's <c>node.name</c> — the identity sink management keys on (null → not manageable).</summary>
+    public string? SinkName { get; private set; }
+
     [ObservableProperty]
     private string _title = string.Empty;
 
@@ -59,6 +62,8 @@ public partial class SinkColumnViewModel : ViewModelBase
         Title = model.Title;
         Subtitle = model.Subtitle;
         IsProtected = model.Protected;
+        SinkName = model.SinkName;
+        IsManagedSink = model.IsManagedSink;
         MergeCards(model.Cards);
     }
 
@@ -83,6 +88,22 @@ public partial class SinkColumnViewModel : ViewModelBase
         IsEmpty = Cards.Count == 0;
     }
 
+    /// <summary>True when this column is an AutoRoute-declared virtual sink — shows the VIRTUAL chip + delete affordance.</summary>
+    [ObservableProperty]
+    private bool _isManagedSink;
+
+    /// <summary>Human summary of what the delete confirm flyout is about to take along.</summary>
+    [ObservableProperty]
+    private string _deleteImpactText = string.Empty;
+
+    /// <summary>True when any Rule/Suppression references this sink (drives the flyout checkbox row).</summary>
+    [ObservableProperty]
+    private bool _hasDeleteImpact;
+
+    /// <summary>"Also delete these" — default checked, per the delete-sink decision.</summary>
+    [ObservableProperty]
+    private bool _deleteAffectedPolicy = true;
+
     /// <summary>Invoked by the drop behavior with the dropped Source's live node id.</summary>
     [RelayCommand]
     private Task Connect(int sourceNodeId) => _coordinator.ConnectAsync(sourceNodeId, TargetNodeId);
@@ -90,4 +111,31 @@ public partial class SinkColumnViewModel : ViewModelBase
     /// <summary>Toggle "do not touch" (Protected) for this Target Sink node.</summary>
     [RelayCommand]
     private Task ToggleProtect() => _coordinator.ToggleProtectAsync(TargetNodeId);
+
+    /// <summary>Refreshes the impact preview — runs when the delete button opens its confirm flyout.</summary>
+    [RelayCommand]
+    private void PrepareDeleteSink()
+    {
+        if (SinkName is null) return;
+        var impact = _coordinator.PreviewDeleteSink(SinkName);
+        HasDeleteImpact = !impact.IsEmpty;
+        DeleteAffectedPolicy = true;
+
+        if (impact.IsEmpty)
+        {
+            DeleteImpactText = "No rules reference this sink.";
+            return;
+        }
+
+        var parts = new List<string>();
+        foreach (var rule in impact.Rules) parts.Add($"• Rule: {rule.Name}");
+        if (impact.Suppressions.Count > 0)
+            parts.Add($"• {impact.Suppressions.Count} suppression(s)");
+        DeleteImpactText = string.Join("\n", parts);
+    }
+
+    /// <summary>Confirmed delete: sink (+ affected policy when checked) in one save, then unload.</summary>
+    [RelayCommand]
+    private Task ConfirmDeleteSink() =>
+        SinkName is null ? Task.CompletedTask : _coordinator.DeleteSinkAsync(SinkName, DeleteAffectedPolicy);
 }

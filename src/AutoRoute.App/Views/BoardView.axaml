@@ -13,7 +13,7 @@
 
     <!-- AllowDrop on the root keeps DragOver events flowing over the whole board, so the
          drag ghost can follow the pointer between columns (drops outside a column are no-ops). -->
-    <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}"
+    <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}"
           DragDrop.AllowDrop="True">
 
         <!-- ===================== Toolbar ===================== -->
@@ -51,8 +51,39 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
 
-                <!-- Monitors toggle + help -->
+                <!-- New sink + monitors toggle + help -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="chipAction" Name="NewSinkButton"
+                            IsVisible="{Binding CanManageSinks}"
+                            Content="+ New Sink"
+                            ToolTip.Tip="Create a virtual (null) sink — it persists across reboots via a generated PipeWire config">
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="300" Spacing="10" Margin="6">
+                                    <TextBlock Classes="sectionLabel" Text="NEW VIRTUAL SINK" />
+                                    <TextBox Watermark="Name (e.g. StreamSink)"
+                                             Text="{Binding NewSinkName}" />
+                                    <TextBox Watermark="Description (defaults to name)"
+                                             Text="{Binding NewSinkDescription}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="14">
+                                        <RadioButton GroupName="NewSinkChannels" Content="Stereo"
+                                                     IsChecked="{Binding !NewSinkMono}" />
+                                        <RadioButton GroupName="NewSinkChannels" Content="Mono"
+                                                     IsChecked="{Binding NewSinkMono}" />
+                                    </StackPanel>
+                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource UnsavedBrush}"
+                                               Text="{Binding NewSinkValidationMessage}"
+                                               IsVisible="{Binding NewSinkValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    <Button Classes="chipAction" HorizontalAlignment="Right"
+                                            Content="Create"
+                                            Command="{Binding SubmitNewSinkCommand}"
+                                            Click="OnCreateSinkClick" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <TextBlock Classes="subtitle" Text="Sink monitors" FontSize="12"
                                VerticalAlignment="Center" />
                     <ToggleSwitch Classes="compact" IsChecked="{Binding Filter.ShowMonitors}"
@@ -110,8 +141,16 @@
             </Grid>
         </Border>
 
+        <!-- Legacy static-conf warning (ADR-0011 migration: warn until the user retires the file) -->
+        <Border Grid.Row="1" Classes="panel" BorderThickness="0,0,0,1" Padding="14,8"
+                IsVisible="{Binding HasLegacyNotice}">
+            <TextBlock Classes="legendText" TextWrapping="Wrap"
+                       Foreground="{DynamicResource UnsavedBrush}"
+                       Text="{Binding LegacyNoticeText}" />
+        </Border>
+
         <!-- ===================== Palette + Board ===================== -->
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
 
             <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="280">
                 <views:PaletteView DataContext="{Binding Palette}" />

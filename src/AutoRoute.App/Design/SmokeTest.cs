@@ -39,7 +39,8 @@ public static class SmokeTest
         var gsvc = new MockPwGraphService(graph);
         var linker = new RecordingPwLinker();
         var store = new MockRuleStore();
-        var board = new BoardViewModel(gsvc, linker, store, new MockReconciler(), new UiRuleMatcher());
+        var board = new BoardViewModel(gsvc, linker, store, new MockReconciler(), new UiRuleMatcher(),
+            new MockSinkController());
         board.InitializeAsync().GetAwaiter().GetResult();
 
         Console.WriteLine($"[smoke] {board.StatusText}");

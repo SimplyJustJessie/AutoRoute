@@ -20,14 +20,21 @@
 
                 <!-- Header = the Target Sink -->
                 <Border Grid.Row="0" Classes="columnHeader">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                         <Path Grid.Column="0" Data="{StaticResource IconSpeaker}"
                               Fill="{DynamicResource MutedBrush}"
                               Width="13" Height="13" Stretch="Uniform"
                               VerticalAlignment="Center" Margin="0,0,8,0" />
 
                         <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                            <TextBlock Classes="columnTitle body" Text="{Binding Title}" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Classes="columnTitle body" Text="{Binding Title}" />
+                                <Border Classes="chip managed" VerticalAlignment="Center"
+                                        IsVisible="{Binding IsManagedSink}"
+                                        ToolTip.Tip="A virtual sink AutoRoute owns — created at boot by the generated config and kept alive by the watcher">
+                                    <TextBlock Text="VIRTUAL" />
+                                </Border>
+                            </StackPanel>
                             <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
                                        IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
@@ -45,6 +52,33 @@
                                 <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
                                 <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
                             </Panel>
+                        </Button>
+
+                        <!-- Delete (managed virtual sinks only): confirm flyout with the deletion impact -->
+                        <Button Grid.Column="4" Classes="icon" Name="DeleteSinkButton"
+                                IsVisible="{Binding IsManagedSink}"
+                                Command="{Binding PrepareDeleteSinkCommand}"
+                                ToolTip.Tip="Delete this virtual sink">
+                            <Path Data="{StaticResource IconClose}" />
+                            <Button.Flyout>
+                                <Flyout Placement="BottomEdgeAlignedRight">
+                                    <StackPanel Width="300" Spacing="10" Margin="6">
+                                        <TextBlock Classes="sectionLabel" Text="DELETE VIRTUAL SINK" />
+                                        <TextBlock Classes="legendText" TextWrapping="Wrap">
+                                            <Run Text="Removes " /><Run Text="{Binding Title}" FontWeight="Bold" /><Run Text=" from the graph, the generated config, and rules.json. Links into it disappear with it." />
+                                        </TextBlock>
+                                        <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                   Text="{Binding DeleteImpactText}" />
+                                        <CheckBox IsChecked="{Binding DeleteAffectedPolicy}"
+                                                  IsVisible="{Binding HasDeleteImpact}"
+                                                  Content="Also delete these rules/suppressions" />
+                                        <Button Classes="chipAction" HorizontalAlignment="Right"
+                                                Content="Delete sink"
+                                                Command="{Binding ConfirmDeleteSinkCommand}"
+                                                Click="OnConfirmDeleteSinkClick" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
                         </Button>
                     </Grid>
                 </Border>

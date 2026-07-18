@@ -22,12 +22,16 @@ public sealed record CardModel(
     string Tooltip);
 
 /// <summary>Immutable description of one Target Sink column.</summary>
+/// <param name="SinkName">The node's <c>node.name</c> — the identity a declared virtual sink is keyed by.</param>
+/// <param name="IsManagedSink">True when this column is an AutoRoute-declared virtual sink (ADR-0011).</param>
 public sealed record ColumnModel(
     int TargetNodeId,
     string Key,
     string Title,
     string Subtitle,
     bool Protected,
+    string? SinkName,
+    bool IsManagedSink,
     IReadOnlyList<CardModel> Cards);
 
 /// <summary>Immutable description of one palette Source entry (app-granularity).</summary>

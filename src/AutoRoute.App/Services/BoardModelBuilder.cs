@@ -29,6 +29,10 @@ public static class BoardModelBuilder
             .OrderBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Declared virtual sinks (ADR-0011): ownership is name membership in the declared set.
+        var declaredSinkNames = rules.VirtualSinks.Select(v => v.Name)
+            .ToHashSet(System.StringComparer.Ordinal);
+
         // Protected membership, resolved once per build — consulted per target, card and palette
         // entry below (was: a full rules.Protected × matcher scan at every call site).
         var protectedIds = new HashSet<int>();
@@ -131,6 +135,8 @@ public static class BoardModelBuilder
                 Title: NodeRoles.TargetTitle(target),
                 Subtitle: NodeRoles.TargetSubtitle(target),
                 Protected: columnProtected,
+                SinkName: target.NodeName,
+                IsManagedSink: target.NodeName is { } nn && declaredSinkNames.Contains(nn),
                 Cards: cardModels));
         }
 
