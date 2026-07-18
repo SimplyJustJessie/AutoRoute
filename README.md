@@ -1,67 +1,90 @@
 # AutoRoute
 
-**A persistent [Helvum](https://gitlab.freedesktop.org/pipewire/helvum) for PipeWire.** AutoRoute watches your audio graph and re-applies your routing decisions automatically — so a one-time drag-and-drop assignment survives the ephemeral node IDs PipeWire regenerates on every app launch.
+**Wire your PipeWire audio once, and keep it wired.**
 
-Every manual edit persists **in both directions**: a link you make comes back when the nodes reappear, and a link you break stays broken — even with the window closed.
+AutoRoute is a background service and GUI for Linux that remembers your PipeWire connections and re-applies them as apps come and go. It's a *persistent* [Helvum](https://gitlab.freedesktop.org/pipewire/helvum): you patch things the way you want, and AutoRoute keeps them that way — even though PipeWire hands out fresh node IDs every time an app restarts.
 
-> `AutoRoute` is a working title — rename freely.
+## The problem
 
-## Why
+By default WirePlumber routes every app to your default output. The moment you run separate virtual sinks — a `GameSink` feeding OBS, a `MusicSink`, a `DiscordSink` — you're back in Helvum re-patching by hand, because node IDs change on every launch and streams like Discord's per-call recording input reappear constantly.
 
-WirePlumber's stock policy links every app stream to the default sink. If you keep custom null sinks (`GameSink`, `MusicSink`, `DiscordSink`, …) to feed *separate* audio into OBS, Discord, and friends, the port links you make by hand in Helvum never persist — because PipeWire node IDs change every launch, you redo them every time an app (or Discord's per-call recording stream) reappears. AutoRoute makes those decisions stick.
+AutoRoute makes those patches stick, in **both directions**:
+
+- A connection you make is **re-created** whenever the matching apps come back.
+- A connection you remove **stays** removed — even when WirePlumber tries to re-add its default link.
 
 ## Features
 
-- **Rules that survive relaunches** — matched by stable keys (application name, node name, …) at **app granularity**, not by ephemeral node ID.
-- **Fan-out** — one source can feed many sinks at once (e.g. a game to both your headset *and* an OBS capture sink).
-- **Signed edits** — a **positive rule** keeps a pair linked; a **suppression** keeps it *un*linked, deleting the link every time it reappears (including WirePlumber's default). The latest action wins.
-- **Protected ("do not touch")** — mark nodes AutoRoute must never route or unroute, for routing owned by another tool (e.g. an `EasyEffects → Discord` chain). Precedence: **Protected > Suppression > Positive**.
-- **Board UI** — a column per target sink, a palette of draggable sources; drag to connect, drop into many columns for fan-out. Not a patchbay.
-- **Always-on** — a background watcher + tray icon reconcile the graph continuously; closing the window only hides it.
-- **Safe ownership** — AutoRoute-created links are tagged `autoroute.managed`, so it only ever cleans up its own links (or ones you explicitly suppressed) and never touches your manual patches.
+- **Rules that survive relaunches** — connections are matched by application, not by throwaway node IDs.
+- **Fan-out** — send one source to several sinks at once (your headset *and* a capture sink for streaming).
+- **Keep-connected and keep-disconnected** — positive rules hold a link open; suppressions keep it closed on every cycle.
+- **Protected nodes** — mark routing that another tool owns (e.g. an EasyEffects chain) as off-limits, and AutoRoute won't touch it. Precedence is absolute: *protected > suppression > connect*.
+- **A board, not a patchbay** — one column per sink, a palette of draggable sources; drag to connect, drop into several columns to fan out. Channels are paired for you.
+- **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
+- **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
 
 ## Requirements
 
-- Linux with **PipeWire** (`pw-dump`, `pw-link`, `pw-mon` on `PATH`) and WirePlumber
-- **.NET 10 SDK** (10.0.1xx)
+- Linux with **PipeWire** and **WirePlumber** (`pw-dump`, `pw-link`, `pw-mon` available on your `PATH`)
+- The [**.NET 10 SDK**](https://dotnet.microsoft.com/download)
 
-## Build & run
+## Install
 
 ```bash
-export PATH=/usr/share/dotnet:$PATH   # if the SDK isn't already on PATH
+git clone https://github.com/SimplyJustJessie/AutoRoute.git
+cd AutoRoute
 dotnet build
-dotnet run --project src/AutoRoute.App                 # window
-dotnet run --project src/AutoRoute.App -- --background  # tray only
 ```
 
-Flags: `--background` (start hidden), `--poll` (use a polling graph monitor instead of `pw-mon`).
+## Run
 
-Rules are auto-persisted to `~/.config/autoroute/rules.json` on every in-app edit — there is no explicit Save.
-
-### Autostart
-
-A systemd user unit is provided in [`dist/systemd/autoroute.service`](dist/systemd/autoroute.service) (not installed by default). See [`dist/README.md`](dist/README.md) for the publish + `systemctl --user enable --now` steps.
-
-## Project layout
-
-```
-src/AutoRoute.PipeWire/   # interop: graph model + pw-dump/pw-link/pw-mon drivers (no UI deps)
-src/AutoRoute.Engine/     # rules, matching, and the idempotent reconciler + persistence
-src/AutoRoute.App/        # Avalonia MVVM board UI + tray + always-on host
-tests/AutoRoute.Tests/    # xUnit: parsing, matcher, reconciler, ownership round-trip, host
+```bash
+dotnet run --project src/AutoRoute.App              # open the window
+dotnet run --project src/AutoRoute.App -- --background   # tray only, no window
 ```
 
-Stack: **C# / .NET 10**, **Avalonia** (MVVM), `Microsoft.Extensions.Hosting`.
+Flags:
 
-## Design docs
+- `--background` — start hidden (tray only)
+- `--poll` — poll `pw-dump` for changes instead of watching `pw-mon`
 
-The design is recorded in the repo:
+## Using it
 
-- [`PLAN.md`](PLAN.md) — the v1 build spec
-- [`CONTEXT.md`](CONTEXT.md) — the vocabulary / ubiquitous language
-- [`docs/adr/`](docs/adr/) — architecture decision records (the *why* behind each choice)
-- [`docs/dev/contracts.md`](docs/dev/contracts.md) — the internal module contracts
+1. Launch AutoRoute — the board mirrors your current audio graph. Links that already exist show up as **unsaved**.
+2. Drag a source (an app stream, a microphone, or a sink's monitor) from the palette into a target sink's column to connect it. Drop it into more than one column to fan out.
+3. Remove a card to disconnect. Removing an external link records a **suppression** so it stays gone.
+4. Mark a node **protected** to tell AutoRoute to leave it and everything touching it alone.
 
-## Status
+Rules are written to `~/.config/autoroute/rules.json` the moment you make a change — there is no Save button.
 
-v1 is implemented and verified end-to-end against a live PipeWire graph: routing survives relaunches on fresh node IDs, suppressions stay enforced, fan-out and protected nodes behave, and the reconcile loop is idempotent.
+## Autostart
+
+A systemd user service is included so AutoRoute starts with your session. After building/publishing (see [`dist/README.md`](dist/README.md)):
+
+```bash
+systemctl --user enable --now autoroute.service
+journalctl --user -u autoroute -f     # follow its logs
+```
+
+The unit lives at [`dist/systemd/autoroute.service`](dist/systemd/autoroute.service).
+
+## How it works
+
+AutoRoute reads the graph from `pw-dump`, matches it against your rules, and makes only the `pw-link` changes needed to reach the state you asked for — an idempotent reconcile that runs whenever the graph or your rules change. Every link it creates is tagged `autoroute.managed`, so it can always tell its own links from yours and never cleans up a connection it didn't make. `pw-mon` tells it *when* to re-check; it never routes by name, only by numeric port ID.
+
+```
+src/AutoRoute.PipeWire/   # PipeWire interop: graph model + pw-dump/pw-link/pw-mon drivers
+src/AutoRoute.Engine/     # rule matching, the reconciler, and rules.json persistence
+src/AutoRoute.App/        # Avalonia MVVM board UI, tray, and the always-on host
+tests/AutoRoute.Tests/    # xUnit test suite
+```
+
+Built with C# / .NET 10 and [Avalonia](https://avaloniaui.net/).
+
+## Design notes
+
+The reasoning behind the architecture is written down in the repo:
+
+- [`PLAN.md`](PLAN.md) — the build spec
+- [`CONTEXT.md`](CONTEXT.md) — the project's vocabulary
+- [`docs/adr/`](docs/adr/) — architecture decision records
