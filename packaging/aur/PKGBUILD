@@ -1,0 +1,38 @@
+# Maintainer: SimplyJessie <simplyyjessie@pm.me>
+#
+# AUR template — ready to publish once there is a tagged release:
+#   1. set pkgver to the tag (without the leading v), run: updpkgsums
+#   2. makepkg --printsrcinfo > .SRCINFO
+#   3. push PKGBUILD + .SRCINFO to ssh://aur@aur.archlinux.org/autoroute.git
+#
+# NOTE: the repository has no LICENSE file yet — add one and update license=() below
+# before publishing (AUR requires it).
+
+pkgname=autoroute
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Persistent PipeWire routing manager — routing rules that survive app relaunches"
+arch=('x86_64')
+url="https://github.com/SimplyJustJessie/AutoRoute"
+license=('custom')
+depends=('pipewire' 'wireplumber' 'dotnet-runtime-10.0')
+makedepends=('dotnet-sdk-10.0')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+options=('!strip') # .NET assemblies must not be stripped
+
+build() {
+    cd "AutoRoute-$pkgver"
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet publish src/AutoRoute.App -c Release \
+        --no-self-contained -o "$srcdir/publish"
+}
+
+package() {
+    cd "AutoRoute-$pkgver"
+    install -dm755 "$pkgdir/usr/lib/$pkgname"
+    cp -a "$srcdir/publish/." "$pkgdir/usr/lib/$pkgname/"
+    install -dm755 "$pkgdir/usr/bin"
+    ln -s "/usr/lib/$pkgname/AutoRoute.App" "$pkgdir/usr/bin/autoroute"
+    install -Dm644 packaging/autoroute.desktop "$pkgdir/usr/share/applications/autoroute.desktop"
+    install -Dm644 packaging/autoroute.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/autoroute.png"
+}

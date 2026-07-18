@@ -32,6 +32,15 @@ AutoRoute makes those patches stick, in **both directions**:
 
 ## Install
 
+**AppImage** (no .NET required): grab `AutoRoute-*-x86_64.AppImage` from the latest
+[release](https://github.com/SimplyJustJessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
+artifact on any CI run), `chmod +x` it, run it. Built by `scripts/build-appimage.sh`.
+
+**Arch (AUR)**: planned — a ready PKGBUILD lives in `packaging/aur/` and will be published
+after the first tagged release.
+
+**From source:**
+
 ```bash
 git clone https://github.com/SimplyJustJessie/AutoRoute.git
 cd AutoRoute
