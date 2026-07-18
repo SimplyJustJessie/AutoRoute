@@ -17,6 +17,12 @@ public sealed class PwGraphService : IPwGraphService, IAsyncDisposable
     private volatile PwGraph _current = PwGraph.Empty;
     private int _started;
 
+    // Coalescing state for monitor-triggered reloads: signals that arrive while a pw-dump is in
+    // flight collapse into ONE follow-up reload instead of queueing a dump per signal.
+    private readonly object _refreshSignal = new();
+    private bool _refreshRunning;
+    private bool _refreshPending;
+
     public PwGraphService(PwDumpReader reader, IGraphMonitor monitor, ILogger<PwGraphService>? log = null)
     {
         _reader = reader;
@@ -42,8 +48,34 @@ public sealed class PwGraphService : IPwGraphService, IAsyncDisposable
 
     private async void OnMonitorChanged(object? sender, EventArgs e)
     {
-        try { await RefreshAsync().ConfigureAwait(false); }
-        catch (Exception ex) { _log.LogWarning(ex, "reload after change signal failed"); }
+        // Drain pattern: the first signal starts a reload loop; signals landing mid-reload just set
+        // the pending flag. However many signals arrive during one pw-dump, exactly one more runs —
+        // reloads can no longer pile up behind a slow dump (each queued waiter used to run its own).
+        lock (_refreshSignal)
+        {
+            if (_refreshRunning)
+            {
+                _refreshPending = true;
+                return;
+            }
+            _refreshRunning = true;
+        }
+
+        while (true)
+        {
+            try { await RefreshAsync().ConfigureAwait(false); }
+            catch (Exception ex) { _log.LogWarning(ex, "reload after change signal failed"); }
+
+            lock (_refreshSignal)
+            {
+                if (!_refreshPending)
+                {
+                    _refreshRunning = false;
+                    return;
+                }
+                _refreshPending = false;
+            }
+        }
     }
 
     public async Task<PwGraph> RefreshAsync(CancellationToken ct = default)

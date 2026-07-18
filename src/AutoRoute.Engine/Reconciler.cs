@@ -56,6 +56,10 @@ public sealed class Reconciler : IReconciler
 
         // ---- Step 2: actual set A, split managed vs unowned (via PwLink.IsManaged) ---------------
         // (graph.ManagedLinks / graph.UnownedLinks already partition this for us.)
+        // Existing port pairs indexed in one pass — replaces a per-desired-pair O(links) scan.
+        var existingPairs = new HashSet<PortPairKey>(graph.Links.Count);
+        foreach (var link in graph.Links)
+            existingPairs.Add(new PortPairKey(link.OutPortId, link.InPortId));
 
         // Track link ids we've already deleted so steps 4 & 5 never double-issue.
         var disconnected = new HashSet<int>();
@@ -65,7 +69,7 @@ public sealed class Reconciler : IReconciler
         {
             ct.ThrowIfCancellationRequested();
 
-            if (graph.HasLink(pair.OutPort, pair.InPort))
+            if (existingPairs.Contains(pair))
                 continue; // a link with these ports already exists (managed or unowned) — no duplicate
 
             // Guard: node-appeared-before-ports race — only connect when BOTH ports are in the snapshot.

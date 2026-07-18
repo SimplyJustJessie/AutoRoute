@@ -19,6 +19,14 @@ public sealed class UiRuleMatcher : IRuleMatcher
 {
     private const StringComparison Ord = StringComparison.OrdinalIgnoreCase;
 
+    /// <summary>Guards against catastrophic backtracking on a user-authored pattern.</summary>
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+
+    // Compiled patterns are reused across board rebuilds (patterns are stable strings from
+    // rules.json); a malformed pattern caches as null so it isn't re-compiled every build.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Regex?> _regexCache =
+        new(StringComparer.Ordinal);
+
     public bool Matches(MatchCriteria criteria, PwNode node)
     {
         // An empty criteria matches nothing (never "match every node") — safe for display + actions.
@@ -29,7 +37,7 @@ public sealed class UiRuleMatcher : IRuleMatcher
     public IEnumerable<PwNode> Resolve(MatchCriteria criteria, PwGraph graph) =>
         graph.Nodes.Where(n => Matches(criteria, n));
 
-    private static bool MatchPredicate(Predicate p, PwNode n)
+    private bool MatchPredicate(Predicate p, PwNode n)
     {
         var value = FieldValue(p.Field, n);
         if (value is null) return false;
@@ -53,16 +61,27 @@ public sealed class UiRuleMatcher : IRuleMatcher
         _ => null,
     };
 
-    private static bool SafeRegex(string input, string? pattern)
+    private bool SafeRegex(string input, string? pattern)
     {
         if (string.IsNullOrEmpty(pattern)) return false;
+
+        var regex = _regexCache.GetOrAdd(pattern, static p =>
+        {
+            try
+            {
+                return new Regex(p, RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+                    RegexTimeout);
+            }
+            catch (ArgumentException)
+            {
+                return null; // malformed user regex → no match, never throw into the UI
+            }
+        });
+        if (regex is null) return false;
+
         try
         {
-            return Regex.IsMatch(input, pattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
-        }
-        catch (ArgumentException)
-        {
-            return false; // malformed user regex → no match, never throw into the UI
+            return regex.IsMatch(input);
         }
         catch (RegexMatchTimeoutException)
         {
