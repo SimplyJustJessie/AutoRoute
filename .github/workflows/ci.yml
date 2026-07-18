@@ -1,0 +1,85 @@
+name: CI
+
+# Linux-only by design: AutoRoute targets PipeWire/WirePlumber, which exist nowhere else.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Build · Test · Smoke (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore -c Release
+
+      - name: Unit tests
+        run: dotnet test --no-build -c Release
+
+      # Window-free checks against the captured fixture graph — no display, no PipeWire needed.
+      - name: Smoke — viewmodel flows (--smoke)
+        run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --smoke
+
+      - name: Smoke — headless UI render (--smoke-ui)
+        run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --smoke-ui
+
+      # Render the board with headless Skia and attach the PNGs, so every PR carries
+      # an up-to-date visual of the UI it ships.
+      - name: Render board screenshots
+        run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --screenshot ci-screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: board-screenshots
+          path: ci-screenshots/
+          if-no-files-found: error
+
+  appimage:
+    name: AppImage (linux-x64)
+    runs-on: ubuntu-latest
+    needs: ci
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe supplies the AppImage version
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build AppImage
+        run: scripts/build-appimage.sh
+
+      # Prove the bundle actually boots: the runtime + Avalonia + fixture graph, FUSE-less.
+      - name: Smoke test the AppImage
+        run: |
+          set -euo pipefail
+          image=(out/AutoRoute-*-x86_64.AppImage)
+          "${image[0]}" --appimage-extract-and-run --smoke
+          "${image[0]}" --appimage-extract-and-run --smoke-ui
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoRoute-AppImage
+          path: out/*.AppImage
+          if-no-files-found: error

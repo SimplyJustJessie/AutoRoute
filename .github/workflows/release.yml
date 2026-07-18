@@ -1,0 +1,41 @@
+name: Release
+
+# Push a v* tag (e.g. v0.1.0) to build the AppImage and attach it to a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    name: Release AppImage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build AppImage
+        run: scripts/build-appimage.sh
+        env:
+          VERSION: ${{ github.ref_name }}
+
+      - name: Smoke test the AppImage
+        run: |
+          set -euo pipefail
+          image=(out/AutoRoute-*-x86_64.AppImage)
+          "${image[0]}" --appimage-extract-and-run --smoke
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.AppImage
+          generate_release_notes: true

@@ -1,5 +1,7 @@
 # AutoRoute
 
+[![CI](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml/badge.svg)](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml)
+
 **Wire your PipeWire audio once, and keep it wired.**
 
 AutoRoute is a background service and GUI for Linux that remembers your PipeWire connections and re-applies them as apps come and go. It's a *persistent* [Helvum](https://gitlab.freedesktop.org/pipewire/helvum): you patch things the way you want, and AutoRoute keeps them that way — even though PipeWire hands out fresh node IDs every time an app restarts.
@@ -29,6 +31,15 @@ AutoRoute makes those patches stick, in **both directions**:
 - The [**.NET 10 SDK**](https://dotnet.microsoft.com/download)
 
 ## Install
+
+**AppImage** (no .NET required): grab `AutoRoute-*-x86_64.AppImage` from the latest
+[release](https://github.com/SimplyJustJessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
+artifact on any CI run), `chmod +x` it, run it. Built by `scripts/build-appimage.sh`.
+
+**Arch (AUR)**: planned — a ready PKGBUILD lives in `packaging/aur/` and will be published
+after the first tagged release.
+
+**From source:**
 
 ```bash
 git clone https://github.com/SimplyJustJessie/AutoRoute.git

@@ -87,8 +87,27 @@ public static class ScreenshotTool
         if (column is not null)
         {
             column.SetValue(Behaviors.DropTargetBehavior.IsDragOverProperty, true);
+
+            // Stage the full mid-drag look: dim the grabbed palette entry and float its ghost
+            // over the highlighted drop column.
+            var zenItem = window.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(b => b.Classes.Contains("paletteItem") &&
+                    (b.DataContext as ViewModels.SourceItemViewModel)?.Title == "Zen");
+            zenItem?.Classes.Add("dragging");
+            if (zenItem is not null)
+                Behaviors.DragGhost.Show(zenItem, "Zen", new Point(1150, 300));
+
+            // Let the ghost's 160ms pop-in animation finish: the headless animation clock follows
+            // wall time, but frames only render on forced ticks — so wait, then tick.
+            System.Threading.Thread.Sleep(500);
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            System.Threading.Thread.Sleep(100);
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
             Capture(window, Path.Combine(dir, "board-dragover.png"));
+
+            Behaviors.DragGhost.Hide();
+            zenItem?.Classes.Remove("dragging");
             column.SetValue(Behaviors.DropTargetBehavior.IsDragOverProperty, false);
         }
 

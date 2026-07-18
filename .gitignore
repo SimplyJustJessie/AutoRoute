@@ -27,3 +27,6 @@ Thumbs.db
 
 # Runtime / local
 *.log
+
+# Packaging output (scripts/build-appimage.sh)
+/out/

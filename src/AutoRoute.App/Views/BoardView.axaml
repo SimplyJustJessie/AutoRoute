@@ -11,7 +11,10 @@
              x:DataType="vm:BoardViewModel"
              d:DataContext="{x:Static design:DesignData.Board}">
 
-    <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}">
+    <!-- AllowDrop on the root keeps DragOver events flowing over the whole board, so the
+         drag ghost can follow the pointer between columns (drops outside a column are no-ops). -->
+    <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}"
+          DragDrop.AllowDrop="True">
 
         <!-- ===================== Toolbar ===================== -->
         <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="14,10">

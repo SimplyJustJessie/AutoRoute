@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=AutoRoute
+GenericName=PipeWire routing manager
+Comment=Wire your PipeWire audio once, and keep it wired
+Exec=autoroute
+Icon=autoroute
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;
+Keywords=PipeWire;WirePlumber;audio;routing;patchbay;sink;
+StartupWMClass=AutoRoute.App
