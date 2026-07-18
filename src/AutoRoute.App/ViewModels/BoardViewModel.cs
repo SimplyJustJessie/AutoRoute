@@ -11,6 +11,7 @@ using AutoRoute.PipeWire.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 
 namespace AutoRoute.App.ViewModels;
 
@@ -30,6 +31,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private readonly IRuleMatcher _matcher;
     private readonly IVirtualSinkController? _sinkController;
     private readonly AppNotices? _notices;
+    private readonly ILogger<BoardViewModel>? _log;
 
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
@@ -58,7 +60,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         IReconciler reconciler,
         IRuleMatcher matcher,
         IVirtualSinkController? sinkController = null,
-        AppNotices? notices = null)
+        AppNotices? notices = null,
+        ILogger<BoardViewModel>? log = null)
     {
         _graph = graph;
         _linker = linker;
@@ -67,6 +70,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _matcher = matcher;
         _sinkController = sinkController;
         _notices = notices;
+        _log = log;
         Palette = new SourcesPaletteViewModel(this);
 
         Filter.Changed += (_, _) => ApplyFilter();
@@ -106,28 +110,41 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     private void Rebuild(PwGraph graph)
     {
-        var snapshot = BoardModelBuilder.Build(
-            graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors);
+        // A rebuild runs inside a Dispatcher callback — an escaped exception there aborts the
+        // whole process (seen live: SIGABRT during a PipeWire restart). Whatever goes wrong,
+        // keep the previous board and recover on the next snapshot.
+        try
+        {
+            var snapshot = BoardModelBuilder.Build(
+                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors);
 
-        MergeColumns(snapshot.Columns);
-        Palette.Merge(snapshot.Palette);
-        HasColumns = Columns.Count > 0;
-        StatusText = Columns.Count == 0
-            ? "No Target Sinks in the graph"
-            : $"{Columns.Count} Target Sinks · {Palette.Items.Count} Sources";
-        ApplyFilter();
+            MergeColumns(snapshot.Columns);
+            Palette.Merge(snapshot.Palette);
+            HasColumns = Columns.Count > 0;
+            StatusText = Columns.Count == 0
+                ? "No Target Sinks in the graph"
+                : $"{Columns.Count} Target Sinks · {Palette.Items.Count} Sources";
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            _log?.LogError(ex, "board rebuild failed; keeping the previous board");
+            StatusText = "Board update failed — will retry on the next change";
+        }
     }
 
     private void MergeColumns(IReadOnlyList<ColumnModel> models)
     {
-        var byKey = Columns.ToDictionary(c => c.Key);
+        // TryAdd, not ToDictionary: duplicate keys must degrade gracefully, never throw.
+        var byKey = new Dictionary<string, SinkColumnViewModel>(Columns.Count);
+        foreach (var c in Columns) byKey.TryAdd(c.Key, c);
         var wanted = new HashSet<string>(models.Count);
 
         // Insert/update in the model's order, keeping existing instances (diff-merge).
         for (var i = 0; i < models.Count; i++)
         {
             var m = models[i];
-            wanted.Add(m.Key);
+            if (!wanted.Add(m.Key)) continue; // duplicate key within one snapshot — merge first only
             if (byKey.TryGetValue(m.Key, out var existing))
             {
                 existing.Apply(m);

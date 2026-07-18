@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -136,6 +137,64 @@ public sealed class SinkReconcilerTests : IDisposable
         await _reconciler.EnsureAsync(graph, rules);
 
         Assert.Equal(listsAfterFirst, _controller.ListCalls);
+    }
+
+    [Fact]
+    public async Task Legacy_shadowed_names_are_excluded_from_the_dropin_but_still_load_at_runtime()
+    {
+        // While the user's static conf still declares GameSink, our drop-in must not also declare
+        // it — otherwise every pipewire-pulse start creates the sink twice (the live A4 failure).
+        var path = Path.Combine(_dir, SinkDropInWriter.FileName);
+        var writer = new SinkDropInWriter(path);
+        var reconciler = new SinkReconciler(_controller, writer, log: null, _time,
+            externalSinkNames: () => new HashSet<string>(StringComparer.Ordinal) { "GameSink" });
+
+        var rules = Declare(Spec("GameSink"), Spec("StreamSink"));
+        await reconciler.EnsureAsync(PwGraph.Empty, rules);
+
+        var dropIn = await File.ReadAllTextAsync(path);
+        Assert.DoesNotContain("sink_name=GameSink", dropIn); // boot-creation stays the legacy file's job
+        Assert.Contains("sink_name=StreamSink", dropIn);     // unshadowed names are ours to boot
+
+        // Runtime instant-effect is unaffected: both were absent, both got loaded.
+        Assert.Equal(new[] { "GameSink", "StreamSink" }, _controller.Loads.Select(l => l.Name).ToArray());
+    }
+
+    [Fact]
+    public async Task Duplicate_modules_converge_by_unloading_the_tagged_extra_keeping_untagged()
+    {
+        // Healthy steady state first: the user's untagged legacy module, single node.
+        _controller.Modules.Add(new NullSinkModule(7, "DiscordSink",
+            "sink_name=DiscordSink sink_properties=device.description='Discord Sink'"));
+        var rules = Declare(Spec("DiscordSink"));
+        await _reconciler.EnsureAsync(GraphMutations.WithNullSink(PwGraph.Empty, "DiscordSink"), rules);
+        Assert.Empty(_controller.Unloads);
+
+        // A pipewire-pulse restart duplicates it (legacy conf + an old drop-in both booted the
+        // sink): a tagged twin module appears and the graph now shows the name twice. The rules
+        // reference is UNCHANGED — the graph alone must trigger the cleanup pass.
+        _controller.Modules.Add(new NullSinkModule(9, "DiscordSink",
+            "sink_name=DiscordSink sink_properties=\"device.description='Discord Sink' autoroute.managed=true\""));
+        var graph = GraphMutations.WithNullSink(
+            GraphMutations.WithNullSink(PwGraph.Empty, "DiscordSink"), "DiscordSink");
+
+        await _reconciler.EnsureAsync(graph, rules);
+
+        Assert.Equal(new[] { 9 }, _controller.Unloads); // tagged extra unloaded, user's module kept
+        Assert.Contains(_controller.Modules, m => m.ModuleIndex == 7);
+    }
+
+    [Fact]
+    public async Task Duplicate_tagged_modules_keep_exactly_one()
+    {
+        _controller.Modules.Add(new NullSinkModule(9, "GameSink", "sink_name=GameSink autoroute.managed=true"));
+        _controller.Modules.Add(new NullSinkModule(7, "GameSink", "sink_name=GameSink autoroute.managed=true"));
+        var graph = GraphMutations.WithNullSink(
+            GraphMutations.WithNullSink(PwGraph.Empty, "GameSink"), "GameSink");
+
+        await _reconciler.EnsureAsync(graph, Declare(Spec("GameSink")));
+
+        Assert.Equal(new[] { 9 }, _controller.Unloads); // lowest index (7) survives
     }
 
     [Fact]

@@ -88,7 +88,10 @@ public static class HostFactory
         services.AddSingleton<ISinkReconciler>(sp => new SinkReconciler(
             sp.GetRequiredService<IVirtualSinkController>(),
             sp.GetRequiredService<SinkDropInWriter>(),
-            sp.GetService<ILogger<SinkReconciler>>()));
+            sp.GetService<ILogger<SinkReconciler>>(),
+            // Names other conf files still create at boot are excluded from our drop-in so a
+            // pipewire-pulse restart can't double-create them while the legacy file exists.
+            externalSinkNames: () => sp.GetRequiredService<PulseConfImporter>().ScanExternalSinkNames()));
 
         services.AddSingleton(sp => new PulseConfImporter(
             PulseConfImporter.DefaultConfDDirectory(),

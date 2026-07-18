@@ -35,3 +35,16 @@
 - **Step 6 INFO** — a duplicate `load-module` with the same `sink_name` **did create a second module** (536870920, 536870921) — the reconciler's modules-list guard before every load is confirmed REQUIRED, and is implemented.
 
 The gate is fully green: every load-bearing assumption of the hybrid mechanism is verified against the real system, and the committed fixtures are the live captures.
+
+## Field finding: legacy-shadow duplication (end-to-end run A4, fixed)
+
+The first end-to-end run (docs/dev/v2-verification.md, Part A) crashed at step A4: with the legacy `virtual-sinks.conf` still present (warn-only retirement) **and** the generated drop-in declaring the same four sinks, a pipewire-pulse restart created every legacy sink **twice** — one untagged module (legacy file) plus one tagged (our drop-in). Two defects followed:
+
+1. Two nodes sharing a `node.name` produced duplicate board-column keys; the ViewModel diff-merge threw on the duplicate inside a dispatcher callback and **aborted the app** (SIGABRT).
+2. Nothing converged the duplicates: the untagged copy is (correctly) never auto-unloaded, and the tagged twin wasn't recognized as removable — so warn-only retirement + the drop-in *manufactured* this state on every audio-stack restart.
+
+**Fixes (keeping warn-only retirement intact):**
+
+- **Shadow exclusion (prevention):** the drop-in generator now omits any declared name that some *other* conf file in `pipewire-pulse.conf.d` still declares (`PulseConfImporter.ScanExternalSinkNames`, consumed by `SinkReconciler`). While the legacy file exists, boot-creation stays its job; the sink remains declared, managed, and adopted. Once the user removes the file, the next cleanup pass re-includes the name in the drop-in.
+- **Duplicate convergence (cure):** when a declared name exists as multiple modules, the reconciler keeps exactly one — preferring the user's untagged copy — and unloads only tagged extras. Duplicates appear via graph changes (restarts), not rule changes, so a duplicate-name in the snapshot also triggers the cleanup pass.
+- **Crash-proof board:** column keys are made unique even for duplicate node names (id-suffixed), the diff-merge dictionaries tolerate duplicates, and a UI rebuild failure is caught and logged instead of aborting the process.

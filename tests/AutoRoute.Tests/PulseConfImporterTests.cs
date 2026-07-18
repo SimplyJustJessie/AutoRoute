@@ -135,6 +135,21 @@ public sealed class PulseConfImporterTests : IDisposable
     }
 
     [Fact]
+    public async Task ScanExternalSinkNames_reports_legacy_names_excluding_our_own_dropin()
+    {
+        File.Copy(Path.Combine(Fixtures.Dir, "virtual-sinks.conf.sample"),
+            Path.Combine(_confD, "virtual-sinks.conf"));
+        await File.WriteAllTextAsync(Path.Combine(_confD, SinkDropInWriter.FileName),
+            SinkDropInWriter.Generate(new[] { new VirtualSinkSpec("x", "StreamSink", "Stream Sink", SinkChannels.Stereo) }));
+
+        var names = NewImporter().ScanExternalSinkNames();
+
+        // The legacy file's sinks are external; our own drop-in's StreamSink is NOT.
+        Assert.Equal(new[] { "DesktopSink", "DiscordSink", "GameSink", "MusicSink" },
+            names.OrderBy(n => n, StringComparer.Ordinal).ToArray());
+    }
+
+    [Fact]
     public async Task ImportAsync_missing_directory_returns_empty()
     {
         Directory.Delete(_confD, recursive: true);

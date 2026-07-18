@@ -29,6 +29,11 @@ RULES=~/.config/autoroute/rules.json
 DROPIN=~/.config/pipewire/pipewire-pulse.conf.d/autoroute-sinks.conf
 mods() { pactl list modules short | grep -c "sink_name=TestSink"; }        # expect 0 or 1
 node_present() { pw-dump | jq -e '[.[] | select(.info.props["node.name"]=="TestSink")] | length >= 1' >/dev/null; }
+# Exact per-name module count (word-boundary match — names can prefix-collide):
+nmods() { pactl list modules short | awk -v s="$1" '$2=="module-null-sink" && $0 ~ ("sink_name=" s "([^A-Za-z0-9._-]|$)")' | wc -l; }
+# Every managed/legacy sink name must exist AT MOST once (duplicates were the A4 failure):
+no_dupes() { for s in GameSink MusicSink DiscordSink DesktopSink TestSink; do
+               c=$(nmods "$s"); echo "$s=$c"; [ "$c" -le 1 ] || return 1; done; }
 ```
 
 ---
@@ -52,6 +57,15 @@ user's static `virtual-sinks.conf` still exists in `~/.config/pipewire/pipewire-
 `jq '.virtualSinks' "$RULES"` now lists its sinks (GameSink, MusicSink, DiscordSink, DesktopSink)
 and the app log (stdout of the job) contains a warning naming that file. If the file was already
 removed, `virtualSinks` may be empty — note which case applied.
+
+**Shadow-exclusion check** (only when the legacy file is present): the generated `$DROPIN` must
+**NOT** contain the legacy names — while another conf file boots those sinks, AutoRoute's drop-in
+declaring them too would double-create them on every pipewire-pulse start:
+
+```bash
+! grep -qE "sink_name=(GameSink|MusicSink|DiscordSink|DesktopSink)" "$DROPIN" 2>/dev/null && echo SHADOW-OK
+no_dupes && echo NO-DUPES
+```
 
 ### A1. Declare a sink externally → it appears everywhere
 
@@ -93,9 +107,13 @@ Skip this step (and say so) if no app is playing.
 ```bash
 systemctl --user restart pipewire pipewire-pulse wireplumber
 sleep 5
+pgrep -af AutoRoute && echo APP-ALIVE                               # the app must SURVIVE the restart
 node_present && echo NODE-OK
 mods                                                                # expect: exactly 1 — the drop-in
                                                                     # and the watcher must NOT double-create
+no_dupes && echo NO-DUPES                                           # EVERY managed/legacy name ≤ 1 module —
+                                                                    # this is the check that caught the
+                                                                    # legacy-shadow duplication crash
 ```
 
 ### A5. AutoRoute-independence (drop-in alone)
@@ -106,6 +124,7 @@ systemctl --user restart pipewire-pulse
 sleep 3
 node_present && echo NODE-OK                                        # sink exists WITHOUT AutoRoute running
 mods                                                                # expect: 1
+no_dupes && echo NO-DUPES                                           # legacy names still ≤ 1 each
 ```
 
 ### A6. Deletion converges everything

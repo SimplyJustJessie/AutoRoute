@@ -100,6 +100,33 @@ public sealed class PulseConfImporter
     }
 
     /// <summary>
+    /// Names of null sinks that OTHER conf files in the directory still declare (our own drop-in
+    /// excluded). While a name is externally declared, the generated drop-in must not also declare
+    /// it — otherwise every pipewire-pulse start creates the sink twice (seen live: four duplicated
+    /// legacy sinks after a stack restart). Skip-on-failure; a missing directory is an empty set.
+    /// </summary>
+    public IReadOnlySet<string> ScanExternalSinkNames()
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (!Directory.Exists(_confDDirectory)) return names;
+
+        foreach (var file in Directory.EnumerateFiles(_confDDirectory, "*.conf"))
+        {
+            if (string.Equals(Path.GetFileName(file), _ownFileName, StringComparison.Ordinal)) continue;
+            try
+            {
+                foreach (var sink in Parse(File.ReadAllText(file)))
+                    names.Add(sink.Name);
+            }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "could not scan {File} for sink names; skipping it", file);
+            }
+        }
+        return names;
+    }
+
+    /// <summary>
     /// Scans the conf.d directory and appends every not-yet-declared legacy sink to the store in
     /// one save. Idempotent: a second run finds everything already declared and appends nothing.
     /// </summary>
