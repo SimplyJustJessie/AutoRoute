@@ -48,8 +48,8 @@ public static class SmokeTest
         Check(board.Columns.Count > 0, "board has Target Sink columns");
         Check(board.Palette.Items.Count > 0, "palette has Sources");
 
-        var game = board.Columns.FirstOrDefault(c =>
-            string.Equals(c.Title, "GameSink", StringComparison.OrdinalIgnoreCase));
+        // Titles now lead with the description ("Game"); the node name lives in the subtitle.
+        var game = board.Columns.FirstOrDefault(c => IsGameSink(c));
         Check(game is not null, "GameSink column exists");
 
         var zenItem = board.Palette.Items.FirstOrDefault(i =>
@@ -64,8 +64,7 @@ public static class SmokeTest
         var beforeCount = board.Columns.Count;
         board.RebuildFromCurrent();
         Check(board.Columns.Count == beforeCount, "rebuild keeps column count stable");
-        Check(ReferenceEquals(beforeInstance, board.Columns.FirstOrDefault(c =>
-            string.Equals(c.Title, "GameSink", StringComparison.OrdinalIgnoreCase))),
+        Check(ReferenceEquals(beforeInstance, board.Columns.FirstOrDefault(c => IsGameSink(c))),
             "rebuild updates columns in place (no flicker/rebuild)");
 
         // --- connect (drop): Zen → GameSink → managed card + Rule + pw-link ops ---
@@ -129,4 +128,9 @@ public static class SmokeTest
         Console.WriteLine($"SMOKE: FAIL ({failures.Count} check(s) failed)");
         return 1;
     }
+
+    /// <summary>The GameSink column, matched by title or subtitle (title prefers the description).</summary>
+    internal static bool IsGameSink(SinkColumnViewModel c) =>
+        string.Equals(c.Title, "GameSink", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(c.Subtitle, "GameSink", StringComparison.OrdinalIgnoreCase);
 }

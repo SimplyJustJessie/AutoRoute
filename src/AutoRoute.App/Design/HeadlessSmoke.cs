@@ -65,8 +65,7 @@ public static class HeadlessSmoke
 
         // A GameSink column must be present in the rendered tree.
         var gameRendered = columns.Any(c =>
-            c.DataContext is ViewModels.SinkColumnViewModel col &&
-            string.Equals(col.Title, "GameSink", StringComparison.OrdinalIgnoreCase));
+            c.DataContext is ViewModels.SinkColumnViewModel col && SmokeTest.IsGameSink(col));
         Check(gameRendered, "GameSink column present in the visual tree");
 
         Trace.Listeners.Remove(listener);

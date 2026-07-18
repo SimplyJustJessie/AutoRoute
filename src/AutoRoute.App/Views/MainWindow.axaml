@@ -11,7 +11,8 @@
         d:DataContext="{x:Static design:DesignData.Board}"
         Width="1100" Height="640"
         MinWidth="720" MinHeight="420"
-        Icon="/Assets/avalonia-logo.ico"
+        Background="{DynamicResource BgBrush}"
+        Icon="/Assets/tray-icon.png"
         Title="AutoRoute">
 
     <views:BoardView />

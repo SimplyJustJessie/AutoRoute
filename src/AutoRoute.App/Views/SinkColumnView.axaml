@@ -6,7 +6,7 @@
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="252" d:DesignHeight="520"
+             mc:Ignorable="d" d:DesignWidth="280" d:DesignHeight="520"
              x:Class="AutoRoute.App.Views.SinkColumnView"
              x:DataType="vm:SinkColumnViewModel"
              d:DataContext="{x:Static design:DesignData.Column}">
@@ -15,45 +15,70 @@
             Classes.protected="{Binding IsProtected}"
             behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
             behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
-        <Grid RowDefinitions="Auto,*">
+        <Panel>
+            <Grid RowDefinitions="Auto,*">
 
-            <!-- Header = the Target Sink -->
-            <Border Grid.Row="0" Padding="10,8"
-                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="1">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Classes="columnTitle" Text="{Binding Title}" />
-                            <TextBlock Text="🔒" FontSize="11" VerticalAlignment="Center"
-                                       IsVisible="{Binding IsProtected}"
-                                       ToolTip.Tip="Protected — AutoRoute will not touch this Target Sink" />
+                <!-- Header = the Target Sink -->
+                <Border Grid.Row="0" Classes="columnHeader">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <Path Grid.Column="0" Data="{StaticResource IconSpeaker}"
+                              Fill="{DynamicResource MutedBrush}"
+                              Width="13" Height="13" Stretch="Uniform"
+                              VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                            <TextBlock Classes="columnTitle body" Text="{Binding Title}" />
+                            <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
+                                       IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
-                        <TextBlock Classes="subtitle" Text="{Binding Subtitle}" />
-                    </StackPanel>
 
-                    <Button Grid.Column="1" Classes="cardAction"
-                            Command="{Binding ToggleProtectCommand}"
-                            Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
-                            ToolTip.Tip="Protect / unprotect this Target Sink (do not touch)" />
-                </Grid>
-            </Border>
+                        <Border Grid.Column="2" Classes="countChip" Margin="8,0,4,0"
+                                ToolTip.Tip="Sources currently routed into this Target Sink">
+                            <TextBlock Text="{Binding Cards.Count}" />
+                        </Border>
 
-            <!-- Body = Source cards feeding this Target Sink -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="10">
-                <Panel>
-                    <ItemsControl ItemsSource="{Binding Cards}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:SourceCardViewModel">
-                                <views:SourceCardView IsVisible="{Binding IsVisible}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        <Button Grid.Column="3" Classes="icon"
+                                Classes.locked="{Binding IsProtected}"
+                                Command="{Binding ToggleProtectCommand}"
+                                ToolTip.Tip="Protect / unprotect this Target Sink (do not touch)">
+                            <Panel>
+                                <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
+                                <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
+                            </Panel>
+                        </Button>
+                    </Grid>
+                </Border>
 
-                    <TextBlock Classes="hint" Margin="4,24"
-                               IsVisible="{Binding IsEmpty}"
-                               Text="Drop a Source here to route it into this Target Sink." />
-                </Panel>
-            </ScrollViewer>
-        </Grid>
+                <!-- Body = Source cards feeding this Target Sink -->
+                <ScrollViewer Grid.Row="1" Padding="10,10,10,4"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <Panel>
+                        <ItemsControl ItemsSource="{Binding Cards}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SourceCardViewModel">
+                                    <views:SourceCardView IsVisible="{Binding IsVisible}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Empty state: dashed drop zone -->
+                        <Panel IsVisible="{Binding IsEmpty}" Margin="2,2,2,8" Height="112"
+                               VerticalAlignment="Top">
+                            <Rectangle Classes="dropZone" />
+                            <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconDrop}" Stroke="{DynamicResource FaintBrush}"
+                                      StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
+                                      Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" />
+                                <TextBlock Classes="hint" Text="Drop a Source here" />
+                            </StackPanel>
+                        </Panel>
+                    </Panel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Drag-over glow (pulses via CardStyles while a drag hovers) -->
+            <Border Classes="dropOverlay" />
+        </Panel>
     </Border>
 </UserControl>

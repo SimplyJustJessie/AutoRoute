@@ -2,8 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="AutoRoute.App.App"
              xmlns:local="using:AutoRoute.App"
-             RequestedThemeVariant="Default">
-    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other options. -->
+             RequestedThemeVariant="Dark">
+    <!-- AutoRoute is dark-only by design: a routing board is a tool you keep on a second
+         monitor next to OBS / a DAW, and those are dark. One variant, no drift. -->
 
     <Application.DataTemplates>
         <local:ViewLocator />
@@ -11,32 +12,80 @@
 
     <Application.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="PanelBrush" Color="#F1F1F3" />
-                    <SolidColorBrush x:Key="ColumnBrush" Color="#FAFAFB" />
-                    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="CardBorderBrush" Color="#DEDEE2" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#6A6A70" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#2D6CDF" />
-                    <SolidColorBrush x:Key="UnsavedBrush" Color="#C77700" />
-                    <SolidColorBrush x:Key="ManualBrush" Color="#8A9098" />
-                    <SolidColorBrush x:Key="ProtectedBrush" Color="#7A5AF0" />
-                    <SolidColorBrush x:Key="DropHighlightBrush" Color="#2D6CDF" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="PanelBrush" Color="#1E1E20" />
-                    <SolidColorBrush x:Key="ColumnBrush" Color="#252528" />
-                    <SolidColorBrush x:Key="CardBrush" Color="#2D2D31" />
-                    <SolidColorBrush x:Key="CardBorderBrush" Color="#3B3B40" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#A2A2AA" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#5A93FF" />
-                    <SolidColorBrush x:Key="UnsavedBrush" Color="#E0A030" />
-                    <SolidColorBrush x:Key="ManualBrush" Color="#828892" />
-                    <SolidColorBrush x:Key="ProtectedBrush" Color="#A78BFA" />
-                    <SolidColorBrush x:Key="DropHighlightBrush" Color="#5A93FF" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- ==================== Surfaces (elevation ramp, darkest → lightest) ==================== -->
+            <Color x:Key="BgColor">#0F1014</Color>
+            <Color x:Key="PanelColor">#14151B</Color>
+            <Color x:Key="ColumnColor">#17181F</Color>
+            <Color x:Key="ColumnHeaderColor">#1B1C24</Color>
+            <Color x:Key="CardColor">#1F212B</Color>
+            <Color x:Key="CardHoverColor">#262938</Color>
+            <Color x:Key="BorderColor">#282A36</Color>
+            <Color x:Key="BorderStrongColor">#343748</Color>
+
+            <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}" />
+            <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+            <SolidColorBrush x:Key="ColumnBrush" Color="{StaticResource ColumnColor}" />
+            <SolidColorBrush x:Key="ColumnHeaderBrush" Color="{StaticResource ColumnHeaderColor}" />
+            <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="{StaticResource CardHoverColor}" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource BorderColor}" />
+            <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
+
+            <!-- ==================== Text ==================== -->
+            <SolidColorBrush x:Key="TextBrush" Color="#E7E9F1" />
+            <SolidColorBrush x:Key="MutedBrush" Color="#9CA1B3" />
+            <SolidColorBrush x:Key="FaintBrush" Color="#6C7186" />
+
+            <!-- ==================== State colors ==================== -->
+            <!-- Managed = accent (a saved Rule at work). Unsaved = amber (needs a decision).
+                 Manual = neutral (kept as-is). Protected = violet (hands off). -->
+            <SolidColorBrush x:Key="AccentBrush" Color="#7C9AFF" />
+            <SolidColorBrush x:Key="AccentDimBrush" Color="#2E7C9AFF" />
+            <SolidColorBrush x:Key="AccentFaintBrush" Color="#177C9AFF" />
+            <SolidColorBrush x:Key="UnsavedBrush" Color="#E8B04B" />
+            <SolidColorBrush x:Key="UnsavedDimBrush" Color="#2EE8B04B" />
+            <SolidColorBrush x:Key="ManualBrush" Color="#8B94AA" />
+            <SolidColorBrush x:Key="ManualDimBrush" Color="#268B94AA" />
+            <SolidColorBrush x:Key="ProtectedBrush" Color="#B49AFA" />
+            <SolidColorBrush x:Key="ProtectedDimBrush" Color="#2EB49AFA" />
+            <SolidColorBrush x:Key="DangerBrush" Color="#E77681" />
+            <SolidColorBrush x:Key="DangerDimBrush" Color="#33E77681" />
+            <SolidColorBrush x:Key="OnlineBrush" Color="#5BC98F" />
+            <SolidColorBrush x:Key="DropHighlightBrush" Color="#7C9AFF" />
+
+            <LinearGradientBrush x:Key="LogoBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Offset="0" Color="#8FA8FF" />
+                <GradientStop Offset="1" Color="#6D5EF0" />
+            </LinearGradientBrush>
+
+            <!-- ==================== Icon geometries (16×16 grid) ==================== -->
+            <StreamGeometry x:Key="IconLock">M8,1 C5.79,1 4,2.79 4,5 L4,7 L3,7 C2.45,7 2,7.45 2,8 L2,14 C2,14.55 2.45,15 3,15 L13,15 C13.55,15 14,14.55 14,14 L14,8 C14,7.45 13.55,7 13,7 L12,7 L12,5 C12,2.79 10.21,1 8,1 Z M6,5 C6,3.9 6.9,3 8,3 C9.1,3 10,3.9 10,5 L10,7 L6,7 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconUnlock">M8,1 C5.79,1 4,2.79 4,5 L6,5 C6,3.9 6.9,3 8,3 C9.1,3 10,3.9 10,5 L10,7 L3,7 C2.45,7 2,7.45 2,8 L2,14 C2,14.55 2.45,15 3,15 L13,15 C13.55,15 14,14.55 14,14 L14,8 C14,7.45 13.55,7 13,7 L12,7 L12,5 C12,2.79 10.21,1 8,1 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconClose">M3.6,2.5 L8,6.9 L12.4,2.5 L13.5,3.6 L9.1,8 L13.5,12.4 L12.4,13.5 L8,9.1 L3.6,13.5 L2.5,12.4 L6.9,8 L2.5,3.6 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconCheck">M6.4,11.2 L3.2,8 L2.1,9.1 L6.4,13.4 L13.9,5.9 L12.8,4.8 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconSearch">M7,2 C9.76,2 12,4.24 12,7 C12,8.08 11.66,9.08 11.08,9.9 L13.9,12.72 L12.72,13.9 L9.9,11.08 C9.08,11.66 8.08,12 7,12 C4.24,12 2,9.76 2,7 C2,4.24 4.24,2 7,2 Z M7,3.6 C5.12,3.6 3.6,5.12 3.6,7 C3.6,8.88 5.12,10.4 7,10.4 C8.88,10.4 10.4,8.88 10.4,7 C10.4,5.12 8.88,3.6 7,3.6 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconWave">M2,6 L3.5,6 L3.5,10 L2,10 Z M4.75,3.5 L6.25,3.5 L6.25,12.5 L4.75,12.5 Z M7.5,5.25 L9,5.25 L9,10.75 L7.5,10.75 Z M10.25,2 L11.75,2 L11.75,14 L10.25,14 Z M13,6 L14.5,6 L14.5,10 L13,10 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconMic">M8,1 C6.9,1 6,1.9 6,3 L6,8 C6,9.1 6.9,10 8,10 C9.1,10 10,9.1 10,8 L10,3 C10,1.9 9.1,1 8,1 Z M3.5,7 L4.75,7 C4.75,9.25 6.1,10.9 8,10.9 C9.9,10.9 11.25,9.25 11.25,7 L12.5,7 C12.5,9.6 10.9,11.7 8.65,12.15 L8.65,13.8 L10.8,13.8 L10.8,15 L5.2,15 L5.2,13.8 L7.35,13.8 L7.35,12.15 C5.1,11.7 3.5,9.6 3.5,7 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconHeadphones">M8,2 C4.69,2 2,4.69 2,8 L2,12.2 C2,12.75 2.45,13.2 3,13.2 L4.6,13.2 C5.15,13.2 5.6,12.75 5.6,12.2 L5.6,9.6 C5.6,9.05 5.15,8.6 4.6,8.6 L3.5,8.6 L3.5,8 C3.5,5.52 5.52,3.5 8,3.5 C10.48,3.5 12.5,5.52 12.5,8 L12.5,8.6 L11.4,8.6 C10.85,8.6 10.4,9.05 10.4,9.6 L10.4,12.2 C10.4,12.75 10.85,13.2 11.4,13.2 L13,13.2 C13.55,13.2 14,12.75 14,12.2 L14,8 C14,4.69 11.31,2 8,2 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconSpeaker">M9,2.2 L5.2,5.2 L2.2,5.2 C1.65,5.2 1.2,5.65 1.2,6.2 L1.2,9.8 C1.2,10.35 1.65,10.8 2.2,10.8 L5.2,10.8 L9,13.8 Z M11.1,5.3 C11.95,5.95 12.5,6.92 12.5,8 C12.5,9.08 11.95,10.05 11.1,10.7 L11.9,11.7 C13.05,10.83 13.8,9.5 13.8,8 C13.8,6.5 13.05,5.17 11.9,4.3 Z</StreamGeometry>
+            <StreamGeometry x:Key="IconDrop">M8,2 L8,10.6 M8,10.6 L4.6,7.2 M8,10.6 L11.4,7.2 M3,13 L13,13</StreamGeometry>
+
+            <!-- ==================== Fluent control overrides (dark chrome) ==================== -->
+            <SolidColorBrush x:Key="TextControlBackground" Color="#1B1C24" />
+            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#1F2029" />
+            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#1F2029" />
+            <SolidColorBrush x:Key="TextControlBorderBrush" Color="{StaticResource BorderColor}" />
+            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{StaticResource BorderStrongColor}" />
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#7C9AFF" />
+            <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6C7186" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#9CA1B3" />
+            <SolidColorBrush x:Key="ToolTipBackground" Color="#262938" />
+            <SolidColorBrush x:Key="ToolTipForeground" Color="#E7E9F1" />
+            <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#343748" />
+            <CornerRadius x:Key="ControlCornerRadius">7</CornerRadius>
+
         </ResourceDictionary>
     </Application.Resources>
 

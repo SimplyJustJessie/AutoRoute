@@ -5,7 +5,7 @@
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="232"
+             mc:Ignorable="d" d:DesignWidth="256"
              x:Class="AutoRoute.App.Views.SourceCardView"
              x:DataType="vm:SourceCardViewModel"
              d:DataContext="{x:Static design:DesignData.Card}">
@@ -16,43 +16,60 @@
             Classes.manual="{Binding IsManual}"
             Classes.protected="{Binding IsProtected}"
             ToolTip.Tip="{Binding Tooltip}">
-        <Grid ColumnDefinitions="*,Auto">
+        <Grid ColumnDefinitions="Auto,*">
 
-            <StackPanel Grid.Column="0" Spacing="2">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"
-                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                    <Border Classes="badge managed" IsVisible="{Binding IsManaged}">
+            <Border Grid.Column="0" Classes="stateBar" />
+
+            <Grid Grid.Column="1" Margin="10,8,10,8" RowDefinitions="Auto,Auto,Auto">
+
+                <!-- Row 0: title · state chip (title trims, never overlaps) -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Classes="cardTitle" Text="{Binding Title}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Border Grid.Column="1" Classes="chip managed" IsVisible="{Binding IsManaged}">
                         <TextBlock Text="MANAGED" />
                     </Border>
-                    <Border Classes="badge unsaved" IsVisible="{Binding IsUnsaved}">
+                    <Border Grid.Column="1" Classes="chip unsaved" IsVisible="{Binding IsUnsaved}">
                         <TextBlock Text="UNSAVED" />
                     </Border>
-                    <Border Classes="badge manual" IsVisible="{Binding IsManual}">
+                    <Border Grid.Column="1" Classes="chip manual" IsVisible="{Binding IsManual}">
                         <TextBlock Text="MANUAL" />
                     </Border>
-                    <Border Classes="badge protected" IsVisible="{Binding IsProtected}">
+                    <Border Grid.Column="1" Classes="chip protected" IsVisible="{Binding IsProtected}">
                         <TextBlock Text="PROTECTED" />
                     </Border>
-                </StackPanel>
-                <TextBlock Classes="subtitle" Text="{Binding Subtitle}" IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            </StackPanel>
+                </Grid>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="1" VerticalAlignment="Top">
-                <Button Classes="cardAction" Content="Save"
-                        Command="{Binding SaveCommand}" IsVisible="{Binding CanSave}"
-                        ToolTip.Tip="Save as a Rule — persist this Link so it returns after relaunch" />
-                <Button Classes="cardAction" Content="Keep"
-                        Command="{Binding KeepManualCommand}" IsVisible="{Binding CanKeepManual}"
-                        ToolTip.Tip="Keep as a Manual Link — stop offering to save it" />
-                <Button Classes="cardAction"
-                        Content="{Binding IsProtected, Converter={x:Static views:Converters.ProtectLabel}}"
-                        Command="{Binding ToggleProtectCommand}"
-                        ToolTip.Tip="Protect / unprotect this Source (do not touch)" />
-                <Button Classes="cardAction danger" Content="✕"
-                        Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
-                        ToolTip.Tip="Remove — delete the Rule (managed) or add a Suppression (manual/external)" />
-            </StackPanel>
+                <!-- Row 1: subtitle -->
+                <TextBlock Grid.Row="1" Classes="subtitle" Margin="0,2,0,0"
+                           Text="{Binding Subtitle}"
+                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- Row 2: actions -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
+                            Margin="0,7,0,0" HorizontalAlignment="Right">
+                    <Button Classes="chipAction" Content="Save"
+                            Command="{Binding SaveCommand}" IsVisible="{Binding CanSave}"
+                            ToolTip.Tip="Save as a Rule — persist this Link so it returns after relaunch" />
+                    <Button Classes="chipAction quiet" Content="Keep"
+                            Command="{Binding KeepManualCommand}" IsVisible="{Binding CanKeepManual}"
+                            ToolTip.Tip="Keep as a Manual Link — stop offering to save it" />
+                    <Button Classes="icon"
+                            Classes.locked="{Binding IsProtected}"
+                            Command="{Binding ToggleProtectCommand}"
+                            ToolTip.Tip="Protect / unprotect this Source (do not touch)">
+                        <Panel>
+                            <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
+                            <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
+                        </Panel>
+                    </Button>
+                    <Button Classes="icon danger"
+                            Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
+                            ToolTip.Tip="Remove — delete the Rule (managed) or add a Suppression (manual/external)">
+                        <Path Data="{StaticResource IconClose}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </UserControl>

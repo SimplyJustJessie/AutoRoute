@@ -11,43 +11,115 @@
              x:DataType="vm:BoardViewModel"
              d:DataContext="{x:Static design:DesignData.Board}">
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgBrush}">
 
-        <!-- ===================== Toolbar / filter ===================== -->
-        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="12,8">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock Text="AutoRoute" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
-                    <TextBlock Classes="subtitle" Text="{Binding StatusText}" VerticalAlignment="Center" />
+        <!-- ===================== Toolbar ===================== -->
+        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- Brand + status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Classes="logoMark">
+                        <Path Data="{StaticResource IconWave}" Fill="#F2F4FF"
+                              Width="14" Height="14" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Classes="body" Text="AutoRoute" FontWeight="Bold" FontSize="15"
+                               VerticalAlignment="Center" />
+                    <Border Classes="statusPill">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="6" Height="6" Fill="{DynamicResource OnlineBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock Classes="subtitle" Text="{Binding StatusText}" FontSize="11.5"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
-                <TextBox Grid.Column="1"
-                         Margin="16,0"
-                         MaxWidth="360"
-                         HorizontalAlignment="Stretch"
+                <!-- Filter -->
+                <TextBox Grid.Column="1" Classes="search"
+                         Margin="20,0" MaxWidth="380" HorizontalAlignment="Stretch"
                          Watermark="Filter Sources and Target Sinks…"
-                         Text="{Binding Filter.Text}" />
+                         Text="{Binding Filter.Text}">
+                    <TextBox.InnerLeftContent>
+                        <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource FaintBrush}"
+                              Width="13" Height="13" Stretch="Uniform"
+                              Margin="10,0,2,0" VerticalAlignment="Center" />
+                    </TextBox.InnerLeftContent>
+                </TextBox>
 
-                <CheckBox Grid.Column="2"
-                          Margin="8,0"
-                          VerticalAlignment="Center"
-                          IsChecked="{Binding Filter.ShowMonitors}"
-                          Content="Show sink monitors" />
+                <!-- Monitors toggle + help -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Classes="subtitle" Text="Sink monitors" FontSize="12"
+                               VerticalAlignment="Center" />
+                    <ToggleSwitch Classes="compact" IsChecked="{Binding Filter.ShowMonitors}"
+                                  ToolTip.Tip="Show each sink's monitor as a draggable Source" />
+
+                    <Button Classes="icon" Name="HelpButton" Margin="4,0,0,0"
+                            ToolTip.Tip="What do the card states mean?">
+                        <Border Classes="helpBadge">
+                            <TextBlock Text="?" />
+                        </Border>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="330" Spacing="12" Margin="6">
+                                    <TextBlock Classes="sectionLabel" Text="CARD STATES" />
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip managed" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="MANAGED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Saved as a Rule. AutoRoute re-creates this Link automatically whenever the matching apps come back — it survives relaunches." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip unsaved" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="UNSAVED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="A Link made outside AutoRoute. It works now, but it won't come back after a relaunch — Save it as a Rule, or Keep it as manual." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip manual" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="MANUAL" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Kept as-is. AutoRoute leaves this Link alone and won't restore it if it disappears." />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="84,*">
+                                        <Border Classes="chip protected" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <TextBlock Text="PROTECTED" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Classes="legendText"
+                                                   Text="Do not touch. AutoRoute never creates or removes Links on this node — for routing another tool owns (e.g. an EasyEffects chain)." />
+                                    </Grid>
+
+                                    <TextBlock Classes="legendText" Foreground="{DynamicResource FaintBrush}"
+                                               Text="Removing a card deletes its Rule (managed) or suppresses the Link so it stays disconnected (manual / unsaved)." />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
         <!-- ===================== Palette + Board ===================== -->
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
 
-            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="272">
+            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="280">
                 <views:PaletteView DataContext="{Binding Palette}" />
             </Border>
 
             <Panel Grid.Column="1">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled"
-                              Padding="12">
-                    <ItemsControl ItemsSource="{Binding Columns}">
+                              VerticalScrollBarVisibility="Disabled">
+                    <!-- Margin on the content (not ScrollViewer.Padding) so the scroll extent
+                         includes it and the last column is fully reachable. -->
+                    <ItemsControl ItemsSource="{Binding Columns}" Margin="16,16,16,10">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
@@ -61,11 +133,14 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <TextBlock Classes="hint"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           MaxWidth="360"
-                           IsVisible="{Binding !HasColumns}"
-                           Text="No Target Sinks in the graph yet. A Target Sink is any node with audio input ports (a hardware or null sink, or an app's recording stream)." />
+                <StackPanel Spacing="10" MaxWidth="380"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            IsVisible="{Binding !HasColumns}">
+                    <Path Data="{StaticResource IconSpeaker}" Fill="{DynamicResource FaintBrush}"
+                          Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" />
+                    <TextBlock Classes="hint"
+                               Text="No Target Sinks in the graph yet. A Target Sink is any node with audio input ports — a hardware or null sink, or an app's recording stream." />
+                </StackPanel>
             </Panel>
         </Grid>
     </Grid>

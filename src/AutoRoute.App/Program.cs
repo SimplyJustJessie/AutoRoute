@@ -19,6 +19,8 @@ sealed class Program
             return Design.SmokeTest.Run();
         if (Array.IndexOf(args, "--smoke-ui") >= 0)
             return Design.HeadlessSmoke.Run();
+        if (Array.IndexOf(args, "--screenshot") >= 0)
+            return Design.ScreenshotTool.Run(args);
 
         var options = AppOptions.Parse(args);
 

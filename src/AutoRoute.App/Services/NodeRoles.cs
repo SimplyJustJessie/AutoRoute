@@ -59,17 +59,29 @@ public static class NodeRoles
     public static string TargetIdentity(PwNode n) =>
         Norm(n.NodeName) ?? Norm(n.Description) ?? Norm(n.ApplicationName) ?? ("id:" + n.Id);
 
+    // Display strings lead with the human-readable name (app name / device description) and fall
+    // back to the raw node name — which then moves to the subtitle so it stays discoverable.
+    // Identity (matching, diff-merge keys) is untouched: these are presentation-only.
+
     public static string SourceTitle(PwNode n) =>
-        Norm(n.ApplicationName) ?? Norm(n.NodeName) ?? Norm(n.MediaName) ?? Norm(n.Description) ?? ("Node " + n.Id);
+        Norm(n.ApplicationName) ?? Norm(n.Description) ?? Norm(n.NodeName) ?? Norm(n.MediaName) ?? ("Node " + n.Id);
 
     public static string SourceSubtitle(PwNode n) =>
-        Norm(n.MediaName) ?? Norm(n.Description) ?? Norm(n.MediaClass) ?? Norm(n.ProcessBinary) ?? string.Empty;
+        FirstOtherThan(SourceTitle(n), n.MediaName, n.NodeName, n.Description, n.MediaClass, n.ProcessBinary);
 
     public static string TargetTitle(PwNode n) =>
-        Norm(n.NodeName) ?? Norm(n.Description) ?? Norm(n.ApplicationName) ?? ("Node " + n.Id);
+        Norm(n.Description) ?? Norm(n.ApplicationName) ?? Norm(n.NodeName) ?? ("Node " + n.Id);
 
     public static string TargetSubtitle(PwNode n) =>
-        Norm(n.Description) ?? Norm(n.MediaClass) ?? string.Empty;
+        FirstOtherThan(TargetTitle(n), n.NodeName, n.ApplicationName, n.MediaClass);
+
+    /// <summary>First non-empty candidate that isn't just the title again (no echo subtitles).</summary>
+    private static string FirstOtherThan(string title, params string?[] candidates)
+    {
+        foreach (var c in candidates)
+            if (Norm(c) is { } v && !v.Equals(title, Ord)) return v;
+        return string.Empty;
+    }
 
     private static string? Norm(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }
