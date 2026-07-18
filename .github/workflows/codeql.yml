@@ -1,0 +1,39 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * 1' # weekly, so new queries run even without commits
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze C#
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write # upload SARIF results to code scanning
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:csharp'

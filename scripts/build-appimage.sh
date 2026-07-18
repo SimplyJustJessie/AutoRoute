@@ -45,6 +45,11 @@ if [ -z "$TOOL" ]; then
     if [ ! -x "$TOOL" ]; then
         curl -fsSL -o "$TOOL" \
             https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+        # Optional integrity pin: export APPIMAGETOOL_SHA256=<hash> to fail on a tampered or
+        # unexpected download ("continuous" is a moving tag, so no hash is hard-coded here).
+        if [ -n "${APPIMAGETOOL_SHA256:-}" ]; then
+            echo "$APPIMAGETOOL_SHA256  $TOOL" | sha256sum -c - || { rm -f "$TOOL"; exit 1; }
+        fi
         chmod +x "$TOOL"
     fi
 fi

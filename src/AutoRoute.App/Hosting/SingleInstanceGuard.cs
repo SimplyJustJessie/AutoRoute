@@ -40,12 +40,26 @@ public sealed class SingleInstanceGuard : IAsyncDisposable
         SocketPath = socketPath ?? DefaultSocketPath();
     }
 
-    /// <summary><c>$XDG_RUNTIME_DIR/autoroute.sock</c> (temp dir when the env var is unset).</summary>
+    /// <summary>
+    /// <c>$XDG_RUNTIME_DIR/autoroute.sock</c>. When <c>XDG_RUNTIME_DIR</c> is unset the socket must
+    /// NOT land directly in the shared, world-writable temp dir (a predictable name there lets any
+    /// local user squat or spoof it) — a private 0700 per-user subdirectory is used instead. If that
+    /// directory exists but cannot be re-permissioned (i.e. it is not ours), this throws rather than
+    /// use a hostile path.
+    /// </summary>
     public static string DefaultSocketPath()
     {
         var runtimeDir = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
         if (string.IsNullOrWhiteSpace(runtimeDir))
-            runtimeDir = Path.GetTempPath();
+        {
+            var priv = Path.Combine(Path.GetTempPath(), "autoroute-" + Environment.UserName);
+            const UnixFileMode ownerOnly =
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            Directory.CreateDirectory(priv, ownerOnly);
+            // Existing dir: chmod proves ownership (fails for a squatter's dir) and closes it down.
+            File.SetUnixFileMode(priv, ownerOnly);
+            runtimeDir = priv;
+        }
         return Path.Combine(runtimeDir, "autoroute.sock");
     }
 
@@ -70,6 +84,8 @@ public sealed class SingleInstanceGuard : IAsyncDisposable
         try
         {
             listener.Bind(new UnixDomainSocketEndPoint(SocketPath));
+            // Owner-only, defense-in-depth even inside XDG_RUNTIME_DIR (which is 0700 itself).
+            File.SetUnixFileMode(SocketPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             listener.Listen(16);
         }
         catch (SocketException)

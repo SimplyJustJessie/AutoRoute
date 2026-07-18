@@ -106,6 +106,8 @@ public sealed class RuleStore : IRuleStore, IDisposable
         try
         {
             await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
+            // Owner-only before the move — the file lands at its final path already private.
+            File.SetUnixFileMode(tempPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             File.Move(tempPath, _filePath, overwrite: true);
         }
         catch
@@ -121,7 +123,10 @@ public sealed class RuleStore : IRuleStore, IDisposable
         Changed?.Invoke(this, document);
     }
 
-    private void EnsureDirectory() => Directory.CreateDirectory(_directory);
+    // 0700 on creation: the rule set reveals which apps the user runs — keep it private.
+    // An existing directory keeps whatever mode the user chose.
+    private void EnsureDirectory() => Directory.CreateDirectory(_directory,
+        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
     private void StartWatching()
     {

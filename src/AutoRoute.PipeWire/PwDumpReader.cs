@@ -211,12 +211,36 @@ public sealed class PwDumpReader
         if (!props.Value.TryGetProperty(key, out var el)) return null;
         return el.ValueKind switch
         {
-            JsonValueKind.String => el.GetString(),
+            JsonValueKind.String => StripControlChars(el.GetString()),
             JsonValueKind.Number => el.GetRawText(),
             JsonValueKind.True => "true",
             JsonValueKind.False => "false",
             _ => null, // null / object / array => treat as absent
         };
+    }
+
+    /// <summary>
+    /// Removes control characters (incl. ESC) from app-controlled strings (application.name,
+    /// media.name, …). They are never legitimate in these fields, and left in they would flow
+    /// verbatim into logs (terminal escape-sequence injection) and the UI.
+    /// </summary>
+    private static string? StripControlChars(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+
+        var clean = true;
+        foreach (var c in s)
+        {
+            if (char.IsControl(c)) { clean = false; break; }
+        }
+        if (clean) return s; // hot path: no allocation for well-behaved names
+
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            if (!char.IsControl(c)) sb.Append(c);
+        }
+        return sb.ToString();
     }
 
     private static Dictionary<string, string> StringifyProps(JsonElement propsObj)
