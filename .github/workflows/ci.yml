@@ -93,5 +93,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AutoRoute-AppImage
-          path: out/*.AppImage
+          path: out/AutoRoute-*.AppImage
           if-no-files-found: error
