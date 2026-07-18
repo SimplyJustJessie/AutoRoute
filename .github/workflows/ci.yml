@@ -39,6 +39,9 @@ jobs:
       - name: Smoke — headless UI render (--smoke-ui)
         run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --smoke-ui
 
+      - name: Stress — perf budget + leak check (--stress)
+        run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --stress
+
       # Render the board with headless Skia and attach the PNGs, so every PR carries
       # an up-to-date visual of the UI it ships.
       - name: Render board screenshots

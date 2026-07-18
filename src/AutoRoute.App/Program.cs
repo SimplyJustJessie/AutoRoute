@@ -21,6 +21,8 @@ sealed class Program
             return Design.HeadlessSmoke.Run();
         if (Array.IndexOf(args, "--screenshot") >= 0)
             return Design.ScreenshotTool.Run(args);
+        if (Array.IndexOf(args, "--stress") >= 0)
+            return Design.StressTest.Run();
 
         var options = AppOptions.Parse(args);
 

@@ -29,19 +29,47 @@ public static class BoardModelBuilder
             .OrderBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        bool IsProtected(PwNode n) => rules.Protected.Any(pm => matcher.Matches(pm.Match, n));
+        // Protected membership, resolved once per build — consulted per target, card and palette
+        // entry below (was: a full rules.Protected × matcher scan at every call site).
+        var protectedIds = new HashSet<int>();
+        if (rules.Protected.Count > 0)
+        {
+            foreach (var node in graph.Nodes)
+                if (rules.Protected.Any(pm => matcher.Matches(pm.Match, node)))
+                    protectedIds.Add(node.Id);
+        }
+
+        // A rule's Source resolution is target-independent — resolve each enabled rule once,
+        // not once per column (was: rules × columns × nodes matcher calls).
+        var ruleSources = new List<(Rule Rule, List<PwNode> Sources)>();
+        foreach (var rule in rules.Rules)
+        {
+            if (!rule.Enabled) continue;
+            var sources = matcher.Resolve(rule.Source, graph).Where(NodeRoles.IsAudioSource).ToList();
+            if (sources.Count > 0) ruleSources.Add((rule, sources));
+        }
+
+        // Live links indexed by target node in one pass (was: an O(links) scan per column).
+        var linksByTarget = new Dictionary<int, List<PwLink>>();
+        foreach (var link in graph.Links)
+        {
+            if (!linksByTarget.TryGetValue(link.InNodeId, out var list))
+                linksByTarget[link.InNodeId] = list = new List<PwLink>();
+            list.Add(link);
+        }
 
         var columns = new List<ColumnModel>(targets.Count);
         foreach (var target in targets)
         {
-            var columnProtected = IsProtected(target);
+            var columnProtected = protectedIds.Contains(target.Id);
             // key = source identity → collapses an app's many streams into one card (app granularity).
             var cards = new Dictionary<string, CardBuild>();
 
             // --- Desired: managed cards from enabled positive Rules that target this column ---
-            foreach (var rule in rules.Rules.Where(r => r.Enabled && matcher.Matches(r.Target, target)))
+            foreach (var (rule, sources) in ruleSources)
             {
-                foreach (var src in matcher.Resolve(rule.Source, graph).Where(NodeRoles.IsAudioSource))
+                if (!matcher.Matches(rule.Target, target)) continue;
+                foreach (var src in sources)
                 {
                     var key = NodeRoles.SourceIdentity(src);
                     if (!cards.TryGetValue(key, out var b))
@@ -57,7 +85,8 @@ public static class BoardModelBuilder
             }
 
             // --- Actual: live links feeding this target ---
-            foreach (var link in graph.Links.Where(l => l.InNodeId == target.Id))
+            foreach (var link in linksByTarget.TryGetValue(target.Id, out var targetLinks)
+                         ? targetLinks : (IReadOnlyList<PwLink>)System.Array.Empty<PwLink>())
             {
                 var src = graph.Node(link.OutNodeId);
                 if (src is null || !NodeRoles.IsAudioSource(src)) continue;
@@ -92,7 +121,7 @@ public static class BoardModelBuilder
             }
 
             var cardModels = cards.Values
-                .Select(b => b.ToModel(columnProtected || IsProtected(b.Representative)))
+                .Select(b => b.ToModel(columnProtected || protectedIds.Contains(b.Representative.Id)))
                 .OrderBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -120,7 +149,7 @@ public static class BoardModelBuilder
                     Subtitle: NodeRoles.SourceSubtitle(rep),
                     Kind: NodeRoles.KindOf(rep),
                     IsMonitor: monitor,
-                    Protected: IsProtected(rep));
+                    Protected: protectedIds.Contains(rep.Id));
             })
             .Where(p => showMonitors || !p.IsMonitor)
             .OrderBy(p => p.IsMonitor)
