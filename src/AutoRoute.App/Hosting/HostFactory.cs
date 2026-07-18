@@ -1,3 +1,4 @@
+using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
 using AutoRoute.PipeWire;
@@ -89,7 +90,13 @@ public static class HostFactory
             sp.GetRequiredService<SinkDropInWriter>(),
             sp.GetService<ILogger<SinkReconciler>>()));
 
+        services.AddSingleton(sp => new PulseConfImporter(
+            PulseConfImporter.DefaultConfDDirectory(),
+            SinkDropInWriter.FileName,
+            sp.GetService<ILogger<PulseConfImporter>>()));
+
         // --- App layer ------------------------------------------------------------------------
+        services.AddSingleton<AppNotices>();
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<RoutingWorker>();
         services.AddHostedService(sp => sp.GetRequiredService<RoutingWorker>());

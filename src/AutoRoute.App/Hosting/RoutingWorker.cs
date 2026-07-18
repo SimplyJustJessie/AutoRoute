@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoRoute.App.Services;
 using AutoRoute.Engine;
 using AutoRoute.Engine.Model;
 using AutoRoute.PipeWire;
@@ -30,6 +31,8 @@ public sealed class RoutingWorker : BackgroundService
     private readonly IRuleStore _store;
     private readonly IReconciler _reconciler;
     private readonly ISinkReconciler _sinkReconciler;
+    private readonly PulseConfImporter? _importer;
+    private readonly AppNotices? _notices;
     private readonly ILogger<RoutingWorker> _log;
 
     private readonly SemaphoreSlim _reconcileGate = new(1, 1);
@@ -42,12 +45,16 @@ public sealed class RoutingWorker : BackgroundService
         IRuleStore store,
         IReconciler reconciler,
         ISinkReconciler sinkReconciler,
-        ILogger<RoutingWorker> log)
+        ILogger<RoutingWorker> log,
+        PulseConfImporter? importer = null,
+        AppNotices? notices = null)
     {
         _graph = graph;
         _store = store;
         _reconciler = reconciler;
         _sinkReconciler = sinkReconciler;
+        _importer = importer;
+        _notices = notices;
         _log = log;
     }
 
@@ -76,6 +83,7 @@ public sealed class RoutingWorker : BackgroundService
         // Load rules once (also starts the rules.json FileSystemWatcher), then subscribe BEFORE
         // starting the graph so the initial snapshot triggers the first reconcile.
         await _store.LoadAsync(stoppingToken).ConfigureAwait(false);
+        await ImportLegacySinksAsync(stoppingToken).ConfigureAwait(false);
         _graph.GraphUpdated += OnGraphUpdated;
         _store.Changed += OnRulesChanged;
 
@@ -100,6 +108,32 @@ public sealed class RoutingWorker : BackgroundService
             _graph.GraphUpdated -= OnGraphUpdated;
             _store.Changed -= OnRulesChanged;
             _log.LogInformation("RoutingWorker stopped");
+        }
+    }
+
+    /// <summary>
+    /// One-shot startup import of the user's static virtual-sink conf files (ADR-0011: detect +
+    /// import; retiring the files stays manual, so any that still exist are surfaced as a notice
+    /// and logged — tray-only mode gets them via journalctl). Never blocks startup.
+    /// </summary>
+    private async Task ImportLegacySinksAsync(CancellationToken ct)
+    {
+        if (_importer is null) return;
+        try
+        {
+            var result = await _importer.ImportAsync(_store, ct).ConfigureAwait(false);
+            _notices?.SetLegacySinkFiles(result.LegacyFilesStillPresent);
+            foreach (var file in result.LegacyFilesStillPresent)
+            {
+                _log.LogWarning(
+                    "{File} still creates null sinks statically; remove it to let AutoRoute own them " +
+                    "(its sinks are imported and persist via the generated drop-in)", file);
+            }
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "legacy sink import failed; continuing without it");
         }
     }
 
