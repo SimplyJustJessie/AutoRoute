@@ -1,0 +1,9 @@
+1	module-rt
+2	module-protocol-pulse
+3	module-metadata
+536870913	module-null-sink	sink_name=GameSink sink_properties="device.description='Game Sink' autoroute.managed=true"
+536870914	module-null-sink	sink_name=MusicSink channels=1 channel_map=mono sink_properties="device.description='Music Sink' autoroute.managed=true"
+536870915	module-null-sink	sink_name=LegacySink sink_properties="device.description='Legacy'"
+536870916	module-null-sink	object.linger=true media.class=Audio/Sink
+536870917	module-loopback	source=GameSink.monitor sink=alsa_output.usb-headset
+this line is garbage and must be skipped

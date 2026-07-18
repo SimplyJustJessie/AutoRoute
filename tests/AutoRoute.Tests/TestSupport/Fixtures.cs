@@ -14,6 +14,12 @@ public static class Fixtures
     /// <summary>Real pw-dump slice of the ownership-gate link, as captured live (managed prop is a JSON boolean).</summary>
     public static string GateTaggedLinkPath => Path.Combine(Dir, "pw-dump.gate-tagged-link.json");
 
+    /// <summary>
+    /// `pactl list modules short` shape (index\tname\targs) with null-sink, tagged/untagged,
+    /// no-sink_name, and junk rows. Re-capture live via scripts/v2-gate.sh (M1).
+    /// </summary>
+    public static string PactlModulesShortPath => Path.Combine(Dir, "pactl-modules.short.sample.txt");
+
     public static string PwDumpSampleJson => File.ReadAllText(PwDumpSamplePath);
     public static string GateTaggedLinkJson => File.ReadAllText(GateTaggedLinkPath);
 }
