@@ -89,15 +89,21 @@ public sealed class RuleMatcher : IRuleMatcher
         }
     }
 
-    private Regex? GetRegex(string pattern) => _regexCache.GetOrAdd(pattern, static p =>
+    private Regex? GetRegex(string pattern)
     {
-        try
+        // Patterns come from rules.json, so the cache is normally tiny; the cap only guards
+        // against unbounded growth from a pathological stream of hot-reloaded edits.
+        if (_regexCache.Count > 256) _regexCache.Clear();
+        return _regexCache.GetOrAdd(pattern, static p =>
         {
-            return new Regex(p, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexTimeout);
-        }
-        catch (ArgumentException)
-        {
-            return null; // malformed pattern — cached as null so we don't retry-compile every cycle
-        }
-    });
+            try
+            {
+                return new Regex(p, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexTimeout);
+            }
+            catch (ArgumentException)
+            {
+                return null; // malformed pattern — cached as null so we don't retry-compile every cycle
+            }
+        });
+    }
 }

@@ -1,6 +1,6 @@
 [Unit]
 Description=AutoRoute — automated PipeWire routing manager
-Documentation=https://github.com/  (AutoRoute)
+Documentation=https://github.com/SimplyJustJessie/AutoRoute
 # PipeWire + WirePlumber are themselves user services; order after them so the graph exists.
 After=pipewire.service wireplumber.service
 Wants=pipewire.service wireplumber.service
@@ -14,6 +14,17 @@ ExecStart=%h/.local/bin/AutoRoute --background
 Restart=on-failure
 RestartSec=2
 # journald captures stdout/stderr — the app logs one line per record (see journalctl below).
+
+# --- Sandbox hardening (safe for a user service; AutoRoute is control-plane only) -----------
+# MemoryDenyWriteExecute is intentionally NOT set: the .NET JIT needs writable+executable pages.
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
 
 [Install]
 WantedBy=default.target

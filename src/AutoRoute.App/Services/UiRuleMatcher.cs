@@ -65,6 +65,10 @@ public sealed class UiRuleMatcher : IRuleMatcher
     {
         if (string.IsNullOrEmpty(pattern)) return false;
 
+        // Patterns come from rules.json, so the cache is normally tiny; the cap only guards
+        // against unbounded growth from a pathological stream of hot-reloaded edits.
+        if (_regexCache.Count > 256) _regexCache.Clear();
+
         var regex = _regexCache.GetOrAdd(pattern, static p =>
         {
             try

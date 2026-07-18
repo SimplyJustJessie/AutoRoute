@@ -99,3 +99,7 @@ The reasoning behind the architecture is written down in the repo:
 - [`PLAN.md`](PLAN.md) — the build spec
 - [`CONTEXT.md`](CONTEXT.md) — the project's vocabulary
 - [`docs/adr/`](docs/adr/) — architecture decision records
+
+## License
+
+[MIT](LICENSE)

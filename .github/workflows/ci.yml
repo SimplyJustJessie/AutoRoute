@@ -6,6 +6,10 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: nothing in CI needs to write to the repo.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -31,6 +35,11 @@ jobs:
 
       - name: Unit tests
         run: dotnet test --no-build -c Release
+
+      - name: Dependency vulnerability audit
+        run: |
+          dotnet list package --include-transitive --vulnerable | tee /tmp/audit.txt
+          ! grep -q "has the following vulnerable packages" /tmp/audit.txt
 
       # Window-free checks against the captured fixture graph — no display, no PipeWire needed.
       - name: Smoke — viewmodel flows (--smoke)
