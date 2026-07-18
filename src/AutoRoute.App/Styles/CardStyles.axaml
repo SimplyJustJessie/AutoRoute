@@ -270,6 +270,45 @@
         <Setter Property="Opacity" Value="0.75" />
     </Style>
 
+    <!-- The entry being dragged: dimmed and slightly sunken while its ghost is in flight. -->
+    <Style Selector="Border.paletteItem.dragging">
+        <Setter Property="Opacity" Value="0.45" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+
+    <!-- Floating drag ghost that follows the pointer (built in code by DragGhost). -->
+    <Style Selector="Border.dragGhost">
+        <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="11,7" />
+        <Setter Property="BoxShadow" Value="0 6 20 0 #66000000" />
+        <!-- Resting state is fully styled (no fade) so the ghost never renders half-baked;
+             the entrance is just a quick scale pop. -->
+        <Setter Property="Opacity" Value="0.95" />
+        <Style.Animations>
+            <Animation Duration="0:0:0.16" Easing="CubicEaseOut" FillMode="Forward">
+                <KeyFrame Cue="0%">
+                    <Setter Property="ScaleTransform.ScaleX" Value="0.85" />
+                    <Setter Property="ScaleTransform.ScaleY" Value="0.85" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="ScaleTransform.ScaleX" Value="1" />
+                    <Setter Property="ScaleTransform.ScaleY" Value="1" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+    <Style Selector="Border.dragGhost Path">
+        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.dragGhost TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+
     <!-- Kind tile: rounded square holding the source-kind icon, tinted per kind. -->
     <Style Selector="Border.kindTile">
         <Setter Property="Width" Value="28" />

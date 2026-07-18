@@ -29,6 +29,7 @@
                                 Classes.protected="{Binding IsProtected}"
                                 IsVisible="{Binding IsVisible}"
                                 behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
+                                behaviors:DragSourceBehavior.DragLabel="{Binding Title}"
                                 ToolTip.Tip="Drag onto a Target Sink to route this Source">
                             <Grid ColumnDefinitions="Auto,*,Auto">
 
