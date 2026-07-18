@@ -42,6 +42,35 @@ public static class GraphMutations
     }
 
     /// <summary>
+    /// Returns a copy of <paramref name="graph"/> with a virtual (null) sink node added: an
+    /// <c>Audio/Sink</c> with stereo input ports and monitor output ports, exactly the node shape
+    /// <c>module-null-sink</c> produces. Ids are allocated above every existing node/port id.
+    /// </summary>
+    public static PwGraph WithNullSink(PwGraph graph, string name, string? description = null)
+    {
+        var nodeId = (graph.NodesById.Count == 0 ? 0 : graph.NodesById.Keys.Max()) + 500;
+        var portBase = (graph.PortsById.Count == 0 ? 0 : graph.PortsById.Keys.Max()) + 500;
+
+        var ports = new List<PwPort>
+        {
+            new(portBase + 0, nodeId, PortDirection.Input, "playback_FL", "FL", 0),
+            new(portBase + 1, nodeId, PortDirection.Input, "playback_FR", "FR", 1),
+            new(portBase + 2, nodeId, PortDirection.Output, "monitor_FL", "FL", 0),
+            new(portBase + 3, nodeId, PortDirection.Output, "monitor_FR", "FR", 1),
+        };
+        var node = new PwNode(
+            nodeId, name, description ?? name, "Audio/Sink",
+            ApplicationName: null, ProcessBinary: null, MediaName: null, Ports: ports);
+
+        var nodes = graph.NodesById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        nodes[nodeId] = node;
+        var allPorts = graph.PortsById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        foreach (var p in ports) allPorts[p.Id] = p;
+
+        return new PwGraph(nodes, allPorts, graph.LinksById.ToDictionary(kv => kv.Key, kv => kv.Value));
+    }
+
+    /// <summary>
     /// Returns a copy of <paramref name="graph"/> in which the given nodes — and their ports, and
     /// any link endpoints touching them — have their ids shifted by <paramref name="offset"/>.
     /// Stable-key props (ApplicationName, NodeName, …) are preserved, so a Rule still resolves the

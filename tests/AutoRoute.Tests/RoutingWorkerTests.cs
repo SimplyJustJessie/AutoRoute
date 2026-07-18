@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoRoute.App.Hosting;
@@ -24,7 +26,8 @@ public sealed class RoutingWorkerTests
         var graph = new FakeGraphService();
         var store = new FakeRuleStore();
         var reconciler = new CountingReconciler();
-        var worker = new RoutingWorker(graph, store, reconciler, NullLogger<RoutingWorker>.Instance);
+        var worker = new RoutingWorker(
+            graph, store, reconciler, new CountingSinkReconciler(), NullLogger<RoutingWorker>.Instance);
 
         await worker.StartAsync(CancellationToken.None);
         try
@@ -54,6 +57,57 @@ public sealed class RoutingWorkerTests
             var beforeRuleChange = reconciler.Count;
             store.RaiseChanged();
             await WaitUntil(() => reconciler.Count > beforeRuleChange);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            worker.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Sink_reconcile_runs_before_link_reconcile_each_pass()
+    {
+        var order = new List<string>();
+        var graph = new FakeGraphService();
+        var store = new FakeRuleStore();
+        var reconciler = new CountingReconciler(() => { lock (order) order.Add("links"); });
+        var sinkReconciler = new CountingSinkReconciler(() => { lock (order) order.Add("sinks"); });
+        var worker = new RoutingWorker(graph, store, reconciler, sinkReconciler, NullLogger<RoutingWorker>.Instance);
+
+        await worker.StartAsync(CancellationToken.None);
+        try
+        {
+            await WaitUntil(() => reconciler.Count >= 1);
+            lock (order)
+            {
+                // Every pass is sinks-then-links (ADR-0011: a created sink's node lands in a later
+                // snapshot, so ordering within one pass is what keeps creation ahead of routing).
+                Assert.Equal(order.Count / 2, order.Where((s, i) => i % 2 == 0 && s == "sinks").Count());
+                Assert.Equal("sinks", order[0]);
+                Assert.Equal("links", order[1]);
+            }
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            worker.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Sink_reconcile_failure_does_not_block_link_reconcile()
+    {
+        var graph = new FakeGraphService();
+        var store = new FakeRuleStore();
+        var reconciler = new CountingReconciler();
+        var sinkReconciler = new CountingSinkReconciler(() => throw new InvalidOperationException("pactl exploded"));
+        var worker = new RoutingWorker(graph, store, reconciler, sinkReconciler, NullLogger<RoutingWorker>.Instance);
+
+        await worker.StartAsync(CancellationToken.None);
+        try
+        {
+            await WaitUntil(() => reconciler.Count >= 1); // links still ran
         }
         finally
         {
@@ -105,10 +159,27 @@ public sealed class RoutingWorkerTests
 
     private sealed class CountingReconciler : IReconciler
     {
+        private readonly Action? _onReconcile;
         private int _count;
+        public CountingReconciler(Action? onReconcile = null) => _onReconcile = onReconcile;
         public int Count => Volatile.Read(ref _count);
         public Task ReconcileAsync(PwGraph graph, RulesDocument rules, CancellationToken ct = default)
         {
+            _onReconcile?.Invoke();
+            Interlocked.Increment(ref _count);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CountingSinkReconciler : ISinkReconciler
+    {
+        private readonly Action? _onEnsure;
+        private int _count;
+        public CountingSinkReconciler(Action? onEnsure = null) => _onEnsure = onEnsure;
+        public int Count => Volatile.Read(ref _count);
+        public Task EnsureAsync(PwGraph graph, RulesDocument rules, CancellationToken ct = default)
+        {
+            _onEnsure?.Invoke();
             Interlocked.Increment(ref _count);
             return Task.CompletedTask;
         }

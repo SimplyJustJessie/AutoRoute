@@ -29,6 +29,7 @@ public sealed class RoutingWorker : BackgroundService
     private readonly IPwGraphService _graph;
     private readonly IRuleStore _store;
     private readonly IReconciler _reconciler;
+    private readonly ISinkReconciler _sinkReconciler;
     private readonly ILogger<RoutingWorker> _log;
 
     private readonly SemaphoreSlim _reconcileGate = new(1, 1);
@@ -40,11 +41,13 @@ public sealed class RoutingWorker : BackgroundService
         IPwGraphService graph,
         IRuleStore store,
         IReconciler reconciler,
+        ISinkReconciler sinkReconciler,
         ILogger<RoutingWorker> log)
     {
         _graph = graph;
         _store = store;
         _reconciler = reconciler;
+        _sinkReconciler = sinkReconciler;
         _log = log;
     }
 
@@ -118,6 +121,20 @@ public sealed class RoutingWorker : BackgroundService
         try
         {
             if (!AutomationEnabled || _stopping.IsCancellationRequested) return;
+
+            // Virtual sinks first (ADR-0011): a sink loaded here appears in a LATER snapshot, whose
+            // GraphUpdated triggers the link pass that routes to it. A sink failure must not block
+            // link reconcile, so each half fails independently.
+            try
+            {
+                await _sinkReconciler.EnsureAsync(_graph.Current, _store.Current, _stopping).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "sink reconcile failed; links proceed, sinks retry on the next change");
+            }
+
             await _reconciler.ReconcileAsync(_graph.Current, _store.Current, _stopping).ConfigureAwait(false);
         }
         catch (OperationCanceledException)

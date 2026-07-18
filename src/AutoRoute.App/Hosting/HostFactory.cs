@@ -67,6 +67,10 @@ public static class HostFactory
             sp.GetRequiredService<IProcessRunner>(),
             sp.GetService<ILogger<PwLinker>>()));
 
+        services.AddSingleton<IVirtualSinkController>(sp => new PactlSinkController(
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetService<ILogger<PactlSinkController>>()));
+
         // --- Engine layer ---------------------------------------------------------------------
         services.AddSingleton<IRuleStore>(sp => new RuleStore(
             sp.GetService<ILogger<RuleStore>>()));
@@ -75,6 +79,15 @@ public static class HostFactory
             sp.GetRequiredService<IPwLinker>(),
             sp.GetRequiredService<IRuleMatcher>(),
             sp.GetService<ILogger<Reconciler>>()));
+
+        // Virtual sinks (ADR-0011): drop-in for boot persistence + pactl for instant effect.
+        services.AddSingleton(sp => new SinkDropInWriter(
+            SinkDropInWriter.DefaultPath(),
+            sp.GetService<ILogger<SinkDropInWriter>>()));
+        services.AddSingleton<ISinkReconciler>(sp => new SinkReconciler(
+            sp.GetRequiredService<IVirtualSinkController>(),
+            sp.GetRequiredService<SinkDropInWriter>(),
+            sp.GetService<ILogger<SinkReconciler>>()));
 
         // --- App layer ------------------------------------------------------------------------
         services.AddSingleton<BoardViewModel>();
