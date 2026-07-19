@@ -1,6 +1,6 @@
 name: Release
 
-# Push a v* tag (e.g. v0.1.0) to build the AppImage and attach it to a GitHub Release.
+# Push a v* tag (e.g. v0.1.0) to build the AppImage and attach it to a Gitea release.
 # The manual trigger rebuilds and (re)attaches the asset for an EXISTING tag's release —
 # for when a release run failed after the tag was already created.
 on:
@@ -12,9 +12,6 @@ on:
         description: "Existing tag to (re)build the release asset for (e.g. v0.1.0)"
         required: true
         type: string
-
-permissions:
-  contents: write
 
 jobs:
   appimage:
@@ -43,9 +40,9 @@ jobs:
           image=(out/AutoRoute-*-x86_64.AppImage)
           "${image[0]}" --appimage-extract-and-run --smoke
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Create Gitea release
+        uses: akkuman/gitea-release-action@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           files: out/AutoRoute-*.AppImage
-          generate_release_notes: true

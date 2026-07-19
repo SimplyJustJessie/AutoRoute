@@ -10,22 +10,23 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Persistent PipeWire routing manager — routing rules that survive app relaunches"
 arch=('x86_64')
-url="https://github.com/SimplyJustJessie/AutoRoute"
+url="https://git.bussy.cloud/jessie/AutoRoute"
 license=('MIT')
 depends=('pipewire' 'wireplumber' 'dotnet-runtime-10.0')
 makedepends=('dotnet-sdk-10.0')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+# Gitea archives extract to a bare "autoroute/" directory (no version suffix).
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 options=('!strip') # .NET assemblies must not be stripped
 
 build() {
-    cd "AutoRoute-$pkgver"
+    cd "$pkgname"
     DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet publish src/AutoRoute.App -c Release \
         --no-self-contained -o "$srcdir/publish"
 }
 
 package() {
-    cd "AutoRoute-$pkgver"
+    cd "$pkgname"
     install -dm755 "$pkgdir/usr/lib/$pkgname"
     cp -a "$srcdir/publish/." "$pkgdir/usr/lib/$pkgname/"
     install -dm755 "$pkgdir/usr/bin"

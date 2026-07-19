@@ -1,6 +1,6 @@
 # AutoRoute
 
-[![CI](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml/badge.svg)](https://github.com/SimplyJustJessie/AutoRoute/actions/workflows/ci.yml)
+[![CI](https://git.bussy.cloud/jessie/AutoRoute/actions/workflows/ci.yml/badge.svg?branch=main)](https://git.bussy.cloud/jessie/AutoRoute/actions?workflow=ci.yml)
 
 **Wire your PipeWire audio once, and keep it wired.**
 
@@ -37,7 +37,7 @@ AutoRoute makes those patches stick, in **both directions**:
 ## Install
 
 **AppImage** (no .NET required): grab `AutoRoute-*-x86_64.AppImage` from the latest
-[release](https://github.com/SimplyJustJessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
+[release](https://git.bussy.cloud/jessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
 artifact on any CI run), `chmod +x` it, run it. Built by `scripts/build-appimage.sh`.
 
 **Arch (AUR)**: planned — a ready PKGBUILD lives in `packaging/aur/` and will be published
@@ -46,7 +46,7 @@ after the first tagged release.
 **From source:**
 
 ```bash
-git clone https://github.com/SimplyJustJessie/AutoRoute.git
+git clone https://git.bussy.cloud/jessie/AutoRoute.git
 cd AutoRoute
 dotnet build
 ```

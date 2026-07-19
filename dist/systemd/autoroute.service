@@ -1,6 +1,6 @@
 [Unit]
 Description=AutoRoute — automated PipeWire routing manager
-Documentation=https://github.com/SimplyJustJessie/AutoRoute
+Documentation=https://git.bussy.cloud/jessie/AutoRoute
 # Order after the graphical session (so the display, session DBus and tray exist) and after the
 # audio graph. PipeWire + WirePlumber are themselves user services.
 After=graphical-session.target pipewire.service wireplumber.service
