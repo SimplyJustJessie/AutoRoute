@@ -26,38 +26,9 @@ public sealed class AutostartServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Enable_writes_and_enables_the_systemd_unit()
+    public async Task Enable_writes_the_xdg_autostart_entry()
     {
-        var runner = new FakeProcessRunner()
-            .EnqueueStdout("")   // daemon-reload
-            .EnqueueStdout("")   // reset-failed
-            .EnqueueStdout("");  // enable
-
-        var outcome = await Service(runner).EnableAsync();
-
-        Assert.True(outcome.Success);
-        Assert.Equal(AutostartMechanism.Systemd, outcome.Mechanism);
-
-        var unit = File.ReadAllText(UnitPath);
-        Assert.Contains($"ExecStart=\"{Target}\" --background", unit);
-        // GUI/AppImage service: bound to the graphical session, with no FUSE-hostile sandboxing.
-        Assert.Contains("WantedBy=graphical-session.target", unit);
-        Assert.DoesNotContain("NoNewPrivileges=", unit);
-        Assert.DoesNotContain("RestrictNamespaces=", unit);
-        Assert.False(File.Exists(DesktopPath));
-
-        Assert.Equal(new[] { "--user", "daemon-reload" }, runner.Calls[0].Arguments);
-        Assert.Equal(new[] { "--user", "reset-failed", "autoroute.service" }, runner.Calls[1].Arguments);
-        Assert.Equal(new[] { "--user", "enable", "autoroute.service" }, runner.Calls[2].Arguments);
-        Assert.All(runner.Calls, c => Assert.Equal("systemctl", c.FileName));
-    }
-
-    [Fact]
-    public async Task Enable_falls_back_to_xdg_when_systemctl_cannot_run()
-    {
-        // systemctl absent: the real ProcessRunner throws when it can't start the binary.
-        var runner = new FakeProcessRunner()
-            .EnqueueThrow(new PwToolException("systemctl", "--user daemon-reload", -1, "No such file"));
+        var runner = new FakeProcessRunner();
 
         var outcome = await Service(runner).EnableAsync();
 
@@ -67,18 +38,40 @@ public sealed class AutostartServiceTests : IDisposable
         var desktop = File.ReadAllText(DesktopPath);
         Assert.Contains($"Exec=\"{Target}\" --background", desktop);
         Assert.Contains("Type=Application", desktop);
+        // No systemd unit is generated any more — the XDG entry is the mechanism.
+        Assert.False(File.Exists(UnitPath));
     }
 
     [Fact]
-    public async Task Enable_falls_back_to_xdg_when_enable_is_refused()
+    public async Task Enable_retires_a_systemd_unit_left_by_an_older_build()
     {
+        // Simulate an upgrade: a unit an older build wrote is still on disk.
+        Directory.CreateDirectory(Path.GetDirectoryName(UnitPath)!);
+        File.WriteAllText(UnitPath, "[Unit]\n");
         var runner = new FakeProcessRunner()
-            .EnqueueStdout("")                               // daemon-reload ok
-            .EnqueueStdout("")                               // reset-failed
-            .EnqueueFailure("Failed to enable unit", exit: 1); // enable refused
+            .EnqueueStdout("")   // disable
+            .EnqueueStdout("")   // daemon-reload
+            .EnqueueStdout("");  // reset-failed
 
         var outcome = await Service(runner).EnableAsync();
 
+        Assert.Equal(AutostartMechanism.Xdg, outcome.Mechanism);
+        Assert.True(File.Exists(DesktopPath));
+        Assert.False(File.Exists(UnitPath));                       // old unit deleted
+        Assert.Contains(runner.Calls, c => c.Arguments.SequenceEqual(new[] { "--user", "disable", "autoroute.service" }));
+        Assert.Contains(runner.Calls, c => c.Arguments.SequenceEqual(new[] { "--user", "daemon-reload" }));
+    }
+
+    [Fact]
+    public async Task Enable_survives_a_missing_systemctl_when_cleaning_up()
+    {
+        // No leftover unit, and systemctl can't even run — enabling must still succeed via XDG.
+        var runner = new FakeProcessRunner()
+            .EnqueueThrow(new PwToolException("systemctl", "--user disable", -1, "No such file"));
+
+        var outcome = await Service(runner).EnableAsync();
+
+        Assert.True(outcome.Success);
         Assert.Equal(AutostartMechanism.Xdg, outcome.Mechanism);
         Assert.True(File.Exists(DesktopPath));
     }
@@ -98,7 +91,21 @@ public sealed class AutostartServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetState_reports_systemd_when_the_unit_is_enabled()
+    public async Task GetState_reports_xdg_when_the_desktop_file_exists()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(DesktopPath)!);
+        File.WriteAllText(DesktopPath, "[Desktop Entry]\n");
+        var runner = new FakeProcessRunner();
+
+        var state = await Service(runner).GetStateAsync();
+
+        Assert.True(state.Enabled);
+        Assert.Equal(AutostartMechanism.Xdg, state.Mechanism);
+        Assert.Empty(runner.Calls);            // XDG present → no need to ask systemd
+    }
+
+    [Fact]
+    public async Task GetState_reports_systemd_when_a_hand_installed_unit_is_enabled()
     {
         var runner = new FakeProcessRunner().EnqueueStdout("enabled\n");
 
@@ -107,19 +114,6 @@ public sealed class AutostartServiceTests : IDisposable
         Assert.True(state.Enabled);
         Assert.Equal(AutostartMechanism.Systemd, state.Mechanism);
         Assert.Equal(new[] { "--user", "is-enabled", "autoroute.service" }, runner.Calls[0].Arguments);
-    }
-
-    [Fact]
-    public async Task GetState_reports_xdg_when_only_the_desktop_file_exists()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(DesktopPath)!);
-        File.WriteAllText(DesktopPath, "[Desktop Entry]\n");
-        var runner = new FakeProcessRunner().EnqueueFailure("disabled", exit: 1); // is-enabled: not enabled
-
-        var state = await Service(runner).GetStateAsync();
-
-        Assert.True(state.Enabled);
-        Assert.Equal(AutostartMechanism.Xdg, state.Mechanism);
     }
 
     [Fact]
@@ -135,25 +129,24 @@ public sealed class AutostartServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Disable_removes_the_xdg_entry_and_asks_systemd_to_disable()
+    public async Task Disable_removes_the_xdg_entry_and_retires_the_systemd_unit()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(DesktopPath)!);
         File.WriteAllText(DesktopPath, "[Desktop Entry]\n");
-        var runner = new FakeProcessRunner().EnqueueStdout(""); // disable
+        var runner = new FakeProcessRunner();
 
         var outcome = await Service(runner).DisableAsync();
 
         Assert.True(outcome.Success);
         Assert.False(File.Exists(DesktopPath));
-        Assert.Equal(new[] { "--user", "disable", "autoroute.service" }, runner.Calls[0].Arguments);
+        Assert.Contains(runner.Calls, c => c.Arguments.SequenceEqual(new[] { "--user", "disable", "autoroute.service" }));
     }
 
     [Fact]
-    public void Generated_files_quote_a_target_with_spaces()
+    public void The_generated_desktop_entry_quotes_a_target_with_spaces()
     {
         const string spaced = "/home/a b/AutoRoute.AppImage";
 
-        Assert.Contains($"ExecStart=\"{spaced}\" --background", AutostartService.BuildUnitFile(spaced));
         Assert.Contains($"Exec=\"{spaced}\" --background", AutostartService.BuildDesktopFile(spaced));
     }
 }

@@ -79,11 +79,12 @@ Rules are written to `~/.config/autoroute/rules.json` the moment you make a chan
 ## Autostart
 
 **Easiest:** open the ⚙ menu in the toolbar and flip **Start AutoRoute when I log in**. AutoRoute
-detects its own path (the AppImage included — no symlink, no hand-edited unit), writes a systemd user
-service, and enables it; if the systemd user manager isn't available it falls back to an XDG
-autostart entry. Flip it off to remove it.
+detects its own path (the AppImage included — no symlink, no hand-edited unit) and adds a desktop
+autostart entry (`~/.config/autostart`). Your desktop launches it as part of your session, so it
+inherits the display and tray environment a GUI app needs. Flip it off to remove it.
 
-**By hand:** a systemd user service is also included. It launches `~/.local/bin/AutoRoute --background`,
+**By hand (headless / no desktop):** a systemd user service is also included, for setups without a
+graphical session to autostart it. It launches `~/.local/bin/AutoRoute --background`,
 so first make that name exist — publish the binary there **or**, if you use the AppImage, symlink it
 (`ln -sf ~/Apps/AutoRoute-x86_64.AppImage ~/.local/bin/AutoRoute`). Full steps for both, plus an
 XDG-autostart alternative, are in [`dist/README.md`](dist/README.md). Then:
