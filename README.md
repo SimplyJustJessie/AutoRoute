@@ -78,7 +78,10 @@ Rules are written to `~/.config/autoroute/rules.json` the moment you make a chan
 
 ## Autostart
 
-A systemd user service is included so AutoRoute starts with your session. After building/publishing (see [`dist/README.md`](dist/README.md)):
+A systemd user service is included so AutoRoute starts with your session. It launches
+`~/.local/bin/AutoRoute --background`, so first make that name exist — publish the binary there
+**or**, if you use the AppImage, symlink it (`ln -sf ~/Apps/AutoRoute-x86_64.AppImage ~/.local/bin/AutoRoute`).
+Full steps for both, plus an XDG-autostart alternative, are in [`dist/README.md`](dist/README.md). Then:
 
 ```bash
 systemctl --user enable --now autoroute.service
