@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -198,13 +199,48 @@ public sealed class RuleStore : IRuleStore, IDisposable
         {
             // Normalized(): a v1 file loads with virtualSinks null → empty, version bumped to
             // current, so every consumer sees the v2 shape and the next save writes it.
-            return JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument)?.Normalized();
+            var doc = JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument)?.Normalized();
+            return doc is null ? null : SanitizeVirtualSinks(doc);
         }
         catch (JsonException ex)
         {
             _log.LogWarning(ex, "rules.json is malformed; keeping last-good policy");
             return null;
         }
+    }
+
+    /// <summary>
+    /// The UI and importer validate before writing, but a hand-edited rules.json can still carry a
+    /// virtual sink whose name or description would inject module args, break the generated conf.d
+    /// drop-in, or (a null name) throw from the reconciler's name-keyed sets. Drop any spec with an
+    /// unusable name; replace an unusable description with the name (cosmetic — mirrors the importer).
+    /// The cleaned shape is persisted on the next save; the on-disk file is left as-is until then.
+    /// </summary>
+    private RulesDocument SanitizeVirtualSinks(RulesDocument doc)
+    {
+        if (doc.VirtualSinks.Count == 0) return doc;
+
+        var clean = new List<VirtualSinkSpec>(doc.VirtualSinks.Count);
+        var changed = false;
+        foreach (var sink in doc.VirtualSinks)
+        {
+            if (!SinkNameValidator.IsValidName(sink.Name))
+            {
+                _log.LogWarning("dropping virtual sink with unusable name '{Name}' from rules.json", sink.Name);
+                changed = true;
+                continue;
+            }
+            if (!SinkNameValidator.IsValidDescription(sink.Description))
+            {
+                _log.LogWarning("virtual sink '{Name}' has an unusable description; falling back to the name", sink.Name);
+                clean.Add(sink with { Description = sink.Name });
+                changed = true;
+                continue;
+            }
+            clean.Add(sink);
+        }
+
+        return changed ? doc with { VirtualSinks = clean } : doc;
     }
 
     public void Dispose()
