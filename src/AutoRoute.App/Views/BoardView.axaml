@@ -160,7 +160,10 @@
         <!-- ===================== Palette + Board ===================== -->
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
 
-            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="280">
+            <!-- ClipToBounds: whatever a future layout regression measures wrong, nothing from
+                 the palette may paint over the board. -->
+            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="280"
+                    ClipToBounds="True">
                 <views:PaletteView DataContext="{Binding Palette}" />
             </Border>
 

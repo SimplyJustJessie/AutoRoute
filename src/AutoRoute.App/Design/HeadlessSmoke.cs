@@ -69,6 +69,7 @@ public static class HeadlessSmoke
         Check(gameRendered, "GameSink column present in the visual tree");
 
         CheckCreateFlyoutRegression(window, board, Check);
+        CheckHorizontalContainment(window, Check);
 
         Trace.Listeners.Remove(listener);
 
@@ -90,6 +91,39 @@ public static class HeadlessSmoke
         }
         Console.WriteLine($"UI SMOKE: FAIL ({failures.Count} check(s) failed)");
         return 1;
+    }
+
+    /// <summary>
+    /// Long-name containment: the design graph deliberately contains a real-world-length device
+    /// name; no palette item and no column card may paint past its panel's right edge (they did —
+    /// titles trimmed against a wider constraint and spilled out of the board).
+    /// </summary>
+    private static void CheckHorizontalContainment(Window window, Action<bool, string> check)
+    {
+        var offenders = new List<string>();
+
+        void Contained(Visual container, string label, IEnumerable<Visual> items)
+        {
+            foreach (var item in items)
+            {
+                var topRight = item.TranslatePoint(new Point(item.Bounds.Width, 0), container);
+                if (topRight is { } p && p.X > container.Bounds.Width + 0.5)
+                    offenders.Add($"{label} {item.GetType().Name}: right edge {p.X:0.#} > panel width {container.Bounds.Width:0.#}");
+            }
+        }
+
+        // Check the item/card borders AND every TextBlock: a text can be measured wider than its
+        // card (the ScrollViewer.Padding bug) and paint past the panel while the card itself fits.
+        foreach (var palette in window.GetVisualDescendants().OfType<PaletteView>())
+            Contained(palette, "palette", palette.GetVisualDescendants()
+                .Where(v => v is TextBlock || (v is Border b && b.Classes.Contains("paletteItem"))));
+
+        foreach (var column in window.GetVisualDescendants().OfType<SinkColumnView>())
+            Contained(column, "column", column.GetVisualDescendants()
+                .Where(v => v is TextBlock || (v is Border b && b.Classes.Contains("card"))));
+
+        check(offenders.Count == 0, "long names stay inside their panels (palette + columns)");
+        foreach (var o in offenders.Take(4)) Console.WriteLine("        · " + o);
     }
 
     /// <summary>

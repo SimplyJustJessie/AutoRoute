@@ -11,7 +11,7 @@
              x:DataType="vm:SinkColumnViewModel"
              d:DataContext="{x:Static design:DesignData.Column}">
 
-    <Border Classes="column"
+    <Border Classes="column" ClipToBounds="True"
             Classes.protected="{Binding IsProtected}"
             behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
             behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
@@ -89,11 +89,14 @@
                     </Grid>
                 </Border>
 
-                <!-- Body = Source cards feeding this Target Sink -->
-                <ScrollViewer Grid.Row="1" Padding="10,10,10,4"
+                <!-- Body = Source cards feeding this Target Sink.
+                     Margin on the content, NOT ScrollViewer.Padding: padding sits outside the
+                     scroll-content measure, so long card text was measured wider than the column
+                     and painted past it (same fix as the palette / board scrollers). -->
+                <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <Panel>
+                    <Panel Margin="10,10,10,4">
                         <ItemsControl ItemsSource="{Binding Cards}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:SourceCardViewModel">
