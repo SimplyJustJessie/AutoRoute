@@ -146,6 +146,20 @@ public sealed class RoutingWorkerTests
                 Assert.Single(notices.LegacySinkFiles);
                 Assert.Equal(new[] { "MusicSink", "DiscordSink", "GameSink", "DesktopSink" },
                     notices.PendingLegacySinks.ToArray());
+
+                // A rules change re-runs detection so the banner stays truthful without a
+                // relaunch: declaring MusicSink (e.g. via the Import action) drops it from pending.
+                await store.SaveAsync(store.Current with
+                {
+                    VirtualSinks = new[]
+                    {
+                        new Engine.Model.VirtualSinkSpec("m", "MusicSink", "Music Sink",
+                            Engine.Model.SinkChannels.Stereo),
+                    },
+                });
+                await WaitUntil(() => notices.PendingLegacySinks.Count == 3);
+                Assert.Equal(new[] { "DiscordSink", "GameSink", "DesktopSink" },
+                    notices.PendingLegacySinks.ToArray());
             }
             finally
             {

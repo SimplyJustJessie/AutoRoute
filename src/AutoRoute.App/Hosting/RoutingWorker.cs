@@ -149,7 +149,14 @@ public sealed class RoutingWorker : BackgroundService
 
     private void OnGraphUpdated(object? sender, PwGraph graph) => ScheduleReconcile();
 
-    private void OnRulesChanged(object? sender, RulesDocument document) => ScheduleReconcile();
+    private void OnRulesChanged(object? sender, RulesDocument document)
+    {
+        ScheduleReconcile();
+        // Keep the legacy banner truthful without a relaunch: un-declaring an imported sink makes
+        // it pending again, importing clears it. Detection is a read-only scan of a couple of
+        // small conf files and never saves, so no feedback loop.
+        _ = DetectLegacySinksAsync(_stopping);
+    }
 
     private void ScheduleReconcile()
     {
