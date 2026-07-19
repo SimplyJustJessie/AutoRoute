@@ -6,9 +6,11 @@
 
 AutoRoute is a background service and GUI for Linux that remembers your PipeWire connections and re-applies them as apps come and go. It's a *persistent* [Helvum](https://gitlab.freedesktop.org/pipewire/helvum): you patch things the way you want, and AutoRoute keeps them that way — even though PipeWire hands out fresh node IDs every time an app restarts.
 
+![The AutoRoute board — a palette of draggable sources on the left, one column per target sink, an unsaved link ready to save](screenshots/board.png)
+
 ## The problem
 
-By default WirePlumber routes every app to your default output. The moment you run separate virtual sinks — a `GameSink` feeding OBS, a `MusicSink`, a `DiscordSink` — you're back in Helvum re-patching by hand, because node IDs change on every launch and streams like Discord's per-call recording input reappear constantly.
+By default WirePlumber routes every app to your default output. The moment you run separate virtual sinks — a `GameSink` feeding OBS, a `MusicSink`, a `DiscordSink` — you're back in Helvum re-patching by hand, because node IDs change on every launch and streams like Discord's per-call recording input reappear constantly. And those sinks themselves used to be a static config file you hand-edited and hoped survived the next PipeWire restart.
 
 AutoRoute makes those patches stick, in **both directions**:
 
@@ -18,10 +20,11 @@ AutoRoute makes those patches stick, in **both directions**:
 ## Features
 
 - **Rules that survive relaunches** — connections are matched by application, not by throwaway node IDs.
+- **Virtual sinks you own** — create and delete null sinks (`GameSink`, `MusicSink`, …) right from the board. AutoRoute keeps them alive across PipeWire restarts and recreates them at boot even when it isn't running, via a generated `pipewire-pulse` drop-in. No more hand-edited config files. Existing `virtual-sinks.conf` setups are detected and imported.
 - **Fan-out** — send one source to several sinks at once (your headset *and* a capture sink for streaming).
 - **Keep-connected and keep-disconnected** — positive rules hold a link open; suppressions keep it closed on every cycle.
 - **Protected nodes** — mark routing that another tool owns (e.g. an EasyEffects chain) as off-limits, and AutoRoute won't touch it. Precedence is absolute: *protected > suppression > connect*.
-- **A board, not a patchbay** — one column per sink, a palette of draggable sources; drag to connect, drop into several columns to fan out. Channels are paired for you.
+- **A board, not a patchbay** — a clean dark UI with one column per sink and a palette of draggable sources; drag to connect, drop into several columns to fan out, filter by name. Channels are paired for you, and each card's state — *managed*, *unsaved*, *manual*, or *protected* — is spelled out at a glance.
 - **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
 - **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
 
@@ -62,9 +65,14 @@ Flags:
 ## Using it
 
 1. Launch AutoRoute — the board mirrors your current audio graph. Links that already exist show up as **unsaved**.
-2. Drag a source (an app stream, a microphone, or a sink's monitor) from the palette into a target sink's column to connect it. Drop it into more than one column to fan out.
-3. Remove a card to disconnect. Removing an external link records a **suppression** so it stays gone.
-4. Mark a node **protected** to tell AutoRoute to leave it and everything touching it alone.
+2. Hit **+ New Sink** to spin up a virtual sink (name, description, stereo or mono). It appears as a column tagged **VIRTUAL** and is recreated on every boot; its delete button tears it down and cleans up any rules pointing at it.
+3. Drag a source (an app stream, a microphone, or a sink's monitor) from the palette into a target sink's column to connect it. Drop it into more than one column to fan out.
+4. Remove a card to disconnect. Removing an external link records a **suppression** so it stays gone.
+5. Mark a node **protected** to tell AutoRoute to leave it and everything touching it alone.
+
+Every card wears its state on its sleeve — **managed**, **unsaved**, **manual**, or **protected**. The circled **?** in the toolbar opens a legend explaining each:
+
+![The card-state legend — managed, unsaved, manual, and protected explained](screenshots/board-help.png)
 
 Rules are written to `~/.config/autoroute/rules.json` the moment you make a change — there is no Save button.
 
@@ -81,7 +89,7 @@ The unit lives at [`dist/systemd/autoroute.service`](dist/systemd/autoroute.serv
 
 ## How it works
 
-AutoRoute reads the graph from `pw-dump`, matches it against your rules, and makes only the `pw-link` changes needed to reach the state you asked for — an idempotent reconcile that runs whenever the graph or your rules change. Every link it creates is tagged `autoroute.managed`, so it can always tell its own links from yours and never cleans up a connection it didn't make. `pw-mon` tells it *when* to re-check; it never routes by name, only by numeric port ID.
+AutoRoute reads the graph from `pw-dump`, matches it against your rules, and makes only the `pw-link` changes needed to reach the state you asked for — an idempotent reconcile that runs whenever the graph or your rules change. Each cycle first ensures your declared virtual sinks exist (loading them with `pactl` and writing a `pipewire-pulse` conf.d drop-in for boot persistence), then reconciles the links. Every link it creates is tagged `autoroute.managed`, so it can always tell its own links from yours and never cleans up a connection it didn't make. `pw-mon` tells it *when* to re-check; it never routes by name, only by numeric port ID.
 
 ```
 src/AutoRoute.PipeWire/   # PipeWire interop: graph model + pw-dump/pw-link/pw-mon drivers
@@ -96,7 +104,8 @@ Built with C# / .NET 10 and [Avalonia](https://avaloniaui.net/).
 
 The reasoning behind the architecture is written down in the repo:
 
-- [`PLAN.md`](PLAN.md) — the build spec
+- [`PLAN.md`](PLAN.md) — the v1 build spec
+- [`PLAN.v2.md`](PLAN.v2.md) — the v2 build spec (app-managed virtual sinks)
 - [`CONTEXT.md`](CONTEXT.md) — the project's vocabulary
 - [`docs/adr/`](docs/adr/) — architecture decision records
 
