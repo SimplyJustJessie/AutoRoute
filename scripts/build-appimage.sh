@@ -23,7 +23,17 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/lib/autoroute" "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
          "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 
+# Bake the version into the assembly so the running app knows what it is (the in-app updater
+# compares it against the latest Gitea release tag). InformationalVersion carries the exact string;
+# $(Version) needs a strict numeric X.Y.Z, so only pass it when VERSION is a clean vX.Y.Z tag —
+# a `git describe` fallback like "v0.3.0-4-gabc123" or "dev" is left to default.
+VERSION_PROPS=(-p:InformationalVersion="${VERSION#v}")
+if [[ "${VERSION#v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    VERSION_PROPS+=(-p:Version="${VERSION#v}")
+fi
+
 dotnet publish "$ROOT/src/AutoRoute.App" -c Release -r linux-x64 --self-contained \
+    "${VERSION_PROPS[@]}" \
     -o "$APPDIR/usr/lib/autoroute"
 
 cat > "$APPDIR/AppRun" <<'EOF'

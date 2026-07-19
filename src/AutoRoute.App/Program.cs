@@ -25,6 +25,14 @@ sealed class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Print the baked-in version and exit — the human-visible counterpart to the AppImage
+        // filename, and how you confirm a build/update actually carries the version you expect.
+        if (Array.IndexOf(args, "--version") >= 0)
+        {
+            Console.WriteLine(new Services.AppVersion().Current);
+            return 0;
+        }
+
         // Window-free smoke checks (never pop a GUI onto the user's desktop).
         if (Array.IndexOf(args, "--smoke") >= 0)
             return Design.SmokeTest.Run();
@@ -41,6 +49,11 @@ sealed class Program
         // Start (so no pw-dump/pw-mon spawn). Diagnostic only — runs before the single-instance guard.
         if (Array.IndexOf(args, "--check-host") >= 0)
             return HostCheck.Run(options);
+
+        // Window-free update check: ask Gitea for the latest release and print whether we're behind.
+        // The CLI counterpart to the in-app "Check for updates" button (headless-friendly, no window).
+        if (Array.IndexOf(args, "--check-update") >= 0)
+            return UpdateCheckDiagnostic.Run(options);
 
         // === Single instance (ADR-0005) ===============================================
         // The first process binds the unix socket and owns the sole host/worker/tray. A later

@@ -47,6 +47,19 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     /// <summary>Gates the autostart toolbar affordance — hidden in mock/design compositions.</summary>
     public bool CanManageAutostart => Autostart is not null;
 
+    /// <summary>The in-app updater VM, or null when no update service is wired (mocks/design).</summary>
+    public UpdateViewModel? Update { get; }
+
+    /// <summary>Gates the "Updates" toolbar affordance — hidden in mock/design compositions.</summary>
+    public bool CanCheckUpdates => Update is not null;
+
+    /// <summary>"A newer release is available" banner text (empty ⇒ hidden). Follows <see cref="Update"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdateNotice))]
+    private string _updateNoticeText = string.Empty;
+
+    public bool HasUpdateNotice => UpdateNoticeText.Length > 0;
+
     [ObservableProperty]
     private bool _hasColumns;
 
@@ -74,7 +87,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         AppNotices? notices = null,
         ILogger<BoardViewModel>? log = null,
         PulseConfImporter? importer = null,
-        AutostartService? autostart = null)
+        AutostartService? autostart = null,
+        UpdateService? update = null)
     {
         _graph = graph;
         _linker = linker;
@@ -87,6 +101,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _importer = importer;
         if (autostart is not null)
             Autostart = new AutostartViewModel(autostart);
+        if (update is not null)
+            Update = new UpdateViewModel(update, RefreshUpdateNotice);
         Palette = new SourcesPaletteViewModel(this);
 
         Filter.Changed += (_, _) => ApplyFilter();
@@ -109,6 +125,27 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
         if (Autostart is not null)
             await Autostart.RefreshAsync().ConfigureAwait(true);
+
+        // Fire-and-forget: a background update check that never blocks startup. It resumes on the UI
+        // thread (ConfigureAwait(true) inside), catches its own failures, and lights the banner via
+        // RefreshUpdateNotice if a newer release is out.
+        if (Update is not null)
+            _ = Update.CheckAsync();
+    }
+
+    private void RefreshUpdateNotice()
+    {
+        UpdateNoticeText = Update is { UpdateAvailable: true }
+            ? $"AutoRoute {Update.LatestVersion} is available — you're on {Update.CurrentVersion}."
+            : string.Empty;
+    }
+
+    /// <summary>Banner action: install the available update (delegates to <see cref="Update"/>).</summary>
+    [RelayCommand]
+    private async Task InstallUpdate()
+    {
+        if (Update is not null)
+            await Update.InstallAsync().ConfigureAwait(true);
     }
 
     private void RefreshLegacyNotice()

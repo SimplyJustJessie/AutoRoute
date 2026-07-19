@@ -1,4 +1,5 @@
 using AutoRoute.App.Hosting;
+using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
 using AutoRoute.PipeWire;
@@ -39,6 +40,18 @@ public sealed class HostCompositionTests
         Assert.NotNull(sp.GetRequiredService<IRuleStore>());
         Assert.NotNull(sp.GetRequiredService<IRuleMatcher>());
         Assert.NotNull(sp.GetRequiredService<IReconciler>());
+    }
+
+    [Fact]
+    public void Host_resolves_the_updater()
+    {
+        using var host = HostFactory.Build(new AppOptions());
+        var sp = host.Services;
+
+        Assert.NotNull(sp.GetRequiredService<AppVersion>());
+        var updater = sp.GetRequiredService<UpdateService>();
+        Assert.NotNull(updater);
+        Assert.Same(updater, sp.GetRequiredService<UpdateService>());
     }
 
     [Fact]
