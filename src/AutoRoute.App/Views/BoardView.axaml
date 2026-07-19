@@ -311,5 +311,36 @@
                 </StackPanel>
             </Panel>
         </Grid>
+
+        <!-- ===================== Resize grips (client-side chrome) =====================
+             SystemDecorations="None" removes the native resize border along with the title bar, so
+             these thin transparent strips over the window edges + corners restore drag-to-resize
+             via BeginResizeDrag. They sit on top (declared last, spanning every row) but only cover
+             the outermost few pixels, so they don't block the UI. Corners come after edges so the
+             diagonal grip wins in the overlap. -->
+        <Border Grid.RowSpan="3" Name="ResizeN" Tag="North" Background="Transparent"
+                Height="4" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                Cursor="TopSide" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeS" Tag="South" Background="Transparent"
+                Height="4" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                Cursor="BottomSide" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeW" Tag="West" Background="Transparent"
+                Width="4" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                Cursor="LeftSide" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeE" Tag="East" Background="Transparent"
+                Width="4" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Cursor="RightSide" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeNW" Tag="NorthWest" Background="Transparent"
+                Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Cursor="TopLeftCorner" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeNE" Tag="NorthEast" Background="Transparent"
+                Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Cursor="TopRightCorner" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeSW" Tag="SouthWest" Background="Transparent"
+                Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Cursor="BottomLeftCorner" PointerPressed="OnResizePointerPressed" />
+        <Border Grid.RowSpan="3" Name="ResizeSE" Tag="SouthEast" Background="Transparent"
+                Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Cursor="BottomRightCorner" PointerPressed="OnResizePointerPressed" />
     </Grid>
 </UserControl>

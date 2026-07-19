@@ -76,6 +76,17 @@ public partial class BoardView : UserControl
         ToggleMaximize();
     }
 
+    // A window-edge/corner grip: start a native resize drag in the grip's direction. The WindowEdge
+    // is carried on each grip's Tag (set in XAML). No-op off a Window (headless/design) or when the
+    // window is maximised (nothing to resize).
+    private void OnResizePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (HostWindow is not { } w || w.WindowState == WindowState.Maximized) return;
+        if (sender is Border { Tag: string edgeName } && Enum.TryParse<WindowEdge>(edgeName, out var edge))
+            w.BeginResizeDrag(edge, e);
+    }
+
     private void OnMinimizeClick(object? sender, RoutedEventArgs e)
     {
         if (HostWindow is { } w) w.WindowState = WindowState.Minimized;

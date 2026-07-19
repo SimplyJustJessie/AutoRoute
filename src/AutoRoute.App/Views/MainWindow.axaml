@@ -14,11 +14,12 @@
         Background="{DynamicResource BgBrush}"
         Icon="/Assets/tray-icon.png"
         Title="AutoRoute"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="-1">
+        SystemDecorations="None">
 
-    <!-- Client-side decorations: the app's own toolbar is the title bar (single row), so the
-         window's caption controls live in BoardView's toolbar. See BoardView.axaml.cs. -->
+    <!-- Client-side decorations: the app draws its own title bar + caption buttons (BoardView's
+         toolbar) and its own resize grips (BoardView.axaml.cs). SystemDecorations="None" is used
+         instead of ExtendClientAreaToDecorationsHint because several Linux compositors (KWin among
+         them) ignore the extend-client-area hint and keep drawing their own caption — leaving a
+         double title bar. "None" is honoured everywhere; we supply move/maximise/resize ourselves. -->
     <views:BoardView />
 </Window>
