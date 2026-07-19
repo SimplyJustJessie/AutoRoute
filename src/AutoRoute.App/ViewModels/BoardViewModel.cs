@@ -207,13 +207,18 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
         foreach (var column in Columns)
         {
+            // A column that matches the filter shows ALL its cards: searching for a sink means
+            // "show me this sink and what feeds it" — hiding non-matching cards left a matching
+            // column looking empty while links exist. Card-level filtering only applies when the
+            // column itself isn't what was searched for.
+            var columnMatches = Filter.MatchesText(column.Title, column.Subtitle);
             var anyCardVisible = false;
             foreach (var card in column.Cards)
             {
-                card.IsVisible = Filter.MatchesText(card.Title, card.Subtitle);
+                card.IsVisible = columnMatches || Filter.MatchesText(card.Title, card.Subtitle);
                 anyCardVisible |= card.IsVisible;
             }
-            column.IsVisible = anyCardVisible || Filter.MatchesText(column.Title, column.Subtitle);
+            column.IsVisible = columnMatches || anyCardVisible;
         }
     }
 
