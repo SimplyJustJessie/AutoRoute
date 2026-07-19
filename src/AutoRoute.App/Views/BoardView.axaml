@@ -89,6 +89,35 @@
                     <ToggleSwitch Classes="compact" IsChecked="{Binding Filter.ShowMonitors}"
                                   ToolTip.Tip="Show each sink's monitor as a draggable Source" />
 
+                    <!-- Autostart: set AutoRoute to start at login, self-detecting its own path. -->
+                    <Button Classes="icon" Name="AutostartButton"
+                            IsVisible="{Binding CanManageAutostart}"
+                            ToolTip.Tip="Start AutoRoute automatically at login">
+                        <Path Data="{StaticResource IconGear}" />
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="320" Spacing="10" Margin="6"
+                                            DataContext="{Binding Autostart}">
+                                    <TextBlock Classes="sectionLabel" Text="START AT LOGIN" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="body" VerticalAlignment="Center"
+                                                   Text="Start AutoRoute when I log in" />
+                                        <ToggleSwitch Grid.Column="1" Classes="compact"
+                                                      IsChecked="{Binding IsEnabled}"
+                                                      IsEnabled="{Binding !IsBusy}" />
+                                    </Grid>
+                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource FaintBrush}"
+                                               Text="{Binding LaunchTarget, StringFormat='Launches: {0} --background'}" />
+                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource UnsavedBrush}"
+                                               Text="{Binding StatusMessage}"
+                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <Button Classes="icon" Name="HelpButton" Margin="4,0,0,0"
                             ToolTip.Tip="What do the card states mean?">
                         <Border Classes="helpBadge">

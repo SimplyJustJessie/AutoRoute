@@ -41,6 +41,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     public SourcesPaletteViewModel Palette { get; }
     public FilterViewModel Filter { get; } = new();
 
+    /// <summary>The "Start at login" toggle VM, or null when no autostart service is wired (mocks/design).</summary>
+    public AutostartViewModel? Autostart { get; }
+
+    /// <summary>Gates the autostart toolbar affordance — hidden in mock/design compositions.</summary>
+    public bool CanManageAutostart => Autostart is not null;
+
     [ObservableProperty]
     private bool _hasColumns;
 
@@ -67,7 +73,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         IVirtualSinkController? sinkController = null,
         AppNotices? notices = null,
         ILogger<BoardViewModel>? log = null,
-        PulseConfImporter? importer = null)
+        PulseConfImporter? importer = null,
+        AutostartService? autostart = null)
     {
         _graph = graph;
         _linker = linker;
@@ -78,6 +85,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _notices = notices;
         _log = log;
         _importer = importer;
+        if (autostart is not null)
+            Autostart = new AutostartViewModel(autostart);
         Palette = new SourcesPaletteViewModel(this);
 
         Filter.Changed += (_, _) => ApplyFilter();
@@ -97,6 +106,9 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
         RefreshLegacyNotice();
         RebuildFromCurrent();
+
+        if (Autostart is not null)
+            await Autostart.RefreshAsync().ConfigureAwait(true);
     }
 
     private void RefreshLegacyNotice()

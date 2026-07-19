@@ -100,6 +100,9 @@ public static class HostFactory
 
         // --- App layer ------------------------------------------------------------------------
         services.AddSingleton<AppNotices>();
+        services.AddSingleton(sp => new AutostartService(
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetService<ILogger<AutostartService>>()));
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<RoutingWorker>();
         services.AddHostedService(sp => sp.GetRequiredService<RoutingWorker>());
