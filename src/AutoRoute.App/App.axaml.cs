@@ -134,9 +134,23 @@ public partial class App : Application
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
-        // Hide-on-close: the app keeps running in the tray. A real shutdown (tray Quit / signal) sets
-        // _quitting first, so the close is allowed through.
+        // A real shutdown (tray Quit / signal) sets _quitting first, so the close is allowed through.
         if (_quitting) return;
+
+        // The desktop session is logging out or the PC is restarting: the session manager asks the
+        // window to close as part of teardown. Vetoing that (as hide-on-close does below) makes
+        // Avalonia's X11 session-management client refuse the request, which KDE/GNOME report as
+        // "Logout canceled by <app>" and abort the restart. So on a shutdown-initiated close, don't
+        // hide — run the one graceful teardown and let the window close so the whole app exits.
+        if (e.CloseReason is WindowCloseReason.OSShutdown or WindowCloseReason.ApplicationShutdown)
+        {
+            // Let this close proceed (no Cancel), and run the teardown on the next dispatcher turn so
+            // we don't re-enter desktop.Shutdown() while the window is still mid-close.
+            Dispatcher.UIThread.Post(() => _shutdown?.RequestOnce());
+            return;
+        }
+
+        // Ordinary user close (the window's X button): hide to the tray and keep running.
         e.Cancel = true;
         _mainWindow?.Hide();
     }
