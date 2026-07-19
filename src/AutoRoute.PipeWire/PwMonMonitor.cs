@@ -15,10 +15,20 @@ namespace AutoRoute.PipeWire;
 /// signal. If pw-mon dies, it auto-respawns with exponential backoff and forces one
 /// <see cref="Changed"/> so the consumer does a full reload (nothing is missed across the gap).
 /// pw-mon output is only ever classified as trigger/no-trigger, never parsed into a graph.
+///
+/// pw-mon runs with <c>--hide-props --hide-params</c>: with them the same event stream shrinks
+/// ~40× (measured: 1.07 MB → 26 KB per 10 s on a desktop with active audio). The full output was
+/// the app's single largest CPU cost — every line-buffered write crossed epoll, a threadpool
+/// dispatch and a string allocation before the filter could even look at it, burning ~35% of a
+/// core around the clock. The headers, id and type lines the filter needs all survive.
 /// </summary>
 public sealed class PwMonMonitor : IGraphMonitor
 {
     public const string Tool = "pw-mon";
+
+    // -N: never emit ANSI colors, so the filter's prefix matching can't meet an escape code.
+    private static readonly string[] ToolArgs = { "--hide-props", "--hide-params", "--no-colors" };
+
     private static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan DefaultMaxWait = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MinBackoff = TimeSpan.FromMilliseconds(250);
@@ -51,7 +61,7 @@ public sealed class PwMonMonitor : IGraphMonitor
         while (!ct.IsCancellationRequested)
         {
             var exited = new TaskCompletionSource();
-            var proc = new LongRunningProcess(Tool, Array.Empty<string>(), _log);
+            var proc = new LongRunningProcess(Tool, ToolArgs, _log);
             proc.LineReceived += OnLine;
             proc.Exited += code =>
             {
