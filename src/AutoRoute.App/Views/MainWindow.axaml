@@ -13,7 +13,12 @@
         MinWidth="720" MinHeight="420"
         Background="{DynamicResource BgBrush}"
         Icon="/Assets/tray-icon.png"
-        Title="AutoRoute">
+        Title="AutoRoute"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
 
+    <!-- Client-side decorations: the app's own toolbar is the title bar (single row), so the
+         window's caption controls live in BoardView's toolbar. See BoardView.axaml.cs. -->
     <views:BoardView />
 </Window>
