@@ -7,7 +7,12 @@ Exactly one instance runs at a time — launching it again just reveals the exis
 > These are **manual** steps. AutoRoute never installs, enables, or writes into your home on its
 > own — enabling autostart is your decision.
 
-## 1. Publish the binary
+## 1. Put AutoRoute on your PATH as `AutoRoute`
+
+Both autostart methods below launch `%h/.local/bin/AutoRoute --background`, so first make that name
+exist. Pick the option that matches how you installed AutoRoute.
+
+### Option A — from source (publish the binary)
 
 The published entry executable is `AutoRoute.App` (the assembly name; it drives Avalonia's
 `avares://AutoRoute.App/...` resource URIs, so it is intentionally **not** renamed). Publish the
@@ -29,6 +34,26 @@ ln -sf ~/.local/share/autoroute/AutoRoute.App ~/.local/bin/AutoRoute
 # Sanity check (window-free): the DI graph resolves and the app exits 0.
 AutoRoute --check-host
 ```
+
+### Option B — from the AppImage
+
+The AppImage needs no publish and no .NET, and its launcher forwards arguments straight through
+(`--background` and friends work). A single symlink is all autostart needs — keep the image file
+wherever you like; the symlink points at it:
+
+```bash
+# Wherever you keep it — adjust the path to your downloaded image.
+chmod +x ~/Apps/AutoRoute-x86_64.AppImage
+mkdir -p ~/.local/bin
+ln -sf ~/Apps/AutoRoute-x86_64.AppImage ~/.local/bin/AutoRoute
+
+# Same window-free sanity check as Option A.
+AutoRoute --check-host
+```
+
+> AppImages self-mount via FUSE. On a host without FUSE, install it (`fuse2` / `libfuse2`) or
+> extract once (`~/Apps/AutoRoute-x86_64.AppImage --appimage-extract`) and point the symlink at the
+> extracted `squashfs-root/AppRun` instead.
 
 Run modes:
 
@@ -85,9 +110,14 @@ If you prefer the freedesktop autostart mechanism over systemd, drop a `.desktop
 [Desktop Entry]
 Type=Application
 Name=AutoRoute
-Exec=%h/.local/bin/AutoRoute --background
+Exec=AutoRoute --background
 X-GNOME-Autostart-enabled=true
 ```
+
+`Exec=` resolves a bare command against `$PATH`, so this relies on `~/.local/bin` being on your PATH
+(step 1). It is **not** the same as a systemd unit: `.desktop` files do not expand `~` or systemd
+specifiers like `%h`, so if `~/.local/bin` isn't on your session PATH, use the absolute path
+(`Exec=/home/<you>/.local/bin/AutoRoute --background`).
 
 (systemd gives you restart-on-failure and `journalctl` integration; XDG autostart is simpler but has
 neither.)

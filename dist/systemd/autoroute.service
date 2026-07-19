@@ -9,7 +9,8 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-# Adjust the path if you install the published binary somewhere else on your PATH.
+# %h/.local/bin/AutoRoute must exist first — either a published binary or a symlink to the
+# AppImage (dist/README.md step 1). Adjust the path if you installed it elsewhere.
 ExecStart=%h/.local/bin/AutoRoute --background
 Restart=on-failure
 RestartSec=2
