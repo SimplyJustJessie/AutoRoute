@@ -218,7 +218,12 @@
                     <Border Classes="captionSep" />
                     <Button Classes="icon caption" Name="MinimizeButton" Margin="2,0,0,0"
                             Click="OnMinimizeClick" ToolTip.Tip="Minimize">
-                        <Path Data="{StaticResource IconWindowMin}" />
+                        <!-- Fixed centered size (inline, so it beats the shared Button.icon Path
+                             style): the min glyph is a wide, ultra-thin bar and Uniform stretch would
+                             top-align it, leaving the dash high vs. the maximize/close glyphs. -->
+                        <Path Data="{StaticResource IconWindowMin}" Stretch="Fill"
+                              Width="11" Height="1.4"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Button>
                     <Button Classes="icon caption" Name="MaximizeButton"
                             Click="OnMaximizeClick" ToolTip.Tip="Maximize">
