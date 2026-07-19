@@ -48,7 +48,10 @@ public sealed class PwDumpReader
     /// </summary>
     public async Task<PwGraph> LoadAsync(CancellationToken ct = default)
     {
-        var result = await _runner.RunAsync(Tool, Array.Empty<string>(), throwOnNonZero: true, ct)
+        // Bytes, not a string: the payload is ~half a megabyte on a real desktop, and a string
+        // that size lands on the Large Object Heap on every reload. The pooled buffer lives
+        // exactly as long as the parse.
+        using var result = await _runner.RunBytesAsync(Tool, Array.Empty<string>(), throwOnNonZero: true, ct)
             .ConfigureAwait(false);
 
         try
@@ -69,10 +72,15 @@ public sealed class PwDumpReader
     /// Pure parser: turn a pw-dump JSON payload into a <see cref="PwGraph"/>.
     /// Throws <see cref="JsonException"/> on structurally invalid JSON (callers that must
     /// stay alive should use <see cref="LoadAsync"/>, which swallows that and keeps last-good).
+    /// Convenience overload for tests/fixtures; the hot path is the UTF-8 overload.
     /// </summary>
     public static PwGraph Parse(string json)
+        => Parse(System.Text.Encoding.UTF8.GetBytes(json));
+
+    /// <inheritdoc cref="Parse(string)"/>
+    public static PwGraph Parse(ReadOnlyMemory<byte> utf8Json)
     {
-        using var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(utf8Json);
         var root = doc.RootElement;
 
         // Nodes are built without ports first, then rebuilt once ports are grouped by node.id.
