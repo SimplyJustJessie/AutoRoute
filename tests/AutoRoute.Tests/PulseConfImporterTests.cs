@@ -79,6 +79,41 @@ public sealed class PulseConfImporterTests : IDisposable
     }
 
     [Fact]
+    public async Task DetectAsync_reports_pending_sinks_without_writing_anything()
+    {
+        File.Copy(Path.Combine(Fixtures.Dir, "virtual-sinks.conf.sample"),
+            Path.Combine(_confD, "virtual-sinks.conf"));
+
+        using var store = new RuleStore(_rulesPath);
+        await store.LoadAsync();
+
+        var detection = await NewImporter().DetectAsync(store);
+
+        Assert.Equal(new[] { "MusicSink", "DiscordSink", "GameSink", "DesktopSink" },
+            detection.Pending.Select(s => s.Name).ToArray());
+        Assert.Single(detection.Files);
+        // Detect + offer: rules.json untouched — no file even written yet.
+        Assert.Empty(store.Current.VirtualSinks);
+        Assert.False(File.Exists(_rulesPath));
+    }
+
+    [Fact]
+    public async Task DetectAsync_after_import_reports_no_pending_but_still_lists_the_file()
+    {
+        File.Copy(Path.Combine(Fixtures.Dir, "virtual-sinks.conf.sample"),
+            Path.Combine(_confD, "virtual-sinks.conf"));
+
+        using var store = new RuleStore(_rulesPath);
+        await store.LoadAsync();
+        await NewImporter().ImportAsync(store); // the user clicked Import
+
+        var detection = await NewImporter().DetectAsync(store);
+
+        Assert.Empty(detection.Pending);            // everything's declared now
+        Assert.Single(detection.Files);             // …but the file still warrants the retire warning
+    }
+
+    [Fact]
     public async Task ImportAsync_appends_undeclared_sinks_and_reports_the_legacy_file()
     {
         File.Copy(Path.Combine(Fixtures.Dir, "virtual-sinks.conf.sample"),

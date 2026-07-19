@@ -16,15 +16,26 @@ namespace AutoRoute.Engine;
 public sealed record ImportedSink(string Name, string? Description, bool Mono);
 
 /// <summary>
-/// Outcome of a startup import: the specs actually appended to the declared set, and the legacy
-/// files that still declare null sinks — surfaced as a warning until the user retires them
-/// (ADR-0011: import + warn only; AutoRoute never edits or removes the user's files).
+/// Outcome of a user-triggered import: the specs actually appended to the declared set, and the
+/// legacy files that still declare null sinks — surfaced as a warning until the user retires them
+/// (ADR-0011: AutoRoute never edits or removes the user's files).
 /// </summary>
 public sealed record ImportResult(
     IReadOnlyList<VirtualSinkSpec> Imported,
     IReadOnlyList<string> LegacyFilesStillPresent)
 {
     public static ImportResult Empty { get; } = new(Array.Empty<VirtualSinkSpec>(), Array.Empty<string>());
+}
+
+/// <summary>
+/// Read-only startup detection (ADR-0011, revised: detect + OFFER — nothing is written until the
+/// user asks): the legacy-declared sinks not yet in the declared set, and the files declaring them.
+/// </summary>
+public sealed record LegacyDetection(
+    IReadOnlyList<ImportedSink> Pending,
+    IReadOnlyList<string> Files)
+{
+    public static LegacyDetection Empty { get; } = new(Array.Empty<ImportedSink>(), Array.Empty<string>());
 }
 
 /// <summary>
@@ -127,16 +138,17 @@ public sealed class PulseConfImporter
     }
 
     /// <summary>
-    /// Scans the conf.d directory and appends every not-yet-declared legacy sink to the store in
-    /// one save. Idempotent: a second run finds everything already declared and appends nothing.
+    /// Read-only scan: which legacy sinks COULD be imported (declared by other conf files, absent
+    /// from the store's declared set) and which files declare them. Never writes anything — run at
+    /// startup to drive the offer banner; the actual import happens only via <see cref="ImportAsync"/>.
     /// </summary>
-    public async Task<ImportResult> ImportAsync(IRuleStore store, CancellationToken ct = default)
+    public async Task<LegacyDetection> DetectAsync(IRuleStore store, CancellationToken ct = default)
     {
-        if (!Directory.Exists(_confDDirectory)) return ImportResult.Empty;
+        if (!Directory.Exists(_confDDirectory)) return LegacyDetection.Empty;
 
-        var imported = new List<VirtualSinkSpec>();
+        var pending = new List<ImportedSink>();
         var legacyFiles = new List<string>();
-        var declaredNames = store.Current.VirtualSinks.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
+        var seenNames = store.Current.VirtualSinks.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
 
         foreach (var file in Directory.EnumerateFiles(_confDDirectory, "*.conf").OrderBy(f => f, StringComparer.Ordinal))
         {
@@ -164,14 +176,27 @@ public sealed class PulseConfImporter
                     _log.LogWarning("skipping legacy sink with unusable name {Name} in {File}", sink.Name, file);
                     continue;
                 }
-                if (!declaredNames.Add(sink.Name)) continue; // already declared (or duplicated across files)
-
-                var description = SinkNameValidator.IsValidDescription(sink.Description) ? sink.Description! : sink.Name;
-                imported.Add(new VirtualSinkSpec(
-                    Guid.NewGuid().ToString("N"), sink.Name, description,
-                    sink.Mono ? SinkChannels.Mono : SinkChannels.Stereo));
+                if (seenNames.Add(sink.Name)) pending.Add(sink);
             }
         }
+
+        return new LegacyDetection(pending, legacyFiles);
+    }
+
+    /// <summary>
+    /// USER-TRIGGERED import (never runs unprompted): appends every detected-but-undeclared legacy
+    /// sink to the store in one save. Idempotent: a second run finds everything already declared
+    /// and appends nothing.
+    /// </summary>
+    public async Task<ImportResult> ImportAsync(IRuleStore store, CancellationToken ct = default)
+    {
+        var detection = await DetectAsync(store, ct).ConfigureAwait(false);
+
+        var imported = detection.Pending.Select(sink => new VirtualSinkSpec(
+            Guid.NewGuid().ToString("N"),
+            sink.Name,
+            SinkNameValidator.IsValidDescription(sink.Description) ? sink.Description! : sink.Name,
+            sink.Mono ? SinkChannels.Mono : SinkChannels.Stereo)).ToList();
 
         if (imported.Count > 0)
         {
@@ -182,7 +207,7 @@ public sealed class PulseConfImporter
                 imported.Count, string.Join(", ", imported.Select(s => s.Name)));
         }
 
-        return new ImportResult(imported, legacyFiles);
+        return new ImportResult(imported, detection.Files);
     }
 
     /// <summary>

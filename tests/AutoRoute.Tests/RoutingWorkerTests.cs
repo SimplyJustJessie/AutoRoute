@@ -116,6 +116,49 @@ public sealed class RoutingWorkerTests
         }
     }
 
+    [Fact]
+    public async Task Startup_detects_legacy_sinks_but_never_saves()
+    {
+        var confD = Path.Combine(Path.GetTempPath(), "autoroute-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(confD);
+        try
+        {
+            File.Copy(Path.Combine(TestSupport.Fixtures.Dir, "virtual-sinks.conf.sample"),
+                Path.Combine(confD, "virtual-sinks.conf"));
+            var importer = new PulseConfImporter(confD, SinkDropInWriter.FileName);
+            var notices = new AutoRoute.App.Services.AppNotices();
+
+            var graph = new FakeGraphService();
+            var store = new FakeRuleStore();
+            var reconciler = new CountingReconciler();
+            var worker = new RoutingWorker(graph, store, reconciler, new CountingSinkReconciler(),
+                NullLogger<RoutingWorker>.Instance, importer, notices);
+
+            await worker.StartAsync(CancellationToken.None);
+            try
+            {
+                await WaitUntil(() => reconciler.Count >= 1);
+
+                // Detect + offer (ADR-0011 revised): the pending sinks surface via notices, but
+                // startup writes NOTHING to the policy.
+                Assert.Equal(0, store.SaveCount);
+                Assert.Empty(store.Current.VirtualSinks);
+                Assert.Single(notices.LegacySinkFiles);
+                Assert.Equal(new[] { "MusicSink", "DiscordSink", "GameSink", "DesktopSink" },
+                    notices.PendingLegacySinks.ToArray());
+            }
+            finally
+            {
+                await worker.StopAsync(CancellationToken.None);
+                worker.Dispose();
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(confD, recursive: true); } catch { /* best-effort */ }
+        }
+    }
+
     private static async Task WaitUntil(Func<bool> condition, int timeoutMs = 3000)
     {
         var sw = Stopwatch.StartNew();
@@ -146,10 +189,12 @@ public sealed class RoutingWorkerTests
     private sealed class FakeRuleStore : IRuleStore
     {
         public RulesDocument Current { get; private set; } = RulesDocument.Empty;
+        public int SaveCount { get; private set; }
         public event EventHandler<RulesDocument>? Changed;
         public Task<RulesDocument> LoadAsync(CancellationToken ct = default) => Task.FromResult(Current);
         public Task SaveAsync(RulesDocument document, CancellationToken ct = default)
         {
+            SaveCount++;
             Current = document;
             Changed?.Invoke(this, document);
             return Task.CompletedTask;

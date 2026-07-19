@@ -32,6 +32,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private readonly IVirtualSinkController? _sinkController;
     private readonly AppNotices? _notices;
     private readonly ILogger<BoardViewModel>? _log;
+    private readonly PulseConfImporter? _importer;
 
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
@@ -46,12 +47,16 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     [ObservableProperty]
     private string _statusText = "Loading graph…";
 
-    /// <summary>Legacy static conf warning (ADR-0011 migration: warn until the user retires the file).</summary>
+    /// <summary>Legacy static conf notice (ADR-0011, revised: detect + offer; warn until the file is retired).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLegacyNotice))]
     private string _legacyNoticeText = string.Empty;
 
     public bool HasLegacyNotice => LegacyNoticeText.Length > 0;
+
+    /// <summary>True while legacy sinks are detected but not imported — shows the banner's Import button.</summary>
+    [ObservableProperty]
+    private bool _hasPendingLegacyImport;
 
     public BoardViewModel(
         IPwGraphService graph,
@@ -61,7 +66,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         IRuleMatcher matcher,
         IVirtualSinkController? sinkController = null,
         AppNotices? notices = null,
-        ILogger<BoardViewModel>? log = null)
+        ILogger<BoardViewModel>? log = null,
+        PulseConfImporter? importer = null)
     {
         _graph = graph;
         _linker = linker;
@@ -71,6 +77,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _sinkController = sinkController;
         _notices = notices;
         _log = log;
+        _importer = importer;
         Palette = new SourcesPaletteViewModel(this);
 
         Filter.Changed += (_, _) => ApplyFilter();
@@ -95,9 +102,38 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private void RefreshLegacyNotice()
     {
         var files = _notices?.LegacySinkFiles ?? Array.Empty<string>();
-        LegacyNoticeText = files.Count == 0
-            ? string.Empty
-            : $"Sinks are also created statically by {string.Join(", ", files)} — remove the file(s) to let AutoRoute own them (they're already imported).";
+        var pending = _notices?.PendingLegacySinks ?? Array.Empty<string>();
+
+        HasPendingLegacyImport = pending.Count > 0 && _importer is not null;
+        LegacyNoticeText = (files.Count, pending.Count) switch
+        {
+            (0, _) => string.Empty,
+            // Detect + offer: nothing was written — the Import button is the only way in.
+            (_, > 0) =>
+                $"{string.Join(", ", files)} declares {pending.Count} sink(s) not managed by AutoRoute: {string.Join(", ", pending)}.",
+            // Everything's imported; the static file is the last thing left to retire.
+            _ =>
+                $"Sinks are also created statically by {string.Join(", ", files)} — remove the file(s) to let AutoRoute own them.",
+        };
+    }
+
+    /// <summary>Banner action: import the detected legacy sinks (the ONLY path that writes them).</summary>
+    [RelayCommand]
+    private async Task ImportLegacySinks()
+    {
+        if (_importer is null) return;
+        try
+        {
+            var result = await _importer.ImportAsync(_ruleStore).ConfigureAwait(true);
+            _notices?.SetLegacyState(result.LegacyFilesStillPresent, Array.Empty<string>());
+            _log?.LogInformation("imported {Count} legacy sink(s) on request", result.Imported.Count);
+        }
+        catch (Exception ex)
+        {
+            _log?.LogWarning(ex, "legacy sink import failed");
+        }
+        RefreshLegacyNotice();
+        RebuildFromCurrent();
     }
 
     // GraphUpdated fires on a background thread — marshal before touching ObservableCollections.
@@ -421,12 +457,14 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             };
         }).ConfigureAwait(true);
 
-        // Instant effect: unload every module carrying this sink_name (SinkReconciler's stale pass
-        // is the safety net if this races a restart).
+        // Instant effect: unload OUR modules for this sink_name — tagged only. A sink that was
+        // imported from a still-present legacy conf has an untagged module owned by that file;
+        // un-declaring it must not kill the user's live sink. Our own creations are always tagged,
+        // so their teardown is unchanged. (SinkReconciler's stale pass is the safety net.)
         try
         {
             var modules = await _sinkController.ListNullSinkModulesAsync().ConfigureAwait(true);
-            foreach (var module in modules.Where(m => m.SinkName == sinkName))
+            foreach (var module in modules.Where(m => m.SinkName == sinkName && m.IsAutoRouteTagged))
                 await _sinkController.UnloadAsync(module.ModuleIndex).ConfigureAwait(true);
         }
         catch { /* transient — SinkReconciler self-heals next pass */ }

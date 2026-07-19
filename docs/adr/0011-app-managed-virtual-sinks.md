@@ -17,9 +17,9 @@
 
 **Double-creation guard:** before loading a declared-but-absent sink, the reconciler checks `pactl list modules short` for an existing `module-null-sink` with that `sink_name` — covering the boot race (drop-in loads while AutoRoute starts) and the load→snapshot window. Gate step 6 documents that a duplicate `load-module` would otherwise create a second same-named sink.
 
-**Migration:** at startup AutoRoute parses the legacy conf files (tolerantly, skip-on-failure) and imports their sinks into the declared set, but only **warns** about files still creating sinks statically — removing them stays the user's action, so AutoRoute never edits config it doesn't own.
+**Migration (revised after the first Part B run — detect + OFFER):** at startup AutoRoute only *detects* the legacy conf files' sinks (tolerantly, skip-on-failure) and surfaces them in a banner with an **Import** button plus a journal line; nothing is written to `rules.json` until the user clicks. Files still creating sinks statically keep producing a **warning** until removed — retiring them stays the user's action, and AutoRoute never edits config it doesn't own. (The original decision auto-imported at startup; user feedback moved the write behind an explicit action.)
 
-**Deleting a sink** prompts with the Rules/Suppressions referencing it and offers to delete them in the same save (default on); declining leaves them dormant — they re-match if a same-named sink ever returns.
+**Deleting a sink** prompts with the Rules/Suppressions referencing it and offers to delete them in the same save (default on); declining leaves them dormant — they re-match if a same-named sink ever returns. The instant-effect unload is **tag-scoped**: only `autoroute.managed` modules are unloaded, so un-declaring a sink whose legacy conf still owns the live module never kills the user's running sink.
 
 **Consequences.** Removes the manual config/script and makes sink management a first-class in-app action. Virtual sinks remain AutoRoute-independent at boot via the generated drop-in; runtime create/delete is instant via pactl; the two paths cannot double-create.
 

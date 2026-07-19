@@ -141,12 +141,20 @@
             </Grid>
         </Border>
 
-        <!-- Legacy static-conf warning (ADR-0011 migration: warn until the user retires the file) -->
+        <!-- Legacy static-conf notice (ADR-0011, revised: detect + offer — import only on click) -->
         <Border Grid.Row="1" Classes="panel" BorderThickness="0,0,0,1" Padding="14,8"
                 IsVisible="{Binding HasLegacyNotice}">
-            <TextBlock Classes="legendText" TextWrapping="Wrap"
-                       Foreground="{DynamicResource UnsavedBrush}"
-                       Text="{Binding LegacyNoticeText}" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="legendText" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Foreground="{DynamicResource UnsavedBrush}"
+                           Text="{Binding LegacyNoticeText}" />
+                <Button Grid.Column="1" Classes="chipAction" Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding HasPendingLegacyImport}"
+                        Content="Import into AutoRoute"
+                        Command="{Binding ImportLegacySinksCommand}"
+                        ToolTip.Tip="Declare these sinks in AutoRoute so they get the VIRTUAL treatment — nothing is imported until you click" />
+            </Grid>
         </Border>
 
         <!-- ===================== Palette + Board ===================== -->

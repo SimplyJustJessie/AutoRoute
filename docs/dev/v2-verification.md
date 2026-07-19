@@ -52,11 +52,12 @@ dotnet run --project src/AutoRoute.App -- --background &   # tray-only; keep thi
 sleep 3
 ```
 
-PASS when: build + tests green, app runs (process alive), and — **legacy import check** — if the
-user's static `virtual-sinks.conf` still exists in `~/.config/pipewire/pipewire-pulse.conf.d/`,
-`jq '.virtualSinks' "$RULES"` now lists its sinks (GameSink, MusicSink, DiscordSink, DesktopSink)
-and the app log (stdout of the job) contains a warning naming that file. If the file was already
-removed, `virtualSinks` may be empty — note which case applied.
+PASS when: build + tests green, app runs (process alive), and — **legacy DETECTION check** — startup
+must **never modify** `virtualSinks` (compare `jq -S '.virtualSinks' "$RULES"` before and after
+launch: identical). If the user's static `virtual-sinks.conf` still exists in
+`~/.config/pipewire/pipewire-pulse.conf.d/`, the app log (stdout of the job) must contain (a) an
+info line listing its sinks as "available to import" (only for sinks not already declared) and
+(b) a warning naming the file. Importing is exclusively the banner's Import button (Part B).
 
 **Shadow-exclusion check** (only when the legacy file is present): the generated `$DROPIN` must
 **NOT** contain the legacy names — while another conf file boots those sinks, AutoRoute's drop-in
@@ -158,19 +159,29 @@ stdout (reconcile warnings, backoff messages).
 
 ---
 
-## Part B — human checklist (GUI flyouts; ~3 minutes)
+## Part B — human checklist (GUI flyouts; ~4 minutes)
 
 Run `dotnet run --project src/AutoRoute.App` (windowed) and verify:
 
 1. **Create:** "+ New Sink" in the toolbar → flyout. Type an invalid name (`bad name!`) → inline
-   validation message, Create disabled. Type `TestSink`, description `V2 Test Sink` → Create. The
-   column appears within ~1 s **with a VIRTUAL chip** in its header.
+   validation message, Create disabled. Type `TestSink`, description `V2 Test Sink` → **Create
+   closes the flyout AND creates the sink** (this was the dead-button bug): the column appears
+   within ~1 s **with a VIRTUAL chip** in its header.
 2. **Duplicate guard:** open the flyout again, type `TestSink` → "already declared" message.
 3. **Delete impact:** drag any Source onto the TestSink column (creates a rule), then click the
    column's **×** button → the confirm flyout lists that rule with an "Also delete these
-   rules/suppressions" checkbox, default **checked**. Confirm → column disappears, and
+   rules/suppressions" checkbox, default **checked**. **Confirm closes the flyout AND deletes**
+   (the other dead button): column disappears, and
    `jq '.rules, .virtualSinks' ~/.config/autoroute/rules.json` shows both gone (one save).
-4. **Banner:** if the legacy `virtual-sinks.conf` is restored temporarily, relaunching shows the
-   amber banner naming the file; removing the file and relaunching clears it.
-5. **Unmanaged columns** (hardware sink, Discord's recStream): **no** VIRTUAL chip, **no** ×
+4. **Legacy banner (detect + offer):** with `virtual-sinks.conf` present and its sinks NOT in
+   `rules.json`, the amber banner reads "…declares N sinks not managed by AutoRoute…" with an
+   **Import into AutoRoute** button. Clicking it writes them to `virtualSinks` (check with jq),
+   the columns gain VIRTUAL chips, and the banner switches to the remove-the-file warning.
+   Removing the file and relaunching clears the banner entirely.
+5. **Un-declare safety:** delete one of the imported sinks (× button) while `virtual-sinks.conf`
+   still exists → the declaration leaves `rules.json` but the **live sink survives** (its module
+   belongs to the legacy file; only tagged modules are unloaded).
+6. **Long titles:** a column with a long hardware name (e.g. "Navi 31 HDMI/DP Audio…") ellipsizes
+   instead of overflowing; hovering the title shows the full name as a tooltip.
+7. **Unmanaged columns** (hardware sink, Discord's recStream): **no** VIRTUAL chip, **no** ×
    button.

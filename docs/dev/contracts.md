@@ -266,9 +266,11 @@ sealed class SinkDropInWriter {                          // owns pipewire-pulse.
     static string DefaultPath();  static string Generate(IReadOnlyList<VirtualSinkSpec>);
     Task SyncAsync(IReadOnlyList<VirtualSinkSpec>, CancellationToken ct = default);   // write-if-changed, atomic
 }
-sealed class PulseConfImporter {                         // one-shot legacy import at startup
+sealed class PulseConfImporter {                         // legacy conf handling (detect + OFFER)
     static IReadOnlyList<ImportedSink> Parse(string confText);          // pure, tolerant
-    Task<ImportResult> ImportAsync(IRuleStore store, CancellationToken ct = default);
+    IReadOnlySet<string> ScanExternalSinkNames();                       // names other conf files boot (shadow set)
+    Task<LegacyDetection> DetectAsync(IRuleStore store, ct);            // read-only; startup runs THIS
+    Task<ImportResult> ImportAsync(IRuleStore store, ct);               // writes; user-triggered only (banner button)
 }
 static class SinkNameValidator { bool IsValidName(string?); bool IsValidDescription(string?); }
 static class AtomicFile { Task WriteAsync(string path, string text, UnixFileMode mode, ct); }

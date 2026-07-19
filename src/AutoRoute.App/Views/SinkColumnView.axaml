@@ -27,15 +27,21 @@
                               VerticalAlignment="Center" Margin="0,0,8,0" />
 
                         <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Classes="columnTitle body" Text="{Binding Title}" />
-                                <Border Classes="chip managed" VerticalAlignment="Center"
+                            <!-- Left-aligned Grid (NOT a horizontal StackPanel): the star column
+                                 caps the title at the available width so CharacterEllipsis can
+                                 engage, while the chip hugs the (possibly trimmed) title. -->
+                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                <TextBlock Classes="columnTitle body" Text="{Binding Title}"
+                                           ToolTip.Tip="{Binding Title}" />
+                                <Border Grid.Column="1" Classes="chip managed" Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
                                         IsVisible="{Binding IsManagedSink}"
                                         ToolTip.Tip="A virtual sink AutoRoute owns — created at boot by the generated config and kept alive by the watcher">
                                     <TextBlock Text="VIRTUAL" />
                                 </Border>
-                            </StackPanel>
+                            </Grid>
                             <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
+                                       ToolTip.Tip="{Binding Subtitle}"
                                        IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
 

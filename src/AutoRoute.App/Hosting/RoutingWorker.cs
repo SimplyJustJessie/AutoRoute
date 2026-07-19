@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoRoute.App.Services;
@@ -83,7 +84,7 @@ public sealed class RoutingWorker : BackgroundService
         // Load rules once (also starts the rules.json FileSystemWatcher), then subscribe BEFORE
         // starting the graph so the initial snapshot triggers the first reconcile.
         await _store.LoadAsync(stoppingToken).ConfigureAwait(false);
-        await ImportLegacySinksAsync(stoppingToken).ConfigureAwait(false);
+        await DetectLegacySinksAsync(stoppingToken).ConfigureAwait(false);
         _graph.GraphUpdated += OnGraphUpdated;
         _store.Changed += OnRulesChanged;
 
@@ -112,28 +113,37 @@ public sealed class RoutingWorker : BackgroundService
     }
 
     /// <summary>
-    /// One-shot startup import of the user's static virtual-sink conf files (ADR-0011: detect +
-    /// import; retiring the files stays manual, so any that still exist are surfaced as a notice
-    /// and logged — tray-only mode gets them via journalctl). Never blocks startup.
+    /// One-shot startup DETECTION of the user's static virtual-sink conf files (ADR-0011, revised:
+    /// detect + offer — nothing is written to rules.json unprompted; the UI's Import action is the
+    /// only writer). Findings are surfaced as a notice and logged, so tray-only mode still sees
+    /// them via journalctl. Never blocks startup.
     /// </summary>
-    private async Task ImportLegacySinksAsync(CancellationToken ct)
+    private async Task DetectLegacySinksAsync(CancellationToken ct)
     {
         if (_importer is null) return;
         try
         {
-            var result = await _importer.ImportAsync(_store, ct).ConfigureAwait(false);
-            _notices?.SetLegacySinkFiles(result.LegacyFilesStillPresent);
-            foreach (var file in result.LegacyFilesStillPresent)
+            var detection = await _importer.DetectAsync(_store, ct).ConfigureAwait(false);
+            _notices?.SetLegacyState(
+                detection.Files,
+                detection.Pending.Select(s => s.Name).ToList());
+
+            if (detection.Pending.Count > 0)
+            {
+                _log.LogInformation(
+                    "{Count} legacy sink(s) available to import ({Names}) — use the board's Import action",
+                    detection.Pending.Count, string.Join(", ", detection.Pending.Select(s => s.Name)));
+            }
+            foreach (var file in detection.Files)
             {
                 _log.LogWarning(
-                    "{File} still creates null sinks statically; remove it to let AutoRoute own them " +
-                    "(its sinks are imported and persist via the generated drop-in)", file);
+                    "{File} still creates null sinks statically; remove it to let AutoRoute own them", file);
             }
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "legacy sink import failed; continuing without it");
+            _log.LogWarning(ex, "legacy sink detection failed; continuing without it");
         }
     }
 
