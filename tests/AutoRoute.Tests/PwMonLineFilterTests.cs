@@ -41,12 +41,70 @@ public class PwMonLineFilterTests
     }
 
     [Fact]
-    public void Removed_records_always_trigger()
+    public void Removal_of_a_known_relevant_id_triggers()
     {
-        // Removal records don't reliably carry a type line — never risk missing one.
         var filter = new PwMonLineFilter();
-        Assert.True(filter.ShouldTrigger("removed:"));
-        Assert.True(filter.ShouldTrigger("removed:"));
+        Assert.False(filter.ShouldTrigger("added:"));
+        Assert.False(filter.ShouldTrigger("\tid: 55"));
+        Assert.True(filter.ShouldTrigger("\ttype: PipeWire:Interface:Port (version 3)"));
+
+        Assert.False(filter.ShouldTrigger("removed:"));
+        Assert.True(filter.ShouldTrigger("\tid: 55"));
+    }
+
+    [Fact]
+    public void Removal_of_a_known_irrelevant_id_stays_silent()
+    {
+        var filter = new PwMonLineFilter();
+        Assert.False(filter.ShouldTrigger("added:"));
+        Assert.False(filter.ShouldTrigger("\tid: 96"));
+        Assert.False(filter.ShouldTrigger("\ttype: PipeWire:Interface:Client (version 3)"));
+
+        Assert.False(filter.ShouldTrigger("removed:"));
+        Assert.False(filter.ShouldTrigger("\tid: 96"));
+    }
+
+    [Fact]
+    public void Removal_of_an_unknown_id_fails_open()
+    {
+        // Never-seen id (e.g. filter started mid-stream): can't classify — never risk missing one.
+        var filter = new PwMonLineFilter();
+        Assert.False(filter.ShouldTrigger("removed:"));
+        Assert.True(filter.ShouldTrigger("\tid: 12345"));
+    }
+
+    [Fact]
+    public void Transient_client_churn_cycle_stays_silent()
+    {
+        // The in-the-wild pattern that kept the old filter busy: the same Client id
+        // added/changed/removed several times a second — every removal cost a reload.
+        var filter = new PwMonLineFilter();
+        for (var i = 0; i < 10; i++)
+        {
+            Assert.False(filter.ShouldTrigger("added:"));
+            Assert.False(filter.ShouldTrigger("\tid: 96"));
+            Assert.False(filter.ShouldTrigger("\tpermissions: rwxm-"));
+            Assert.False(filter.ShouldTrigger("\ttype: PipeWire:Interface:Client (version 3)"));
+            Assert.False(filter.ShouldTrigger("changed:"));
+            Assert.False(filter.ShouldTrigger("\tid: 96"));
+            Assert.False(filter.ShouldTrigger("\ttype: PipeWire:Interface:Client (version 3)"));
+            Assert.False(filter.ShouldTrigger("removed:"));
+            Assert.False(filter.ShouldTrigger("\tid: 96"));
+        }
+    }
+
+    [Fact]
+    public void Reset_forgets_remembered_ids()
+    {
+        var filter = new PwMonLineFilter();
+        Assert.False(filter.ShouldTrigger("added:"));
+        Assert.False(filter.ShouldTrigger("\tid: 96"));
+        Assert.False(filter.ShouldTrigger("\ttype: PipeWire:Interface:Client (version 3)"));
+
+        filter.Reset(); // fresh pw-mon: ids from the previous process mean nothing
+
+        Assert.False(filter.ShouldTrigger("removed:"));
+        Assert.True(filter.ShouldTrigger("\tid: 96"));
     }
 
     [Fact]
