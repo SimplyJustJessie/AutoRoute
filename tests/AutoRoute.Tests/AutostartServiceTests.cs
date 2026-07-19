@@ -30,6 +30,7 @@ public sealed class AutostartServiceTests : IDisposable
     {
         var runner = new FakeProcessRunner()
             .EnqueueStdout("")   // daemon-reload
+            .EnqueueStdout("")   // reset-failed
             .EnqueueStdout("");  // enable
 
         var outcome = await Service(runner).EnableAsync();
@@ -39,15 +40,15 @@ public sealed class AutostartServiceTests : IDisposable
 
         var unit = File.ReadAllText(UnitPath);
         Assert.Contains($"ExecStart=\"{Target}\" --background", unit);
-        Assert.Contains("WantedBy=default.target", unit);
+        // GUI/AppImage service: bound to the graphical session, with no FUSE-hostile sandboxing.
+        Assert.Contains("WantedBy=graphical-session.target", unit);
+        Assert.DoesNotContain("NoNewPrivileges=", unit);
+        Assert.DoesNotContain("RestrictNamespaces=", unit);
         Assert.False(File.Exists(DesktopPath));
 
-        Assert.Equal(
-            new[] { "--user", "daemon-reload" },
-            runner.Calls[0].Arguments);
-        Assert.Equal(
-            new[] { "--user", "enable", "autoroute.service" },
-            runner.Calls[1].Arguments);
+        Assert.Equal(new[] { "--user", "daemon-reload" }, runner.Calls[0].Arguments);
+        Assert.Equal(new[] { "--user", "reset-failed", "autoroute.service" }, runner.Calls[1].Arguments);
+        Assert.Equal(new[] { "--user", "enable", "autoroute.service" }, runner.Calls[2].Arguments);
         Assert.All(runner.Calls, c => Assert.Equal("systemctl", c.FileName));
     }
 
@@ -73,6 +74,7 @@ public sealed class AutostartServiceTests : IDisposable
     {
         var runner = new FakeProcessRunner()
             .EnqueueStdout("")                               // daemon-reload ok
+            .EnqueueStdout("")                               // reset-failed
             .EnqueueFailure("Failed to enable unit", exit: 1); // enable refused
 
         var outcome = await Service(runner).EnableAsync();

@@ -153,6 +153,9 @@ public sealed class AutostartService
         // daemon-reload so the manager sees a freshly written/updated unit; enable (not --now).
         if (await TryRunSystemctlAsync(ct, "daemon-reload").ConfigureAwait(false) is null)
             return false; // no systemd user manager here
+        // Clear any latched failure (e.g. a prior broken unit that hit the start limit) so this
+        // enable — and the next login's start — begins from a clean slate. Harmless if not failed.
+        await TryRunSystemctlAsync(ct, "reset-failed", UnitName).ConfigureAwait(false);
         var enable = await TryRunSystemctlAsync(ct, "enable", UnitName).ConfigureAwait(false);
         if (enable is { ExitCode: 0 })
         {
@@ -184,16 +187,26 @@ public sealed class AutostartService
     }
 
     /// <summary>
-    /// The generated systemd user unit. Mirrors <c>dist/systemd/autoroute.service</c>, but with the
-    /// concrete absolute <paramref name="target"/> baked into <c>ExecStart</c> (quoted, so a home
-    /// directory with spaces still parses) instead of the <c>%h/.local/bin/AutoRoute</c> placeholder.
+    /// The generated systemd user unit, with the concrete absolute <paramref name="target"/> baked
+    /// into <c>ExecStart</c> (quoted, so a home directory with spaces still parses).
+    ///
+    /// Two things are deliberately different from a hand-written server unit, because this one must
+    /// launch a <b>GUI/tray app</b> that may be an <b>AppImage</b>:
+    /// <list type="bullet">
+    /// <item>It orders after (and is <c>WantedBy</c>) <c>graphical-session.target</c>, not
+    /// <c>default.target</c> — so the display, session DBus and tray already exist when it starts.</item>
+    /// <item>It sets <b>no</b> sandboxing (<c>NoNewPrivileges</c>, <c>RestrictNamespaces</c>,
+    /// <c>RestrictSUIDSGID</c>, …). Those block the <b>setuid <c>fusermount</c></b> an AppImage uses to
+    /// mount itself, so every start would fail non-zero and trip systemd's start limit.</item>
+    /// </list>
     /// </summary>
     public static string BuildUnitFile(string target) =>
         $"""
         [Unit]
         Description=AutoRoute — automated PipeWire routing manager
         Documentation=https://github.com/SimplyJustJessie/AutoRoute
-        After=pipewire.service wireplumber.service
+        # After graphical-session so the display, session bus and tray are up; after the audio graph.
+        After=graphical-session.target pipewire.service wireplumber.service
         Wants=pipewire.service wireplumber.service
         PartOf=graphical-session.target
 
@@ -201,18 +214,12 @@ public sealed class AutostartService
         Type=simple
         ExecStart="{target}" --background
         Restart=on-failure
-        RestartSec=2
-        NoNewPrivileges=yes
-        RestrictSUIDSGID=yes
-        RestrictNamespaces=yes
-        RestrictRealtime=yes
-        LockPersonality=yes
-        ProtectKernelTunables=yes
-        ProtectKernelModules=yes
-        ProtectControlGroups=yes
+        RestartSec=3
+        # No NoNewPrivileges / RestrictNamespaces / RestrictSUIDSGID: they break the setuid fusermount
+        # an AppImage relies on to mount itself, so every start would fail and hit the start limit.
 
         [Install]
-        WantedBy=default.target
+        WantedBy=graphical-session.target
 
         """;
 

@@ -1,8 +1,9 @@
 [Unit]
 Description=AutoRoute — automated PipeWire routing manager
 Documentation=https://github.com/SimplyJustJessie/AutoRoute
-# PipeWire + WirePlumber are themselves user services; order after them so the graph exists.
-After=pipewire.service wireplumber.service
+# Order after the graphical session (so the display, session DBus and tray exist) and after the
+# audio graph. PipeWire + WirePlumber are themselves user services.
+After=graphical-session.target pipewire.service wireplumber.service
 Wants=pipewire.service wireplumber.service
 # Tie the lifetime to the graphical session so the tray (StatusNotifier/DBus) has a session bus.
 PartOf=graphical-session.target
@@ -16,8 +17,12 @@ Restart=on-failure
 RestartSec=2
 # journald captures stdout/stderr — the app logs one line per record (see journalctl below).
 
-# --- Sandbox hardening (safe for a user service; AutoRoute is control-plane only) -----------
+# --- Sandbox hardening (safe for a PUBLISHED-BINARY user service; AutoRoute is control-plane only) --
 # MemoryDenyWriteExecute is intentionally NOT set: the .NET JIT needs writable+executable pages.
+# !!! AppImage users: DELETE the NoNewPrivileges / RestrictSUIDSGID / RestrictNamespaces lines below.
+#     An AppImage mounts itself with the setuid `fusermount`, which these three block — so every
+#     start would fail and trip systemd's start limit. (The in-app ⚙ toggle writes a unit without
+#     them for exactly this reason.)
 NoNewPrivileges=yes
 RestrictSUIDSGID=yes
 RestrictNamespaces=yes
@@ -28,4 +33,4 @@ ProtectKernelModules=yes
 ProtectControlGroups=yes
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
