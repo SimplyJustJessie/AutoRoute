@@ -1,6 +1,7 @@
 using Avalonia;
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using AutoRoute.App.Hosting;
 using Microsoft.Extensions.Hosting;
 
@@ -8,6 +9,16 @@ namespace AutoRoute.App;
 
 sealed class Program
 {
+    // Once a signal is intercepted (context.Cancel = true) WE own termination. During a full PC
+    // restart the session tears down around us — compositor, DBus session bus (the tray needs it),
+    // and PipeWire all go away — so the graceful path (Avalonia dispatcher, DBus tray dispose, host
+    // StopAsync) can stall. If it does, an intercepted-but-not-exited process blocks the reboot until
+    // systemd/logind escalates to SIGKILL (~90s), which the desktop reports as the app preventing
+    // shutdown. This watchdog force-exits after a short grace period so a reboot is never held up. A
+    // healthy teardown finishes in well under a second, long before the watchdog fires.
+    private static readonly TimeSpan ShutdownWatchdogTimeout = TimeSpan.FromSeconds(5);
+    private static int _signalCount;
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
@@ -83,7 +94,37 @@ sealed class Program
         // Take over from the default disposition (which would kill us and leave a stale socket) and
         // run the same graceful teardown as tray Quit, marshalled to the UI thread by App.
         context.Cancel = true;
+
+        // A second signal — the user/systemd insisting, or a stop timeout escalating — means "go
+        // now": stop intercepting and exit immediately rather than keep the process alive.
+        if (Interlocked.Increment(ref _signalCount) > 1)
+        {
+            Environment.Exit(0);
+            return;
+        }
+
         App.RequestShutdown();
+
+        // Cancelling the default disposition made us responsible for exiting; bound that with a
+        // watchdog so a stalled teardown during a PC restart can never block the reboot.
+        ArmShutdownWatchdog();
+    }
+
+    // A background thread that force-exits if the graceful teardown hasn't finished in time. Being a
+    // background thread, it can't keep the process alive: a clean exit (Main returns) tears it down
+    // with the process, so it only ever fires when the normal path is wedged.
+    private static void ArmShutdownWatchdog()
+    {
+        var watchdog = new Thread(() =>
+        {
+            Thread.Sleep(ShutdownWatchdogTimeout);
+            Environment.Exit(0);
+        })
+        {
+            IsBackground = true,
+            Name = "shutdown-watchdog",
+        };
+        watchdog.Start();
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.
