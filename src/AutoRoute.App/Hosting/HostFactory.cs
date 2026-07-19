@@ -1,3 +1,4 @@
+using System;
 using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
@@ -31,6 +32,13 @@ public static class HostFactory
         });
 
         var services = builder.Services;
+
+        // Bound host teardown: the default IHost shutdown timeout is 30s, so a hosted service that is
+        // slow to stop would block host.StopAsync() (and thus the process exit) for that long. On a PC
+        // restart that stall counts against the reboot; the RoutingWorker cancels promptly and all
+        // rules.json writes are atomic (write-temp + rename), so a tight cap is safe and keeps shutdown
+        // snappy. The Program watchdog is the ultimate backstop if even this is exceeded.
+        services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(3));
 
         // Take process-lifetime ownership away from the default ConsoleLifetime: the Avalonia
         // classic-desktop lifetime + the app's PosixSignalRegistration handle SIGTERM/SIGINT, so a
