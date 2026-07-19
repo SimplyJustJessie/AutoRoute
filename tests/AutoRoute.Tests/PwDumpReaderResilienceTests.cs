@@ -62,6 +62,20 @@ public class PwDumpReaderResilienceTests
     }
 
     [Fact]
+    public void Utf8_overload_parses_identically_to_the_string_overload()
+    {
+        // LoadAsync feeds Parse raw pw-dump bytes (the LOH-avoidance path); the string overload
+        // remains for fixtures. Both must see the same graph.
+        var fromString = PwDumpReader.Parse(Fixtures.PwDumpSampleJson);
+        var fromBytes = PwDumpReader.Parse(System.IO.File.ReadAllBytes(Fixtures.PwDumpSamplePath));
+
+        Assert.Equal(fromString.NodesById.Count, fromBytes.NodesById.Count);
+        Assert.Equal(fromString.PortsById.Count, fromBytes.PortsById.Count);
+        Assert.Equal(fromString.LinksById.Count, fromBytes.LinksById.Count);
+        Assert.True(fromBytes.StructurallyEquals(fromString));
+    }
+
+    [Fact]
     public async Task LoadAsync_keeps_last_good_on_malformed_json()
     {
         var runner = new FakeProcessRunner()

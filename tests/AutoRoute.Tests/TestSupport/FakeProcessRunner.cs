@@ -53,4 +53,16 @@ public sealed class FakeProcessRunner : IProcessRunner
 
         return Task.FromResult(result);
     }
+
+    public async Task<ProcessBytesResult> RunBytesAsync(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        bool throwOnNonZero = true,
+        CancellationToken ct = default)
+    {
+        // Same scripted queue as RunAsync — steps are enqueued as strings, delivered as UTF-8.
+        var result = await RunAsync(fileName, arguments, throwOnNonZero, ct).ConfigureAwait(false);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(result.StdOut);
+        return new ProcessBytesResult(result.ExitCode, bytes, bytes.Length, result.StdErr, pooled: false);
+    }
 }
