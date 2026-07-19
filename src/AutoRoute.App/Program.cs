@@ -57,6 +57,19 @@ sealed class Program
             return 0;
         }
 
+        // === Don't let a tray app veto logout (Wayland/XWayland + X11) ================
+        // Under a Wayland session Avalonia runs via XWayland and, when SESSION_MANAGER is set,
+        // registers as an X11 session-management (XSMP) client. On logout/restart the session manager
+        // asks each client to close; a tray app that hides its window instead of closing effectively
+        // refuses, and KDE/GNOME surface that as "Logout canceled by …" and abort the restart — the
+        // veto happens down in libSM, before (and independent of) the window's Closing event, so it
+        // can't be undone from managed code once we're registered. AutoRoute has no session state to
+        // save (rules.json is auto-saved atomically on every change) and manages its own autostart, so
+        // it gains nothing from session management. Unregister by clearing SESSION_MANAGER before the
+        // X11 backend initialises: logout then simply SIGTERMs us and the handler below tears down
+        // gracefully, so the restart is never blocked. (No-op if the var is already unset.)
+        Environment.SetEnvironmentVariable("SESSION_MANAGER", null);
+
         // === Clean shutdown on SIGTERM/SIGINT =========================================
         // Only registered here in the real host path (smoke/check-host/secondary all returned
         // above). SIGTERM (systemctl --user stop) and SIGINT (Ctrl-C) funnel into the same graceful
