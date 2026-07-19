@@ -233,6 +233,41 @@ public sealed class RuleStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Hand_edited_virtualSinks_are_sanitized_on_load()
+    {
+        // A file a user (or a bad merge) could produce: one sink whose name would inject an extra
+        // module arg, one whose name is null (would throw from the reconciler's name-keyed sets),
+        // one whose description carries a newline (breaks the generated drop-in), and one clean sink.
+        const string tampered = """
+        {
+          "version": 2,
+          "rules": [], "suppressions": [], "protected": [],
+          "virtualSinks": [
+            { "id": "vs-inject", "name": "evil sink_name=x", "description": "Evil", "channels": "Stereo" },
+            { "id": "vs-null", "name": null, "description": "Nameless", "channels": "Stereo" },
+            { "id": "vs-desc", "name": "MusicSink", "description": "bad\ndesc", "channels": "Mono" },
+            { "id": "vs-ok", "name": "GameSink", "description": "Game Sink", "channels": "Stereo" }
+          ]
+        }
+        """;
+        await File.WriteAllTextAsync(_path, tampered);
+
+        using var store = new RuleStore(_path);
+        var doc = await store.LoadAsync(); // must not throw
+
+        // The two unusable names are dropped; the two usable names survive.
+        Assert.Equal(new[] { "MusicSink", "GameSink" }, doc.VirtualSinks.Select(s => s.Name).ToArray());
+
+        // The newline description is replaced with the name, not carried through.
+        var music = doc.VirtualSinks.Single(s => s.Name == "MusicSink");
+        Assert.Equal("MusicSink", music.Description);
+
+        // The clean sink is untouched.
+        var game = doc.VirtualSinks.Single(s => s.Name == "GameSink");
+        Assert.Equal("Game Sink", game.Description);
+    }
+
+    [Fact]
     public async Task Own_atomic_save_does_not_feedback_loop()
     {
         using var store = new RuleStore(_path);
