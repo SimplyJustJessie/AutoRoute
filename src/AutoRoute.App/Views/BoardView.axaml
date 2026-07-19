@@ -16,8 +16,13 @@
     <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}"
           DragDrop.AllowDrop="True">
 
-        <!-- ===================== Toolbar ===================== -->
-        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="14,10">
+        <!-- ===================== Toolbar / title bar =====================
+             Doubles as the window's title bar (client-side decorations, see MainWindow.axaml):
+             drag it to move the window, double-click to maximise/restore. -->
+        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="14,10"
+                Name="TitleBar"
+                PointerPressed="OnTitleBarPointerPressed"
+                DoubleTapped="OnTitleBarDoubleTapped">
             <Grid ColumnDefinitions="Auto,*,Auto">
 
                 <!-- Brand + status -->
@@ -165,6 +170,21 @@
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
+                    </Button>
+
+                    <!-- Window caption controls (client-side chrome). -->
+                    <Border Classes="captionSep" />
+                    <Button Classes="icon caption" Name="MinimizeButton" Margin="2,0,0,0"
+                            Click="OnMinimizeClick" ToolTip.Tip="Minimize">
+                        <Path Data="{StaticResource IconWindowMin}" />
+                    </Button>
+                    <Button Classes="icon caption" Name="MaximizeButton"
+                            Click="OnMaximizeClick" ToolTip.Tip="Maximize">
+                        <Path Name="MaximizeIcon" Data="{StaticResource IconWindowMax}" />
+                    </Button>
+                    <Button Classes="icon caption danger" Name="CloseButton"
+                            Click="OnCloseClick" ToolTip.Tip="Close">
+                        <Path Data="{StaticResource IconClose}" />
                     </Button>
                 </StackPanel>
             </Grid>
