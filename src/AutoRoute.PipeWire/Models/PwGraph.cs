@@ -40,6 +40,65 @@ public sealed class PwGraph
             .ToDictionary(g => g.Key, g => (IReadOnlyList<PwPort>)g.ToList());
     }
 
+    /// <summary>
+    /// True when the two snapshots are indistinguishable to every consumer (reconciler, matcher,
+    /// board builder): same node ids with the same stable-key props, same ports, and same links
+    /// (endpoints + props, which carry the ownership tag). pw-dump output that differs only in
+    /// fields the parser drops (params, volumes, link state flips) compares equal, letting
+    /// callers skip reconcile/UI work for churn that cannot affect routing.
+    /// </summary>
+    public bool StructurallyEquals(PwGraph other)
+    {
+        if (ReferenceEquals(this, other)) return true;
+        if (NodesById.Count != other.NodesById.Count
+            || PortsById.Count != other.PortsById.Count
+            || LinksById.Count != other.LinksById.Count)
+            return false;
+
+        foreach (var (id, node) in NodesById)
+        {
+            if (!other.NodesById.TryGetValue(id, out var o)) return false;
+            // Field-wise, not record equality: Ports lists are separate instances per snapshot
+            // and are already covered exactly by the PortsById comparison below.
+            if (node.NodeName != o.NodeName
+                || node.Description != o.Description
+                || node.MediaClass != o.MediaClass
+                || node.ApplicationName != o.ApplicationName
+                || node.ProcessBinary != o.ProcessBinary
+                || node.MediaName != o.MediaName)
+                return false;
+        }
+
+        foreach (var (id, port) in PortsById)
+        {
+            if (!other.PortsById.TryGetValue(id, out var o) || port != o) return false;
+        }
+
+        foreach (var (id, link) in LinksById)
+        {
+            if (!other.LinksById.TryGetValue(id, out var o)) return false;
+            // State is deliberately ignored: nothing reads it, and links flip active/paused every
+            // time a stream starts or idles — exactly the churn this comparison exists to absorb.
+            if (link.OutNodeId != o.OutNodeId || link.OutPortId != o.OutPortId
+                || link.InNodeId != o.InNodeId || link.InPortId != o.InPortId)
+                return false;
+            if (!PropsEqual(link.Props, o.Props)) return false;
+        }
+        return true;
+    }
+
+    private static bool PropsEqual(
+        IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a.Count != b.Count) return false;
+        foreach (var (key, value) in a)
+        {
+            if (!b.TryGetValue(key, out var v) || value != v) return false;
+        }
+        return true;
+    }
+
     public PwNode? Node(int id) => NodesById.TryGetValue(id, out var n) ? n : null;
     public PwPort? Port(int id) => PortsById.TryGetValue(id, out var p) ? p : null;
     public PwLink? Link(int id) => LinksById.TryGetValue(id, out var l) ? l : null;

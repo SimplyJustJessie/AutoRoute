@@ -28,6 +28,9 @@ public sealed class RoutingWorker : BackgroundService
 {
     private static readonly TimeSpan ReconcileDebounce = TimeSpan.FromMilliseconds(120);
 
+    /// <summary>Bound on the debounce: a continuous trigger stream must still reconcile this often.</summary>
+    private static readonly TimeSpan ReconcileMaxWait = TimeSpan.FromMilliseconds(600);
+
     private readonly IPwGraphService _graph;
     private readonly IRuleStore _store;
     private readonly IReconciler _reconciler;
@@ -79,7 +82,7 @@ public sealed class RoutingWorker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _stopping = stoppingToken;
-        _debouncer = new Debouncer(ReconcileDebounce, () => _ = ReconcileNowAsync());
+        _debouncer = new Debouncer(ReconcileDebounce, () => _ = ReconcileNowAsync(), maxWait: ReconcileMaxWait);
 
         // Load rules once (also starts the rules.json FileSystemWatcher), then subscribe BEFORE
         // starting the graph so the initial snapshot triggers the first reconcile.

@@ -84,6 +84,14 @@ public sealed class PwGraphService : IPwGraphService, IAsyncDisposable
         try
         {
             var graph = await _reader.LoadAsync(ct).ConfigureAwait(false);
+
+            // Dedup: pw-mon signals fire for plenty of activity that parses to an identical
+            // graph (volume changes, link state flips, client/param churn). Swallowing those
+            // here spares every subscriber a reconcile pass and a full board rebuild; the
+            // dump itself already happened, but the expensive fan-out did not.
+            if (graph.StructurallyEquals(_current))
+                return _current;
+
             _current = graph;
             GraphUpdated?.Invoke(this, graph);
             return graph;

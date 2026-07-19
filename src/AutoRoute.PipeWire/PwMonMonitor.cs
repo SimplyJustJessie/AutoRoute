@@ -8,21 +8,25 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace AutoRoute.PipeWire;
 
 /// <summary>
-/// Default <see cref="IGraphMonitor"/>: spawns <c>pw-mon</c> and treats any line starting
-/// <c>added:</c>/<c>changed:</c>/<c>removed:</c> as activity, coalesced through a ~250 ms
-/// debounce into a single <see cref="Changed"/> signal. If pw-mon dies, it auto-respawns with
-/// exponential backoff and forces one <see cref="Changed"/> so the consumer does a full reload
-/// (nothing is missed across the gap). pw-mon output is used only as a trigger, never parsed.
+/// Default <see cref="IGraphMonitor"/>: spawns <c>pw-mon</c> and treats Node/Port/Link records
+/// (classified by <see cref="PwMonLineFilter"/> — Client/Device/Metadata churn is ignored) as
+/// activity, coalesced through a ~250 ms debounce (bounded by a max-wait so a continuous flood
+/// still signals about once a second instead of starving) into a single <see cref="Changed"/>
+/// signal. If pw-mon dies, it auto-respawns with exponential backoff and forces one
+/// <see cref="Changed"/> so the consumer does a full reload (nothing is missed across the gap).
+/// pw-mon output is only ever classified as trigger/no-trigger, never parsed into a graph.
 /// </summary>
 public sealed class PwMonMonitor : IGraphMonitor
 {
     public const string Tool = "pw-mon";
     private static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan DefaultMaxWait = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MinBackoff = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(10);
 
     private readonly ILogger _log;
     private readonly Debouncer _debounce;
+    private readonly PwMonLineFilter _filter = new();
     private readonly CancellationTokenSource _cts = new();
     private LongRunningProcess? _proc;
     private Task? _supervisor;
@@ -33,7 +37,7 @@ public sealed class PwMonMonitor : IGraphMonitor
     public PwMonMonitor(ILogger<PwMonMonitor>? log = null, TimeSpan? debounce = null)
     {
         _log = log ?? NullLogger<PwMonMonitor>.Instance;
-        _debounce = new Debouncer(debounce ?? DefaultDebounce, RaiseChanged);
+        _debounce = new Debouncer(debounce ?? DefaultDebounce, RaiseChanged, maxWait: DefaultMaxWait);
     }
 
     public Task StartAsync(CancellationToken ct = default)
@@ -57,6 +61,7 @@ public sealed class PwMonMonitor : IGraphMonitor
 
             try
             {
+                _filter.Reset(); // fresh process → fresh record stream
                 proc.Start();
                 _proc = proc;
                 _backoff = MinBackoff; // healthy start resets backoff
@@ -89,13 +94,8 @@ public sealed class PwMonMonitor : IGraphMonitor
 
     private void OnLine(string line)
     {
-        // pw-mon emits e.g. "added:", "changed:", "removed:" at the start of a record block.
-        if (line.StartsWith("added:", StringComparison.Ordinal)
-            || line.StartsWith("changed:", StringComparison.Ordinal)
-            || line.StartsWith("removed:", StringComparison.Ordinal))
-        {
+        if (_filter.ShouldTrigger(line))
             _debounce.Trigger();
-        }
     }
 
     private void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);
