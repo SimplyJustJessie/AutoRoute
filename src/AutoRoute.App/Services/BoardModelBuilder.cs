@@ -149,7 +149,8 @@ public static class BoardModelBuilder
                 Protected: columnProtected,
                 SinkName: target.NodeName,
                 IsManagedSink: target.NodeName is { } nn && declaredSinkNames.Contains(nn),
-                Cards: cardModels));
+                Cards: cardModels,
+                Format: NodeRoles.FormatLabel(target)));
         }
 
         // --- Palette: every audio Source, app-granularity, monitors optional ---
@@ -167,7 +168,8 @@ public static class BoardModelBuilder
                     Subtitle: NodeRoles.SourceSubtitle(rep),
                     Kind: NodeRoles.KindOf(rep),
                     IsMonitor: monitor,
-                    Protected: protectedIds.Contains(rep.Id));
+                    Protected: protectedIds.Contains(rep.Id),
+                    Format: NodeRoles.FormatLabel(rep));
             })
             .Where(p => showMonitors || !p.IsMonitor)
             .OrderBy(p => p.IsMonitor)

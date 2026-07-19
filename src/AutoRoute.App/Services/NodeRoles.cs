@@ -75,6 +75,9 @@ public static class NodeRoles
     public static string TargetSubtitle(PwNode n) =>
         FirstOtherThan(TargetTitle(n), n.NodeName, n.ApplicationName, n.MediaClass);
 
+    /// <summary>The node's sample rate + bit depth as one line ("48 kHz · 24-bit"), or empty when unknown.</summary>
+    public static string FormatLabel(PwNode n) => n.Format?.Summary ?? string.Empty;
+
     /// <summary>First non-empty candidate that isn't just the title again (no echo subtitles).</summary>
     private static string FirstOtherThan(string title, params string?[] candidates)
     {

@@ -32,7 +32,8 @@ public sealed record ColumnModel(
     bool Protected,
     string? SinkName,
     bool IsManagedSink,
-    IReadOnlyList<CardModel> Cards);
+    IReadOnlyList<CardModel> Cards,
+    string Format = "");
 
 /// <summary>Immutable description of one palette Source entry (app-granularity).</summary>
 public sealed record PaletteItemModel(
@@ -43,7 +44,8 @@ public sealed record PaletteItemModel(
     string Subtitle,
     SourceKind Kind,
     bool IsMonitor,
-    bool Protected);
+    bool Protected,
+    string Format = "");
 
 /// <summary>The whole board in one immutable snapshot: columns + palette.</summary>
 public sealed record BoardSnapshot(

@@ -130,6 +130,9 @@ public sealed class PwDumpReader
     private static PwNode ParseNode(int id, JsonElement obj)
     {
         var props = GetProps(obj);
+        AudioFormat? format = null;
+        if (obj.TryGetProperty("info", out var info) && info.ValueKind == JsonValueKind.Object)
+            format = ParseAudioFormat(info);
         return new PwNode(
             Id: id,
             NodeName: PropString(props, "node.name"),
@@ -138,7 +141,71 @@ public sealed class PwDumpReader
             ApplicationName: PropString(props, "application.name"),
             ProcessBinary: PropString(props, "application.process.binary"),
             MediaName: PropString(props, "media.name"),
-            Ports: Array.Empty<PwPort>());
+            Ports: Array.Empty<PwPort>(),
+            Format: format);
+    }
+
+    /// <summary>
+    /// Read a node's sample rate + format from <c>info.params</c>. Prefers the negotiated
+    /// <c>Format</c> (present while a stream is active); falls back to the default of the advertised
+    /// <c>EnumFormat</c> for an idle device. Only <c>audio/raw</c> entries are considered, so video
+    /// streams and iec958 passthrough never masquerade as a PCM format. Null when neither yields
+    /// a rate or a format token.
+    /// </summary>
+    private static AudioFormat? ParseAudioFormat(JsonElement info)
+    {
+        if (!info.TryGetProperty("params", out var prms) || prms.ValueKind != JsonValueKind.Object)
+            return null;
+        return ExtractAudioFormat(prms, "Format") ?? ExtractAudioFormat(prms, "EnumFormat");
+    }
+
+    private static AudioFormat? ExtractAudioFormat(JsonElement prms, string key)
+    {
+        if (!prms.TryGetProperty(key, out var arr) || arr.ValueKind != JsonValueKind.Array)
+            return null;
+
+        foreach (var entry in arr.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object) continue;
+            if (!IsAudioRaw(entry)) continue;
+
+            var rate = ScalarOrDefaultInt(entry, "rate");
+            var format = ScalarOrDefaultString(entry, "format");
+            if (rate is null && format is null) continue;
+            return new AudioFormat(rate, format);
+        }
+        return null;
+    }
+
+    /// <summary>An <c>info.params</c> Format/EnumFormat entry describing raw PCM audio.</summary>
+    private static bool IsAudioRaw(JsonElement entry) =>
+        StringEquals(entry, "mediaType", "audio") && StringEquals(entry, "mediaSubtype", "raw");
+
+    private static bool StringEquals(JsonElement obj, string key, string value) =>
+        obj.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String
+        && string.Equals(el.GetString(), value, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A params field is either a concrete scalar (a fixated Format) or a
+    /// <c>{ "default": …, "min": …, "max": … }</c> choice (an EnumFormat range). Read the scalar,
+    /// or the choice's default.
+    /// </summary>
+    private static int? ScalarOrDefaultInt(JsonElement entry, string name)
+    {
+        if (!entry.TryGetProperty(name, out var el)) return null;
+        if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var n)) return n;
+        if (el.ValueKind == JsonValueKind.Object && el.TryGetProperty("default", out var d)
+            && d.ValueKind == JsonValueKind.Number && d.TryGetInt32(out var dn)) return dn;
+        return null;
+    }
+
+    private static string? ScalarOrDefaultString(JsonElement entry, string name)
+    {
+        if (!entry.TryGetProperty(name, out var el)) return null;
+        if (el.ValueKind == JsonValueKind.String) return el.GetString();
+        if (el.ValueKind == JsonValueKind.Object && el.TryGetProperty("default", out var d)
+            && d.ValueKind == JsonValueKind.String) return d.GetString();
+        return null;
     }
 
     private static PwPort? ParsePort(int id, JsonElement obj)

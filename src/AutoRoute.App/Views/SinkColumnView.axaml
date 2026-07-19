@@ -43,6 +43,11 @@
                             <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
                                        ToolTip.Tip="{Binding Subtitle}"
                                        IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <Border Classes="formatBadge" Margin="0,3,0,0"
+                                    IsVisible="{Binding Format, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    ToolTip.Tip="Sample rate and bit depth this Target Sink runs at">
+                                <TextBlock Text="{Binding Format}" />
+                            </Border>
                         </StackPanel>
 
                         <Border Grid.Column="2" Classes="countChip" Margin="8,0,4,0"

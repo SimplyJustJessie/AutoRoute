@@ -52,3 +52,6 @@ The live node/module realization of a Declared Sink. Carries an advisory `autoro
 
 **Adopted (unmanaged) sink** (v2):
 A sink present in the graph but not declared — hardware, another app's null sink, or one from a legacy static conf the user hasn't retired. Rendered as a normal column: no chip, no delete affordance, and never auto-unloaded. Legacy conf files that still create sinks statically surface as a warning until the user removes them (their sinks are imported into the declared set at startup).
+
+**Audio Format** (sample rate + bit depth):
+The sample rate (Hz) and bit depth a node runs at, read from its `info.params` — the negotiated `Format` while a stream is active, else the default of the advertised `EnumFormat` for an idle device. Bit depth is derived from the PipeWire format token (`S16LE` → 16-bit, `F32LE`/`F32P` → 32-bit float, `S24_32LE` → 24-bit). Shown as a small badge ("48 kHz · 24-bit") on each palette Source and each Target Sink header. Presentation-only — it is never part of a node's stable match identity, so it never affects Rules, Suppressions, or Protected matching.

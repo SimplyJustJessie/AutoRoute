@@ -31,6 +31,10 @@ public partial class SinkColumnViewModel : ViewModelBase
     [ObservableProperty]
     private string _subtitle = string.Empty;
 
+    /// <summary>Sample rate + bit depth of the sink ("48 kHz · 32-bit float"); empty when unknown.</summary>
+    [ObservableProperty]
+    private string _format = string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
     private bool _isProtected;
@@ -61,6 +65,7 @@ public partial class SinkColumnViewModel : ViewModelBase
     {
         Title = model.Title;
         Subtitle = model.Subtitle;
+        Format = model.Format;
         IsProtected = model.Protected;
         SinkName = model.SinkName;
         IsManagedSink = model.IsManagedSink;
