@@ -33,7 +33,7 @@ public static class DesignGraph
         // --- Sources ---
         var zen1 = AppStream(nodes, ports, 170, "Zen", "Zen", "zen-bin", "Home / X");
         AppStream(nodes, ports, 185, "Zen", "Zen", "zen-bin", "Docs / Y"); // second Zen stream (app granularity)
-        var spotify = AppStream(nodes, ports, 135, "spotify", "Spotify", "spotify", "Some Song");
+        var spotify = AppStream(nodes, ports, 135, "spotify", "Spotify", "spotify", "Some Song", rateHz: 44100);
         MonoCapture(nodes, ports, 56, "alsa_input.pro-x-2.mono", "PRO X 2 Mono");
         // Real-world name lengths (seen live): titles/subtitles must ellipsize inside their cards,
         // in the palette AND once assigned into a column — keep this one deliberately obnoxious.
@@ -62,7 +62,8 @@ public static class DesignGraph
             P(ports, id, PortDirection.Output, "monitor_FL", "FL", 2),
             P(ports, id, PortDirection.Output, "monitor_FR", "FR", 3),
         };
-        var node = new PwNode(id, name, desc, "Audio/Sink", null, null, null, list);
+        var node = new PwNode(id, name, desc, "Audio/Sink", null, null, null, list,
+            new AudioFormat(48000, "F32P"));
         nodes[id] = node;
         return node;
     }
@@ -75,20 +76,22 @@ public static class DesignGraph
             P(ports, id, PortDirection.Input, "input_FL", "FL", 0),
             P(ports, id, PortDirection.Input, "input_FR", "FR", 1),
         };
-        var node = new PwNode(id, name, null, "Stream/Input/Audio", app, null, mediaName, list);
+        var node = new PwNode(id, name, null, "Stream/Input/Audio", app, null, mediaName, list,
+            new AudioFormat(48000, "F32LE"));
         nodes[id] = node;
         return node;
     }
 
     private static PwNode AppStream(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
-        int id, string name, string app, string binary, string mediaName)
+        int id, string name, string app, string binary, string mediaName, int rateHz = 48000)
     {
         var list = new List<PwPort>
         {
             P(ports, id, PortDirection.Output, "output_FL", "FL", 0),
             P(ports, id, PortDirection.Output, "output_FR", "FR", 1),
         };
-        var node = new PwNode(id, name, null, "Stream/Output/Audio", app, binary, mediaName, list);
+        var node = new PwNode(id, name, null, "Stream/Output/Audio", app, binary, mediaName, list,
+            new AudioFormat(rateHz, "F32LE"));
         nodes[id] = node;
         return node;
     }
@@ -97,7 +100,8 @@ public static class DesignGraph
         int id, string name, string desc)
     {
         var list = new List<PwPort> { P(ports, id, PortDirection.Output, "capture_MONO", "MONO", 0) };
-        var node = new PwNode(id, name, desc, "Audio/Source", null, null, null, list);
+        var node = new PwNode(id, name, desc, "Audio/Source", null, null, null, list,
+            new AudioFormat(48000, "S16LE"));
         nodes[id] = node;
         return node;
     }

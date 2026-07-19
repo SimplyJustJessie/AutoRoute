@@ -29,6 +29,10 @@ public partial class SourceItemViewModel : ViewModelBase
     [ObservableProperty]
     private string _subtitle = string.Empty;
 
+    /// <summary>Sample rate + bit depth ("48 kHz · 24-bit"); empty when the graph doesn't report one.</summary>
+    [ObservableProperty]
+    private string _format = string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(KindLabel), nameof(IsAppKind), nameof(IsCaptureKind), nameof(IsMonitorKind))]
     private SourceKind _kind;
@@ -56,6 +60,7 @@ public partial class SourceItemViewModel : ViewModelBase
         AllNodeIds = model.AllNodeIds;
         Title = model.Title;
         Subtitle = model.Subtitle;
+        Format = model.Format;
         Kind = model.Kind;
         IsMonitor = model.IsMonitor;
         IsProtected = model.Protected;

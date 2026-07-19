@@ -102,4 +102,52 @@ public class PwDumpReaderTests
         Assert.Empty(g.ManagedLinks);
         Assert.Equal(g.LinksById.Count, g.UnownedLinks.Count());
     }
+
+    [Fact]
+    public void Reads_negotiated_format_from_active_stream()
+    {
+        var g = RealGraph();
+
+        // Zen (170) is live: its info.params.Format is fixated at 48 kHz / F32LE.
+        var zen = g.Node(170)!.Format!;
+        Assert.Equal(48000, zen.SampleRateHz);
+        Assert.Equal("F32LE", zen.SampleFormat);
+        Assert.Equal("48 kHz · 32-bit float", zen.Summary);
+
+        // spotify (135) runs at 44.1 kHz — the odd rate must format as "44.1 kHz", not "44 kHz".
+        var spotify = g.Node(135)!.Format!;
+        Assert.Equal(44100, spotify.SampleRateHz);
+        Assert.Equal("44.1 kHz · 32-bit float", spotify.Summary);
+
+        // A hardware sink with a concrete negotiated Format (55) — S16LE => 16-bit (no "float").
+        var headset = g.Node(55)!.Format!;
+        Assert.Equal(48000, headset.SampleRateHz);
+        Assert.Equal("S16LE", headset.SampleFormat);
+        Assert.Equal("48 kHz · 16-bit", headset.Summary);
+    }
+
+    [Fact]
+    public void Falls_back_to_EnumFormat_default_for_idle_sink()
+    {
+        var g = RealGraph();
+
+        // GameSink (89) is idle: info.params.Format is empty, so the advertised EnumFormat
+        // default (F32P @ 48000) is what we surface.
+        var game = g.Node(89)!.Format!;
+        Assert.Equal(48000, game.SampleRateHz);
+        Assert.Equal("F32P", game.SampleFormat);
+        Assert.Equal("48 kHz · 32-bit float", game.Summary);
+    }
+
+    [Fact]
+    public void No_audio_format_for_dsp_or_video_nodes()
+    {
+        var g = RealGraph();
+
+        // MIDI/DSP nodes carry no audio params.
+        Assert.Null(g.Node(29)!.Format);   // Dummy-Driver
+
+        // A video stream's EnumFormat is mediaType=video — it must never be read as a PCM format.
+        Assert.Null(g.Node(198)!.Format);  // kwin_wayland (Stream/Output/Video)
+    }
 }

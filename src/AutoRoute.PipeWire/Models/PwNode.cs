@@ -18,6 +18,7 @@ namespace AutoRoute.PipeWire.Models;
 /// <param name="ProcessBinary"><c>application.process.binary</c> (e.g. <c>zen-bin</c>). May be null.</param>
 /// <param name="MediaName"><c>media.name</c> (e.g. <c>Home / X</c>). May be null.</param>
 /// <param name="Ports">Ports owned by this node (attached by <c>node.id</c> at parse time).</param>
+/// <param name="Format">Sample rate + bit depth the node runs at (from <c>info.params</c>). Null when the node carries no audio format (MIDI/DSP/video) or none was advertised.</param>
 public sealed record PwNode(
     int Id,
     string? NodeName,
@@ -26,7 +27,8 @@ public sealed record PwNode(
     string? ApplicationName,
     string? ProcessBinary,
     string? MediaName,
-    IReadOnlyList<PwPort> Ports)
+    IReadOnlyList<PwPort> Ports,
+    AudioFormat? Format = null)
 {
     public IEnumerable<PwPort> OutputPorts => Ports.Where(p => p.IsOutput);
     public IEnumerable<PwPort> InputPorts => Ports.Where(p => p.IsInput);

@@ -25,6 +25,7 @@ AutoRoute makes those patches stick, in **both directions**:
 - **Keep-connected and keep-disconnected** — positive rules hold a link open; suppressions keep it closed on every cycle.
 - **Protected nodes** — mark routing that another tool owns (e.g. an EasyEffects chain) as off-limits, and AutoRoute won't touch it. Precedence is absolute: *protected > suppression > connect*.
 - **A board, not a patchbay** — a clean dark UI with one column per sink and a palette of draggable sources; drag to connect, drop into several columns to fan out, filter by name. Channels are paired for you, and each card's state — *managed*, *unsaved*, *manual*, or *protected* — is spelled out at a glance.
+- **Sample rate & bit depth at a glance** — every source and sink wears a small badge showing what it's running at (e.g. `48 kHz · 24-bit`, `44.1 kHz · 32-bit float`), read straight from the live graph.
 - **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
 - **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
 

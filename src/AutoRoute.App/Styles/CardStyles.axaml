@@ -108,6 +108,23 @@
         <Setter Property="TextAlignment" Value="Center" />
     </Style>
 
+    <!-- Sample-rate + bit-depth badge ("48 kHz · 24-bit"), shown on sinks and palette Sources. -->
+    <Style Selector="Border.formatBadge">
+        <Setter Property="Background" Value="{DynamicResource ColumnHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="5,1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.formatBadge > TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="LetterSpacing" Value="0.2" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
+
     <!-- Drop overlay: invisible glow sheet that pulses while a drag hovers the column. -->
     <Style Selector="Border.dropOverlay">
         <Setter Property="IsHitTestVisible" Value="False" />
