@@ -478,4 +478,34 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- ==================== Board scrollbar ==================== -->
+    <!-- Always-expanded (AllowAutoHide=False on the ScrollViewer), no Fluent gray band or arrow
+         buttons: a quiet rounded thumb on a transparent rail, sized for easy grabbing. -->
+
+    <Style Selector="ScrollViewer.boardScroll ScrollBar:horizontal">
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Margin" Value="16,0" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar:horizontal:expanded">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ RepeatButton#PART_LineUpButton">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ RepeatButton#PART_LineDownButton">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb">
+        <Setter Property="Background" Value="#454C63" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="MinHeight" Value="10" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb:pointerover">
+        <Setter Property="Background" Value="#5A6280" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb:pressed">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
 </Styles>

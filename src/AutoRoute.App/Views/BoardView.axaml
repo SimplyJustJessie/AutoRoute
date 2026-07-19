@@ -165,8 +165,12 @@
             </Border>
 
             <Panel Grid.Column="1">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled">
+                <!-- AllowAutoHide=False: the board scrollbar is a primary control here, not a
+                     transient indicator — always full-size instead of the hover-to-expand rail. -->
+                <ScrollViewer Classes="boardScroll"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              AllowAutoHide="False">
                     <!-- Margin on the content (not ScrollViewer.Padding) so the scroll extent
                          includes it and the last column is fully reachable. -->
                     <ItemsControl ItemsSource="{Binding Columns}" Margin="16,16,16,10">
