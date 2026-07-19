@@ -41,4 +41,14 @@ A stable-key match marking nodes AutoRoute must never route *or* unroute — it 
 _Avoid_: "ignored", "excluded", "blacklist" (use "protected" / "do not touch").
 
 **Reconcile**:
-The idempotent core loop: from the rules and the current graph, create missing Managed Links, delete stale Managed Links, and delete any link matching an active Suppression (owned or not). It never touches any other unowned link.
+The idempotent core loop: from the rules and the current graph, create missing Managed Links, delete stale Managed Links, and delete any link matching an active Suppression (owned or not). It never touches any other unowned link. Since v2 the pass has two halves, sinks first: ensure every Declared Sink exists (and stale managed sink modules don't), then reconcile links.
+
+**Declared Sink** (v2):
+A virtual (null) sink listed in `rules.json` (`virtualSinks`) — the source of truth for which sinks AutoRoute owns. Declaring is what makes a sink **managed**: the reconciler keeps a matching `module-null-sink` loaded at runtime, and the generated pipewire-pulse drop-in recreates it at boot, so it exists even when AutoRoute isn't running. Identified by its `node.name`/`sink_name`; shown with a VIRTUAL chip and a delete affordance.
+_Avoid_: "our sink" (say "managed" / "declared").
+
+**Managed (virtual) Sink** (v2):
+The live node/module realization of a Declared Sink. Carries an advisory `autoroute.managed=true` in its `sink_properties`; that tag only gates automatic cleanup of stale modules — ownership itself is name membership in the declared set.
+
+**Adopted (unmanaged) sink** (v2):
+A sink present in the graph but not declared — hardware, another app's null sink, or one from a legacy static conf the user hasn't retired. Rendered as a normal column: no chip, no delete affordance, and never auto-unloaded. Legacy conf files that still create sinks statically surface as a warning until the user removes them (their sinks are imported into the declared set at startup).

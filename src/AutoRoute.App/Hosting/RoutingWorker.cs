@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoRoute.App.Services;
 using AutoRoute.Engine;
 using AutoRoute.Engine.Model;
 using AutoRoute.PipeWire;
@@ -29,6 +31,9 @@ public sealed class RoutingWorker : BackgroundService
     private readonly IPwGraphService _graph;
     private readonly IRuleStore _store;
     private readonly IReconciler _reconciler;
+    private readonly ISinkReconciler _sinkReconciler;
+    private readonly PulseConfImporter? _importer;
+    private readonly AppNotices? _notices;
     private readonly ILogger<RoutingWorker> _log;
 
     private readonly SemaphoreSlim _reconcileGate = new(1, 1);
@@ -40,11 +45,17 @@ public sealed class RoutingWorker : BackgroundService
         IPwGraphService graph,
         IRuleStore store,
         IReconciler reconciler,
-        ILogger<RoutingWorker> log)
+        ISinkReconciler sinkReconciler,
+        ILogger<RoutingWorker> log,
+        PulseConfImporter? importer = null,
+        AppNotices? notices = null)
     {
         _graph = graph;
         _store = store;
         _reconciler = reconciler;
+        _sinkReconciler = sinkReconciler;
+        _importer = importer;
+        _notices = notices;
         _log = log;
     }
 
@@ -73,6 +84,7 @@ public sealed class RoutingWorker : BackgroundService
         // Load rules once (also starts the rules.json FileSystemWatcher), then subscribe BEFORE
         // starting the graph so the initial snapshot triggers the first reconcile.
         await _store.LoadAsync(stoppingToken).ConfigureAwait(false);
+        await DetectLegacySinksAsync(stoppingToken).ConfigureAwait(false);
         _graph.GraphUpdated += OnGraphUpdated;
         _store.Changed += OnRulesChanged;
 
@@ -100,9 +112,51 @@ public sealed class RoutingWorker : BackgroundService
         }
     }
 
+    /// <summary>
+    /// One-shot startup DETECTION of the user's static virtual-sink conf files (ADR-0011, revised:
+    /// detect + offer — nothing is written to rules.json unprompted; the UI's Import action is the
+    /// only writer). Findings are surfaced as a notice and logged, so tray-only mode still sees
+    /// them via journalctl. Never blocks startup.
+    /// </summary>
+    private async Task DetectLegacySinksAsync(CancellationToken ct)
+    {
+        if (_importer is null) return;
+        try
+        {
+            var detection = await _importer.DetectAsync(_store, ct).ConfigureAwait(false);
+            _notices?.SetLegacyState(
+                detection.Files,
+                detection.Pending.Select(s => s.Name).ToList());
+
+            if (detection.Pending.Count > 0)
+            {
+                _log.LogInformation(
+                    "{Count} legacy sink(s) available to import ({Names}) — use the board's Import action",
+                    detection.Pending.Count, string.Join(", ", detection.Pending.Select(s => s.Name)));
+            }
+            foreach (var file in detection.Files)
+            {
+                _log.LogWarning(
+                    "{File} still creates null sinks statically; remove it to let AutoRoute own them", file);
+            }
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "legacy sink detection failed; continuing without it");
+        }
+    }
+
     private void OnGraphUpdated(object? sender, PwGraph graph) => ScheduleReconcile();
 
-    private void OnRulesChanged(object? sender, RulesDocument document) => ScheduleReconcile();
+    private void OnRulesChanged(object? sender, RulesDocument document)
+    {
+        ScheduleReconcile();
+        // Keep the legacy banner truthful without a relaunch: un-declaring an imported sink makes
+        // it pending again, importing clears it. Detection is a read-only scan of a couple of
+        // small conf files and never saves, so no feedback loop.
+        _ = DetectLegacySinksAsync(_stopping);
+    }
 
     private void ScheduleReconcile()
     {
@@ -118,6 +172,20 @@ public sealed class RoutingWorker : BackgroundService
         try
         {
             if (!AutomationEnabled || _stopping.IsCancellationRequested) return;
+
+            // Virtual sinks first (ADR-0011): a sink loaded here appears in a LATER snapshot, whose
+            // GraphUpdated triggers the link pass that routes to it. A sink failure must not block
+            // link reconcile, so each half fails independently.
+            try
+            {
+                await _sinkReconciler.EnsureAsync(_graph.Current, _store.Current, _stopping).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "sink reconcile failed; links proceed, sinks retry on the next change");
+            }
+
             await _reconciler.ReconcileAsync(_graph.Current, _store.Current, _stopping).ConfigureAwait(false);
         }
         catch (OperationCanceledException)

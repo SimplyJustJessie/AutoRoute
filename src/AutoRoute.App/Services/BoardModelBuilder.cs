@@ -29,6 +29,10 @@ public static class BoardModelBuilder
             .OrderBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Declared virtual sinks (ADR-0011): ownership is name membership in the declared set.
+        var declaredSinkNames = rules.VirtualSinks.Select(v => v.Name)
+            .ToHashSet(System.StringComparer.Ordinal);
+
         // Protected membership, resolved once per build — consulted per target, card and palette
         // entry below (was: a full rules.Protected × matcher scan at every call site).
         var protectedIds = new HashSet<int>();
@@ -59,6 +63,11 @@ public static class BoardModelBuilder
         }
 
         var columns = new List<ColumnModel>(targets.Count);
+        // Two sinks CAN share a node.name (seen live: a legacy static conf and our drop-in both
+        // loading the same sink at boot). Column keys must stay unique or the VM diff-merge
+        // dictionaries blow up — the first occurrence keeps the plain identity (stable diff-merge
+        // in the normal case); extras get an id-suffixed key.
+        var usedKeys = new HashSet<string>(System.StringComparer.Ordinal);
         foreach (var target in targets)
         {
             var columnProtected = protectedIds.Contains(target.Id);
@@ -125,12 +134,21 @@ public static class BoardModelBuilder
                 .OrderBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
+            var columnKey = NodeRoles.TargetIdentity(target);
+            if (!usedKeys.Add(columnKey))
+            {
+                columnKey = columnKey + "#" + target.Id;
+                usedKeys.Add(columnKey);
+            }
+
             columns.Add(new ColumnModel(
                 TargetNodeId: target.Id,
-                Key: NodeRoles.TargetIdentity(target),
+                Key: columnKey,
                 Title: NodeRoles.TargetTitle(target),
                 Subtitle: NodeRoles.TargetSubtitle(target),
                 Protected: columnProtected,
+                SinkName: target.NodeName,
+                IsManagedSink: target.NodeName is { } nn && declaredSinkNames.Contains(nn),
                 Cards: cardModels));
         }
 

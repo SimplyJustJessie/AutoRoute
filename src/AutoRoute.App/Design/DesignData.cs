@@ -28,7 +28,7 @@ public static class DesignData
         foreach (var c in Board.Columns) return c;
         // Fallback empty column so the previewer never crashes.
         return new SinkColumnViewModel(Board, new ColumnModel(0, "none", "Target", "", false,
-            System.Array.Empty<CardModel>()));
+            null, false, System.Array.Empty<CardModel>()));
     }
 
     private static SourceCardViewModel FirstCard()

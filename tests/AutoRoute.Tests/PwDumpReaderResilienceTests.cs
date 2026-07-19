@@ -41,6 +41,21 @@ public class PwDumpReaderResilienceTests
     }
 
     [Fact]
+    public void Reads_REAL_pactl_created_null_sink_node_from_gate_capture()
+    {
+        // Captured live during the v2 gate (M1): the node a `pactl load-module module-null-sink`
+        // with our sink_properties stamp produces. Its props carry `autoroute.managed` as a JSON
+        // boolean and assorted non-string values (ints, nested arrays as strings) — all of which
+        // must parse without error into the stable-key model.
+        var g = PwDumpReader.Parse("[" + System.IO.File.ReadAllText(Fixtures.PwDumpManagedSinkPath) + "]");
+
+        var node = Assert.Single(g.Nodes);
+        Assert.Equal("autoroute_gate_sink", node.NodeName);
+        Assert.Equal("Audio/Sink", node.MediaClass);
+        Assert.Equal("AR Gate", node.Description);
+    }
+
+    [Fact]
     public void Parse_throws_on_malformed_json()
     {
         Assert.ThrowsAny<JsonException>(() => PwDumpReader.Parse("{ this is not valid"));

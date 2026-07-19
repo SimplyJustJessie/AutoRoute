@@ -93,6 +93,10 @@ internal static class DragGhost
             FontSize = 12.5,
             FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
+            // The ghost floats in the overlay with an infinite measure — cap it so a real-world
+            // device name doesn't produce a screen-wide ghost.
+            MaxWidth = 220,
+            TextTrimming = TextTrimming.CharacterEllipsis,
         });
 
         return new Border

@@ -33,4 +33,13 @@
     <ProjectReference Include="..\AutoRoute.Engine\AutoRoute.Engine.csproj" />
     <ProjectReference Include="..\AutoRoute.PipeWire\AutoRoute.PipeWire.csproj" />
   </ItemGroup>
+  <!-- AutoRoute drives PipeWire and uses Unix file modes: it is Linux-only by nature. Declaring
+       that here lets the platform analyzer treat the Unix-only APIs as always-supported (CA1416)
+       instead of warning about an unreachable Windows path. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.Versioning.SupportedOSPlatformAttribute">
+      <_Parameter1>linux</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

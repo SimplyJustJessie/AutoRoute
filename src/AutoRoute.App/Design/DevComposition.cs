@@ -33,12 +33,24 @@ public static class DevComposition
     /// <summary>Build a board over an explicit graph (used by the smoke test) and initialize it.</summary>
     public static BoardViewModel CreateInitializedBoard(PwGraph graph)
     {
+        // GameSink declared as an AutoRoute-managed virtual sink so previews/smoke exercise the
+        // VIRTUAL chip + delete affordance (ADR-0011).
+        var seed = Engine.Model.RulesDocument.Empty with
+        {
+            VirtualSinks = new[]
+            {
+                new Engine.Model.VirtualSinkSpec("design-gamesink", "GameSink", "Game Sink",
+                    Engine.Model.SinkChannels.Stereo),
+            },
+        };
+
         var board = new BoardViewModel(
             new MockPwGraphService(graph),
             new RecordingPwLinker(),
-            new MockRuleStore(),
+            new MockRuleStore(seed),
             new MockReconciler(),
-            new UiRuleMatcher());
+            new UiRuleMatcher(),
+            new MockSinkController());
 
         // Mock services complete synchronously, so this returns with the board already rendered.
         board.InitializeAsync().GetAwaiter().GetResult();

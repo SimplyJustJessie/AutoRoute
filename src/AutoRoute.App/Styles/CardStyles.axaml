@@ -317,13 +317,12 @@
         <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!-- No fixed Path size here: the Uniform-stretched Path takes its tight geometry bounds and
+         the surrounding Viewbox (PaletteView) scales + centers it — a fixed square would re-anchor
+         non-square glyphs (mic) top-left. -->
     <Style Selector="Border.kindTile Path">
         <Setter Property="Fill" Value="{DynamicResource ManualBrush}" />
         <Setter Property="Stretch" Value="Uniform" />
-        <Setter Property="Width" Value="14" />
-        <Setter Property="Height" Value="14" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.kindTile.app">
         <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
@@ -477,6 +476,36 @@
         <Setter Property="MinWidth" Value="0" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ==================== Board scrollbar ==================== -->
+    <!-- Always-expanded (AllowAutoHide=False on the ScrollViewer), no Fluent gray band or arrow
+         buttons: a quiet rounded thumb on a transparent rail, sized for easy grabbing. -->
+
+    <Style Selector="ScrollViewer.boardScroll ScrollBar:horizontal">
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Margin" Value="16,0" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar:horizontal:expanded">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ RepeatButton#PART_LineUpButton">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ RepeatButton#PART_LineDownButton">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb">
+        <Setter Property="Background" Value="#454C63" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="MinHeight" Value="10" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb:pointerover">
+        <Setter Property="Background" Value="#5A6280" />
+    </Style>
+    <Style Selector="ScrollViewer.boardScroll ScrollBar /template/ Thumb:pressed">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
     </Style>
 
 </Styles>

@@ -94,7 +94,6 @@ public sealed class RuleStore : IRuleStore, IDisposable
         EnsureDirectory();
 
         var json = JsonSerializer.Serialize(document, RulesJsonContext.Default.RulesDocument);
-        var tempPath = _filePath + ".tmp-" + Guid.NewGuid().ToString("N");
 
         // Record the payload BEFORE the file appears so a watcher event that races the move still
         // recognizes it as our own write.
@@ -103,18 +102,9 @@ public sealed class RuleStore : IRuleStore, IDisposable
             _lastPersistedJson = json;
         }
 
-        try
-        {
-            await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
-            // Owner-only before the move — the file lands at its final path already private.
-            File.SetUnixFileMode(tempPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-            File.Move(tempPath, _filePath, overwrite: true);
-        }
-        catch
-        {
-            TryDelete(tempPath);
-            throw;
-        }
+        // Owner-only: the file lands at its final path already private.
+        await AtomicFile.WriteAsync(_filePath, json, UnixFileMode.UserRead | UnixFileMode.UserWrite, ct)
+            .ConfigureAwait(false);
 
         lock (_gate)
         {
@@ -206,19 +196,15 @@ public sealed class RuleStore : IRuleStore, IDisposable
         if (string.IsNullOrWhiteSpace(text)) return RulesDocument.Empty;
         try
         {
-            return JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument);
+            // Normalized(): a v1 file loads with virtualSinks null → empty, version bumped to
+            // current, so every consumer sees the v2 shape and the next save writes it.
+            return JsonSerializer.Deserialize(text, RulesJsonContext.Default.RulesDocument)?.Normalized();
         }
         catch (JsonException ex)
         {
             _log.LogWarning(ex, "rules.json is malformed; keeping last-good policy");
             return null;
         }
-    }
-
-    private static void TryDelete(string path)
-    {
-        try { if (File.Exists(path)) File.Delete(path); }
-        catch { /* best-effort cleanup */ }
     }
 
     public void Dispose()

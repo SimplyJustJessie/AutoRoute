@@ -188,4 +188,4 @@ Ordered to **derisk the load-bearing unknowns first**; v1 is not "finished" unti
 
 ## Deferred to v2
 
-- **App-managed virtual sinks** — a button to create/remove null sinks, retiring the static `virtual-sinks.conf` ([0011](docs/adr/0011-app-managed-virtual-sinks.md), proposed; mechanism fork deferred).
+- **App-managed virtual sinks** — a button to create/remove null sinks, retiring the static `virtual-sinks.conf` ([0011](docs/adr/0011-app-managed-virtual-sinks.md), **accepted**; mechanism settled as hybrid). **Build spec: [PLAN.v2.md](PLAN.v2.md).**

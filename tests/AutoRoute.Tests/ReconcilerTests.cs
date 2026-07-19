@@ -36,7 +36,8 @@ public class ReconcilerTests
             RulesDocument.CurrentVersion,
             (rules ?? Enumerable.Empty<Rule>()).ToList(),
             (suppressions ?? Enumerable.Empty<Suppression>()).ToList(),
-            (protectedMatches ?? Enumerable.Empty<ProtectedMatch>()).ToList());
+            (protectedMatches ?? Enumerable.Empty<ProtectedMatch>()).ToList(),
+            Array.Empty<VirtualSinkSpec>());
 
     private static (Reconciler reconciler, RecordingLinker linker) NewReconciler()
     {

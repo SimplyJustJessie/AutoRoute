@@ -1,3 +1,4 @@
+using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
 using AutoRoute.PipeWire;
@@ -67,6 +68,10 @@ public static class HostFactory
             sp.GetRequiredService<IProcessRunner>(),
             sp.GetService<ILogger<PwLinker>>()));
 
+        services.AddSingleton<IVirtualSinkController>(sp => new PactlSinkController(
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetService<ILogger<PactlSinkController>>()));
+
         // --- Engine layer ---------------------------------------------------------------------
         services.AddSingleton<IRuleStore>(sp => new RuleStore(
             sp.GetService<ILogger<RuleStore>>()));
@@ -76,7 +81,25 @@ public static class HostFactory
             sp.GetRequiredService<IRuleMatcher>(),
             sp.GetService<ILogger<Reconciler>>()));
 
+        // Virtual sinks (ADR-0011): drop-in for boot persistence + pactl for instant effect.
+        services.AddSingleton(sp => new SinkDropInWriter(
+            SinkDropInWriter.DefaultPath(),
+            sp.GetService<ILogger<SinkDropInWriter>>()));
+        services.AddSingleton<ISinkReconciler>(sp => new SinkReconciler(
+            sp.GetRequiredService<IVirtualSinkController>(),
+            sp.GetRequiredService<SinkDropInWriter>(),
+            sp.GetService<ILogger<SinkReconciler>>(),
+            // Names other conf files still create at boot are excluded from our drop-in so a
+            // pipewire-pulse restart can't double-create them while the legacy file exists.
+            externalSinkNames: () => sp.GetRequiredService<PulseConfImporter>().ScanExternalSinkNames()));
+
+        services.AddSingleton(sp => new PulseConfImporter(
+            PulseConfImporter.DefaultConfDDirectory(),
+            SinkDropInWriter.FileName,
+            sp.GetService<ILogger<PulseConfImporter>>()));
+
         // --- App layer ------------------------------------------------------------------------
+        services.AddSingleton<AppNotices>();
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<RoutingWorker>();
         services.AddHostedService(sp => sp.GetRequiredService<RoutingWorker>());

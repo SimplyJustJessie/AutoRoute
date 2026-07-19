@@ -19,10 +19,13 @@
                        Text="Drag onto a Target Sink to route. Cards stay here — one Source can feed many sinks." />
         </StackPanel>
 
-        <ScrollViewer Grid.Row="1" Padding="14,0,14,14"
+        <!-- Margin on the content, NOT ScrollViewer.Padding: padding is applied outside the
+             scroll-content measure, so long item text got a wider constraint than the panel and
+             spilled past its edge (same reasoning as the board scroller in BoardView). -->
+        <ScrollViewer Grid.Row="1"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl ItemsSource="{Binding Items}" Margin="14,0,14,14">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:SourceItemViewModel">
                         <Border Classes="paletteItem"
@@ -40,16 +43,24 @@
                                         Classes.monitor="{Binding IsMonitorKind}"
                                         Margin="0,0,10,0"
                                         ToolTip.Tip="{Binding KindLabel}">
-                                    <Panel>
-                                        <Path Data="{StaticResource IconWave}" IsVisible="{Binding IsAppKind}" />
-                                        <Path Data="{StaticResource IconMic}" IsVisible="{Binding IsCaptureKind}" />
-                                        <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding IsMonitorKind}" />
-                                    </Panel>
+                                    <!-- Viewbox, not bare Paths: Shape.Stretch=Uniform anchors a
+                                         non-square geometry top-left in a square box; the Viewbox
+                                         scales the tight glyph and centers the short axis. -->
+                                    <Viewbox Width="14" Height="14"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Panel>
+                                            <Path Data="{StaticResource IconWave}" IsVisible="{Binding IsAppKind}" />
+                                            <Path Data="{StaticResource IconMic}" IsVisible="{Binding IsCaptureKind}" />
+                                            <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding IsMonitorKind}" />
+                                        </Panel>
+                                    </Viewbox>
                                 </Border>
 
                                 <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                    <TextBlock Classes="cardTitle" Text="{Binding Title}" />
+                                    <TextBlock Classes="cardTitle" Text="{Binding Title}"
+                                               ToolTip.Tip="{Binding Title}" />
                                     <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
+                                               ToolTip.Tip="{Binding Subtitle}"
                                                IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
 

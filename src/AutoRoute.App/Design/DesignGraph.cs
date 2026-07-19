@@ -35,11 +35,17 @@ public static class DesignGraph
         AppStream(nodes, ports, 185, "Zen", "Zen", "zen-bin", "Docs / Y"); // second Zen stream (app granularity)
         var spotify = AppStream(nodes, ports, 135, "spotify", "Spotify", "spotify", "Some Song");
         MonoCapture(nodes, ports, 56, "alsa_input.pro-x-2.mono", "PRO X 2 Mono");
+        // Real-world name lengths (seen live): titles/subtitles must ellipsize inside their cards,
+        // in the palette AND once assigned into a column — keep this one deliberately obnoxious.
+        var codec = MonoCapture(nodes, ports, 57,
+            "alsa_input.usb-BurrBrown_from_Texas_Instruments_USB_AUDIO_CODEC-00.analog-stereo",
+            "PCM2900C Audio CODEC Analog Stereo (Long Hardware Name)");
 
         // --- Existing Links: external unowned (render "unsaved") + one managed ---
         Link(links, 501, zen1, headset, unmanaged: true);   // Zen → headset (WirePlumber default)
         Link(links, 502, spotify, music, unmanaged: true);  // Spotify → MusicSink (manual)
         Link(links, 503, zen1, game, unmanaged: false, ruleId: "design-rule-zen-game"); // managed
+        Link(links, 504, codec, discord, unmanaged: true);  // long-named capture → a column card
 
         return new PwGraph(nodes, ports, links);
     }

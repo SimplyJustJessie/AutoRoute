@@ -55,6 +55,30 @@ public class PwLinkerTests
     }
 
     [Fact]
+    public async Task ConnectAsync_treats_already_linked_as_success()
+    {
+        // The benign multi-actor race: optimistic UI + reconciler both create; the loser gets
+        // EEXIST. That's the desired state, not a failure — and must not spam warnings.
+        var runner = new FakeProcessRunner().EnqueueFailure("failed to link ports: File exists", exit: 1);
+        var linker = new PwLinker(runner);
+
+        var result = await linker.ConnectAsync(96, 87, "r");
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_treats_already_gone_as_success()
+    {
+        var runner = new FakeProcessRunner().EnqueueFailure("failed to unlink ports: No such file or directory", exit: 1);
+        var linker = new PwLinker(runner);
+
+        var result = await linker.DisconnectAsync(123);
+
+        Assert.True(result.Success);
+    }
+
+    [Fact]
     public async Task DisconnectAsync_by_link_id_uses_dash_d()
     {
         var runner = new FakeProcessRunner().EnqueueStdout("");

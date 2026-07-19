@@ -25,6 +25,7 @@
                 <!-- Row 0: title · state chip (title trims, never overlaps) -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <TextBlock Grid.Column="0" Classes="cardTitle" Text="{Binding Title}"
+                               ToolTip.Tip="{Binding Title}"
                                VerticalAlignment="Center" Margin="0,0,8,0" />
                     <Border Grid.Column="1" Classes="chip managed" IsVisible="{Binding IsManaged}">
                         <TextBlock Text="MANAGED" />
@@ -43,6 +44,7 @@
                 <!-- Row 1: subtitle -->
                 <TextBlock Grid.Row="1" Classes="subtitle" Margin="0,2,0,0"
                            Text="{Binding Subtitle}"
+                           ToolTip.Tip="{Binding Subtitle}"
                            IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
                 <!-- Row 2: actions -->
