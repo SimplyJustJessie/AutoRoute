@@ -53,7 +53,6 @@ public sealed class UpdateService
     private readonly HttpClient _http;
     private readonly IProcessRunner _runner;
     private readonly AppVersion _version;
-    private readonly AppOptions _options;
     private readonly ILogger _log;
     private readonly Action? _requestShutdown;
     private readonly string? _appImagePath;
@@ -63,7 +62,6 @@ public sealed class UpdateService
         HttpClient http,
         IProcessRunner runner,
         AppVersion version,
-        AppOptions options,
         ILogger<UpdateService>? log = null,
         Action? requestShutdown = null,
         string? appImagePath = null,
@@ -72,7 +70,6 @@ public sealed class UpdateService
         _http = http;
         _runner = runner;
         _version = version;
-        _options = options;
         _log = log ?? NullLogger<UpdateService>.Instance;
         _requestShutdown = requestShutdown;
         _appImagePath = appImagePath ?? AppImageInfo.Path;
@@ -222,41 +219,80 @@ public sealed class UpdateService
     /// <summary>
     /// Restart into the just-installed image. Spawns a detached helper that waits for our
     /// single-instance socket to disappear (so the relaunch doesn't bounce off the guard) and then
-    /// execs the AppImage in the same run mode, then requests our own graceful shutdown.
+    /// execs the new AppImage, then requests our own graceful shutdown.
+    ///
+    /// <para>The helper deliberately relaunches <b>without</b> <c>--background</c>: this is a
+    /// user-initiated restart, so bringing the window back is both the expected result and the
+    /// confirmation that the update landed (a background relaunch would return invisibly to the tray,
+    /// reading as "it never came back").</para>
     /// </summary>
     public bool Relaunch()
     {
         if (_appImagePath is null) return false;
+
+        // Wait for the single-instance socket to vanish (our teardown unlinks it) so the relaunch
+        // doesn't race the guard, then exec the new image. Paths are passed as sh positional args
+        // ($1 = socket, $2 = image) so there's no shell-quoting of the paths.
+        const string script = "while [ -S \"$1\" ]; do sleep 0.2; done; exec \"$2\"";
+        var shArgs = new[] { "sh", "-c", script, "sh", _socketPath, _appImagePath };
+
+        // Prefer a fresh systemd --user scope: GUI apps are launched into a per-app scope (or a user
+        // service), and when we exit systemd tears that cgroup down — taking a plain setsid child
+        // with it. A transient scope escapes our cgroup while still inheriting our environment
+        // (DISPLAY / DBus / XDG_RUNTIME_DIR), so the relaunched GUI has everything it needs. setsid
+        // is the fallback where systemd-run --user isn't usable.
+        if (TrySpawnScope(shArgs) || TrySpawnSetsid(shArgs))
+        {
+            (_requestShutdown ?? App.RequestShutdown)();
+            return true;
+        }
+
+        _log.LogWarning("update: could not spawn a relaunch helper (systemd-run and setsid both failed)");
+        return false;
+    }
+
+    // `systemd-run --user --scope` runs synchronously — it stays alive for the child's whole life.
+    // So "still running after a short grace" IS the success signal; an early exit means it couldn't
+    // create the scope (no user manager, etc.) and we should fall back.
+    private bool TrySpawnScope(string[] shArgs)
+    {
         try
         {
-            // The child polls for the socket file to vanish (our teardown unlinks it), then relaunches.
-            // Paths are passed via env vars so no shell-quoting of the paths is needed.
-            var argSuffix = _options.Background ? " --background" : string.Empty;
-            var script =
-                "while [ -S \"$ARU_SOCK\" ]; do sleep 0.2; done; exec \"$ARU_IMG\"" + argSuffix;
+            var psi = new ProcessStartInfo { FileName = "systemd-run", UseShellExecute = false };
+            foreach (var a in new[] { "--user", "--scope", "--quiet", "--" }) psi.ArgumentList.Add(a);
+            foreach (var a in shArgs) psi.ArgumentList.Add(a);
 
-            var psi = new ProcessStartInfo
+            var p = Process.Start(psi);
+            if (p is null) return false;
+            if (p.WaitForExit(800))
             {
-                FileName = "setsid",
-                UseShellExecute = false,
-            };
-            psi.ArgumentList.Add("sh");
-            psi.ArgumentList.Add("-c");
-            psi.ArgumentList.Add(script);
-            psi.Environment["ARU_SOCK"] = _socketPath;
-            psi.Environment["ARU_IMG"] = _appImagePath;
-
-            Process.Start(psi);
+                _log.LogDebug("update: systemd-run --scope exited early (code {Code}) — falling back", p.ExitCode);
+                return false;
+            }
+            return true; // still alive ⇒ scope created, helper running in it
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "update: could not spawn relaunch helper");
+            _log.LogDebug(ex, "update: systemd-run relaunch spawn failed");
             return false;
         }
+    }
 
-        // Tear ourselves down; the detached child is watching the socket and starts the new version.
-        (_requestShutdown ?? App.RequestShutdown)();
-        return true;
+    // setsid execs the helper into a new session; the setsid process becomes the waiting helper, so
+    // there's nothing to wait on — a successful Process.Start means it's running.
+    private bool TrySpawnSetsid(string[] shArgs)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo { FileName = "setsid", UseShellExecute = false };
+            foreach (var a in shArgs) psi.ArgumentList.Add(a);
+            return Process.Start(psi) is not null;
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "update: setsid relaunch spawn failed");
+            return false;
+        }
     }
 
     // ===== helpers ======================================================================

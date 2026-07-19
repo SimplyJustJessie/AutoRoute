@@ -126,7 +126,6 @@ public static class HostFactory
             sp.GetRequiredService<HttpClient>(),
             sp.GetRequiredService<IProcessRunner>(),
             sp.GetRequiredService<AppVersion>(),
-            sp.GetRequiredService<AppOptions>(),
             sp.GetService<ILogger<UpdateService>>()));
 
         services.AddSingleton<BoardViewModel>();
