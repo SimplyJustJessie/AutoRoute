@@ -18,7 +18,7 @@ public static class UpdateCheckDiagnostic
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("AutoRoute-Updater");
 
-        var service = new UpdateService(http, new ProcessRunner(), new AppVersion(), options);
+        var service = new UpdateService(http, new ProcessRunner(), new AppVersion());
 
         Console.WriteLine($"[check-update] current={service.CurrentVersion} canSelfUpdate={service.CanSelfUpdate}");
 

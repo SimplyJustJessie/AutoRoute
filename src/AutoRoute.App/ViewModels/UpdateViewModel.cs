@@ -113,5 +113,5 @@ public partial class UpdateViewModel : ViewModelBase
 
     /// <summary>Restart into the just-installed version.</summary>
     [RelayCommand]
-    private void Restart() => _service.Relaunch();
+    private async Task Restart() => await Task.Run(() => _service.Relaunch()).ConfigureAwait(true);
 }
