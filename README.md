@@ -39,6 +39,9 @@ AutoRoute makes those patches stick, in **both directions**:
 **AppImage** (no .NET required): grab `AutoRoute-*-x86_64.AppImage` from the latest
 [release](https://git.bussy.cloud/jessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
 artifact on any CI run), `chmod +x` it, run it. Built by `scripts/build-appimage.sh`.
+Once running, an AppImage keeps itself current: the ⬇ toolbar button checks the Gitea releases for
+a newer version and installs it in place (download → checksum + boot self-test → atomic swap →
+restart). `AutoRoute --check-update` is the headless equivalent.
 
 **Arch (AUR)**: planned — a ready PKGBUILD lives in `packaging/aur/` and will be published
 after the first tagged release.

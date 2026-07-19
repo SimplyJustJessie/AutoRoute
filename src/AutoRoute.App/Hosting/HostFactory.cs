@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
@@ -111,6 +112,23 @@ public static class HostFactory
         services.AddSingleton(sp => new AutostartService(
             sp.GetRequiredService<IProcessRunner>(),
             sp.GetService<ILogger<AutostartService>>()));
+
+        // In-app updater (Gitea releases → AppImage self-replace). One shared HttpClient for the
+        // process lifetime; the check is lazy (only on InitializeAsync / the toolbar button).
+        services.AddSingleton<AppVersion>();
+        services.AddSingleton(_ =>
+        {
+            var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("AutoRoute-Updater");
+            return http;
+        });
+        services.AddSingleton(sp => new UpdateService(
+            sp.GetRequiredService<HttpClient>(),
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetRequiredService<AppVersion>(),
+            sp.GetRequiredService<AppOptions>(),
+            sp.GetService<ILogger<UpdateService>>()));
+
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<RoutingWorker>();
         services.AddHostedService(sp => sp.GetRequiredService<RoutingWorker>());

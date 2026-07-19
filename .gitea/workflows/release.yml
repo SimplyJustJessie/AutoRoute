@@ -40,9 +40,17 @@ jobs:
           image=(out/AutoRoute-*-x86_64.AppImage)
           "${image[0]}" --appimage-extract-and-run --smoke
 
+      # Checksum manifest for the in-app updater: it verifies the downloaded AppImage against this
+      # before swapping it in. sha256sum's output lists the bare filename, which is what the updater
+      # matches on (see UpdateService.FindChecksum).
+      - name: Checksums
+        run: cd out && sha256sum AutoRoute-*-x86_64.AppImage > SHA256SUMS
+
       - name: Create Gitea release
         uses: akkuman/gitea-release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          files: out/AutoRoute-*.AppImage
+          files: |
+            out/AutoRoute-*.AppImage
+            out/SHA256SUMS

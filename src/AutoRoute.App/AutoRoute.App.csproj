@@ -6,6 +6,10 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Default for unbaked builds (a plain `dotnet run`): AppVersion reads this and reports "dev",
+         so the in-app updater never offers to change a dev build. Release builds override it with
+         -p:InformationalVersion=<tag> (scripts/build-appimage.sh). -->
+    <InformationalVersion>dev</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

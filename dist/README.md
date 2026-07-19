@@ -79,6 +79,8 @@ Run modes:
 | `AutoRoute --background` | Start hidden — tray only. This is the autostart mode. |
 | `AutoRoute --poll` | Use the polling graph monitor instead of `pw-mon` (fallback). |
 | `AutoRoute --check-host` | Window-free: build + resolve the DI graph and exit (diagnostic). |
+| `AutoRoute --version` | Print the baked-in version and exit. |
+| `AutoRoute --check-update` | Window-free: ask Gitea whether a newer release exists and exit (the CLI form of the in-app update check). |
 | `AutoRoute --smoke` / `--smoke-ui` | Window-free VM / headless-render smoke checks. |
 
 ## 2. Autostart via systemd (recommended)
