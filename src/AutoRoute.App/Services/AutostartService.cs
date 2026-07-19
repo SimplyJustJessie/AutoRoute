@@ -72,16 +72,23 @@ public sealed class AutostartService
     /// <summary>Report whether AutoRoute is set to start at login, and by which mechanism.</summary>
     public async Task<AutostartState> GetStateAsync(CancellationToken ct = default)
     {
-        if (await SystemdIsEnabledAsync(ct).ConfigureAwait(false))
-            return new AutostartState(true, AutostartMechanism.Systemd);
+        // Our own mechanism is the XDG entry; a systemd unit is only ever a hand-installed opt-in
+        // (or a leftover from an older build), so the desktop entry is what we check first.
         if (File.Exists(DesktopPath))
             return new AutostartState(true, AutostartMechanism.Xdg);
+        if (await SystemdIsEnabledAsync(ct).ConfigureAwait(false))
+            return new AutostartState(true, AutostartMechanism.Systemd);
         return new AutostartState(false, AutostartMechanism.None);
     }
 
     /// <summary>
-    /// Install autostart: try the systemd user unit first, fall back to an XDG desktop entry. Any
-    /// leftover from the other mechanism is cleared so the two never both fire at login.
+    /// Install autostart via an XDG <c>~/.config/autostart</c> entry. The desktop session launches it
+    /// as one of its own children, so it inherits the display, session DBus and tray environment a
+    /// GUI/tray app needs — the reason this is preferred over a systemd user service, which starts
+    /// under the systemd user manager and often lacks that environment (the tray app then can't reach
+    /// a display and crash-loops). Any systemd unit a previous build left behind is removed so the two
+    /// can't both fire at login. Headless/no-desktop setups can still hand-install
+    /// <c>dist/systemd/autoroute.service</c>.
     /// </summary>
     public async Task<AutostartOutcome> EnableAsync(CancellationToken ct = default)
     {
@@ -93,42 +100,36 @@ public sealed class AutostartService
                 "Couldn't determine AutoRoute's own path — autostart not changed.");
         }
 
-        if (await TryEnableSystemdAsync(target, ct).ConfigureAwait(false))
-        {
-            RemoveXdgEntry(); // don't let a stale .desktop double-launch alongside the unit
-            return new AutostartOutcome(true, AutostartMechanism.Systemd,
-                "AutoRoute will start automatically at your next login (systemd user service).");
-        }
-
-        // systemd wasn't usable (no user manager, systemctl missing, enable refused) — XDG works
-        // anywhere a desktop session honours ~/.config/autostart.
         try
         {
             WriteXdgEntry(target);
             _log.LogInformation("autostart: enabled via XDG desktop entry {Path}", DesktopPath);
-            return new AutostartOutcome(true, AutostartMechanism.Xdg,
-                "AutoRoute will start at login via a desktop autostart entry (systemd user service wasn't available).");
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "autostart: XDG fallback failed");
+            _log.LogWarning(ex, "autostart: writing the XDG entry failed");
             return new AutostartOutcome(false, AutostartMechanism.None,
                 $"Couldn't enable autostart: {ex.Message}");
         }
+
+        // Retire any systemd unit an older build created, so it can't double-launch (or crash-loop)
+        // alongside the desktop entry.
+        await RemoveSystemdUnitAsync(ct).ConfigureAwait(false);
+        return new AutostartOutcome(true, AutostartMechanism.Xdg,
+            "AutoRoute will start automatically at your next login.");
     }
 
     /// <summary>Remove autostart from both mechanisms; disabling something that isn't there is a no-op.</summary>
     public async Task<AutostartOutcome> DisableAsync(CancellationToken ct = default)
     {
-        // Best-effort on both fronts so state is unambiguous afterwards.
-        await TryRunSystemctlAsync(ct, "disable", UnitName).ConfigureAwait(false);
         RemoveXdgEntry();
+        await RemoveSystemdUnitAsync(ct).ConfigureAwait(false);
         _log.LogInformation("autostart: disabled");
         return new AutostartOutcome(true, AutostartMechanism.None,
             "AutoRoute will no longer start automatically at login.");
     }
 
-    // ===== systemd ======================================================================
+    // ===== systemd (detect a hand-install; clean up our old auto-generated unit) =========
 
     private async Task<bool> SystemdIsEnabledAsync(CancellationToken ct)
     {
@@ -137,35 +138,19 @@ public sealed class AutostartService
         return result is { ExitCode: 0 } r && r.StdOut.Trim().StartsWith("enabled", StringComparison.Ordinal);
     }
 
-    private async Task<bool> TryEnableSystemdAsync(string target, CancellationToken ct)
+    /// <summary>
+    /// Retire a systemd user unit AutoRoute may have written in an older build: disable it, delete the
+    /// unit file, reload, and clear any latched failure. All best-effort — no systemd manager, or no
+    /// such unit, is a no-op.
+    /// </summary>
+    private async Task RemoveSystemdUnitAsync(CancellationToken ct)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(UnitPath)!);
-            File.WriteAllText(UnitPath, BuildUnitFile(target));
-        }
-        catch (Exception ex)
-        {
-            _log.LogWarning(ex, "autostart: writing the systemd unit failed — trying XDG");
-            return false;
-        }
-
-        // daemon-reload so the manager sees a freshly written/updated unit; enable (not --now).
-        if (await TryRunSystemctlAsync(ct, "daemon-reload").ConfigureAwait(false) is null)
-            return false; // no systemd user manager here
-        // Clear any latched failure (e.g. a prior broken unit that hit the start limit) so this
-        // enable — and the next login's start — begins from a clean slate. Harmless if not failed.
+        var hadUnit = File.Exists(UnitPath);
+        await TryRunSystemctlAsync(ct, "disable", UnitName).ConfigureAwait(false);
+        try { File.Delete(UnitPath); } catch (Exception ex) { _log.LogDebug(ex, "autostart: deleting old unit failed"); }
+        if (hadUnit)
+            await TryRunSystemctlAsync(ct, "daemon-reload").ConfigureAwait(false);
         await TryRunSystemctlAsync(ct, "reset-failed", UnitName).ConfigureAwait(false);
-        var enable = await TryRunSystemctlAsync(ct, "enable", UnitName).ConfigureAwait(false);
-        if (enable is { ExitCode: 0 })
-        {
-            _log.LogInformation("autostart: enabled systemd unit {Path}", UnitPath);
-            return true;
-        }
-
-        _log.LogWarning("autostart: systemctl enable failed ({Err}) — trying XDG",
-            enable?.StdErr.Trim() ?? "systemctl unavailable");
-        return false;
     }
 
     /// <summary>Run <c>systemctl --user …</c>, returning <c>null</c> when systemctl can't be run at all.</summary>
@@ -185,43 +170,6 @@ public sealed class AutostartService
             return null;
         }
     }
-
-    /// <summary>
-    /// The generated systemd user unit, with the concrete absolute <paramref name="target"/> baked
-    /// into <c>ExecStart</c> (quoted, so a home directory with spaces still parses).
-    ///
-    /// Two things are deliberately different from a hand-written server unit, because this one must
-    /// launch a <b>GUI/tray app</b> that may be an <b>AppImage</b>:
-    /// <list type="bullet">
-    /// <item>It orders after (and is <c>WantedBy</c>) <c>graphical-session.target</c>, not
-    /// <c>default.target</c> — so the display, session DBus and tray already exist when it starts.</item>
-    /// <item>It sets <b>no</b> sandboxing (<c>NoNewPrivileges</c>, <c>RestrictNamespaces</c>,
-    /// <c>RestrictSUIDSGID</c>, …). Those block the <b>setuid <c>fusermount</c></b> an AppImage uses to
-    /// mount itself, so every start would fail non-zero and trip systemd's start limit.</item>
-    /// </list>
-    /// </summary>
-    public static string BuildUnitFile(string target) =>
-        $"""
-        [Unit]
-        Description=AutoRoute — automated PipeWire routing manager
-        Documentation=https://github.com/SimplyJustJessie/AutoRoute
-        # After graphical-session so the display, session bus and tray are up; after the audio graph.
-        After=graphical-session.target pipewire.service wireplumber.service
-        Wants=pipewire.service wireplumber.service
-        PartOf=graphical-session.target
-
-        [Service]
-        Type=simple
-        ExecStart="{target}" --background
-        Restart=on-failure
-        RestartSec=3
-        # No NoNewPrivileges / RestrictNamespaces / RestrictSUIDSGID: they break the setuid fusermount
-        # an AppImage relies on to mount itself, so every start would fail and hit the start limit.
-
-        [Install]
-        WantedBy=graphical-session.target
-
-        """;
 
     // ===== XDG autostart ================================================================
 
