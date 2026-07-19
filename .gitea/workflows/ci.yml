@@ -56,8 +56,10 @@ jobs:
       - name: Render board screenshots
         run: dotnet run --project src/AutoRoute.App -c Release --no-build -- --screenshot ci-screenshots
 
+      # upload-artifact@v4 refuses to run against non-github.com servers, so pin v3 —
+      # its older artifact API is the one Gitea implements.
       - name: Upload screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: board-screenshots
           path: ci-screenshots/
@@ -90,7 +92,7 @@ jobs:
           "${image[0]}" --appimage-extract-and-run --smoke-ui
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: AutoRoute-AppImage
           path: out/AutoRoute-*.AppImage
