@@ -7,6 +7,16 @@ Exactly one instance runs at a time — launching it again just reveals the exis
 > These are **manual** steps. AutoRoute never installs, enables, or writes into your home on its
 > own — enabling autostart is your decision.
 
+## 0. The easy way: the in-app toggle
+
+The ⚙ menu in the toolbar has **Start AutoRoute when I log in**. Flipping it on writes and enables a
+systemd user service pointing at AutoRoute's own path — the `$APPIMAGE` file when you're running an
+AppImage, so there's no symlink or hand-edited unit to get wrong — and falls back to an XDG
+`~/.config/autostart` entry if the systemd user manager isn't usable. Flipping it off removes both.
+
+The manual sections below are for scripted installs, headless setups, or when you want to tune the
+unit yourself.
+
 ## 1. Put AutoRoute on your PATH as `AutoRoute`
 
 Both autostart methods below launch `%h/.local/bin/AutoRoute --background`, so first make that name

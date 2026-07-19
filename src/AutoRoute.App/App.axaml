@@ -70,6 +70,8 @@
             <StreamGeometry x:Key="IconHeadphones">M8,2 C4.69,2 2,4.69 2,8 L2,12.2 C2,12.75 2.45,13.2 3,13.2 L4.6,13.2 C5.15,13.2 5.6,12.75 5.6,12.2 L5.6,9.6 C5.6,9.05 5.15,8.6 4.6,8.6 L3.5,8.6 L3.5,8 C3.5,5.52 5.52,3.5 8,3.5 C10.48,3.5 12.5,5.52 12.5,8 L12.5,8.6 L11.4,8.6 C10.85,8.6 10.4,9.05 10.4,9.6 L10.4,12.2 C10.4,12.75 10.85,13.2 11.4,13.2 L13,13.2 C13.55,13.2 14,12.75 14,12.2 L14,8 C14,4.69 11.31,2 8,2 Z</StreamGeometry>
             <StreamGeometry x:Key="IconSpeaker">M9,2.2 L5.2,5.2 L2.2,5.2 C1.65,5.2 1.2,5.65 1.2,6.2 L1.2,9.8 C1.2,10.35 1.65,10.8 2.2,10.8 L5.2,10.8 L9,13.8 Z M11.1,5.3 C11.95,5.95 12.5,6.92 12.5,8 C12.5,9.08 11.95,10.05 11.1,10.7 L11.9,11.7 C13.05,10.83 13.8,9.5 13.8,8 C13.8,6.5 13.05,5.17 11.9,4.3 Z</StreamGeometry>
             <StreamGeometry x:Key="IconDrop">M8,2 L8,10.6 M8,10.6 L4.6,7.2 M8,10.6 L11.4,7.2 M3,13 L13,13</StreamGeometry>
+            <!-- Cog (settings / autostart). Even-odd (F0) so the centre reads as a hole. -->
+            <StreamGeometry x:Key="IconGear">F0 M15,8 L12.8,9.99 L12.95,12.95 L9.99,12.8 L8,15 L6.01,12.8 L3.05,12.95 L3.2,9.99 L1,8 L3.2,6.01 L3.05,3.05 L6.01,3.2 L8,1 L9.99,3.2 L12.95,3.05 L12.8,6.01 Z M10.6,8 A2.6,2.6 0 1 0 5.4,8 A2.6,2.6 0 1 0 10.6,8 Z</StreamGeometry>
 
             <!-- ==================== Fluent control overrides (dark chrome) ==================== -->
             <SolidColorBrush x:Key="TextControlBackground" Color="#1B1C24" />
