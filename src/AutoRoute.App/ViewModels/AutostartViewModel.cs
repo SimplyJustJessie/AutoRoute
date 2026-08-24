@@ -41,11 +41,25 @@ public partial class AutostartViewModel : ViewModelBase
     /// <summary>The path autostart will launch — shown so the user can see exactly what gets wired.</summary>
     public string LaunchTarget => _service.LaunchTarget ?? "(unknown)";
 
-    /// <summary>Read the current state and set the toggle without triggering an apply.</summary>
+    /// <summary>
+    /// Read the current state and set the toggle without triggering an apply. Repairs a stale entry
+    /// first (see <see cref="AutostartService.RepairStaleEntry"/>) so an AppImage upgraded by
+    /// filename doesn't leave autostart silently pointing at a launcher that no longer exists — this
+    /// runs on every start, window or <c>--background</c>, since the board initializes either way.
+    /// </summary>
     public async Task RefreshAsync()
     {
         try
         {
+            var repair = _service.RepairStaleEntry();
+            if (repair.Repaired)
+            {
+                StatusMessage =
+                    "Autostart pointed at a version that's no longer installed — repaired to launch this one.";
+                _log?.LogInformation("autostart: repaired stale entry {Old} -> {New}",
+                    repair.OldTarget, repair.NewTarget);
+            }
+
             var state = await _service.GetStateAsync().ConfigureAwait(true);
             SetEnabledQuietly(state.Enabled);
         }
