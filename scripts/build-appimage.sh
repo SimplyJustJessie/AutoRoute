@@ -32,7 +32,15 @@ if [[ "${VERSION#v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     VERSION_PROPS+=(-p:Version="${VERSION#v}")
 fi
 
+# ReadyToRun: precompiles native code for linux-x64 instead of JIT-ing everything cold on first
+# run. Startup latency for a self-contained (untrimmed, ~460-DLL) publish mounted via AppImage's
+# FUSE layer is dominated by that first-call JIT cost, not disk I/O — R2R is the standard fix and
+# purely additive (falls back to JIT for anything not covered, no behavior change). PublishTrimmed
+# is NOT enabled here: ViewLocator.cs resolves views by reflection (Type.GetType on a string-built
+# name) and is explicitly marked [RequiresUnreferencedCode] — trimming it needs its own care pass
+# (root it, or replace the reflection lookup) rather than riding along with this change.
 dotnet publish "$ROOT/src/AutoRoute.App" -c Release -r linux-x64 --self-contained \
+    -p:PublishReadyToRun=true \
     "${VERSION_PROPS[@]}" \
     -o "$APPDIR/usr/lib/autoroute"
 
