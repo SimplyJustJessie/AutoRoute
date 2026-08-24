@@ -23,14 +23,21 @@ public readonly record struct AutostartState(bool Enabled, AutostartMechanism Me
 public readonly record struct AutostartOutcome(bool Success, AutostartMechanism Mechanism, string Message);
 
 /// <summary>
+/// What <see cref="AutostartService.RepairStaleEntry"/> did: <paramref name="Repaired"/> is true only
+/// when an installed entry pointed at a launcher that no longer exists and was re-pointed at this one.
+/// </summary>
+public readonly record struct AutostartRepair(bool Repaired, string? OldTarget, string? NewTarget);
+
+/// <summary>
 /// Installs and removes "start AutoRoute at login" on the user's own machine, from inside the app —
 /// so an AppImage user never has to hand-write a systemd unit or a <c>.desktop</c> file.
 ///
-/// It prefers a **systemd user service** (restart-on-failure + journald, matching
-/// <c>dist/systemd/autoroute.service</c>); if the systemd user manager isn't usable it falls back to
-/// an XDG <c>~/.config/autostart</c> entry, which needs no <c>systemctl</c> at all. Either way the
-/// launcher it points at is AutoRoute's own path — the <c>$APPIMAGE</c> file when running from an
-/// AppImage (its in-mount executable path is ephemeral), otherwise the running executable.
+/// The mechanism is an XDG <c>~/.config/autostart</c> entry, which needs no <c>systemctl</c> at all;
+/// a systemd user unit is only ever recognised as a hand-install (or retired as an older build's
+/// leftover). The launcher it points at is AutoRoute's own path — the <c>$APPIMAGE</c> file when
+/// running from an AppImage (its in-mount executable path is ephemeral), otherwise the running
+/// executable. Because that path is absolute, <see cref="RepairStaleEntry"/> re-points it when it
+/// goes stale (an AppImage upgraded by filename); call it at startup.
 ///
 /// It intentionally never <c>enable --now</c>s: the app is already running when the button is
 /// clicked, and starting a second <c>--background</c> instance would just bounce off the
@@ -68,6 +75,92 @@ public sealed class AutostartService
 
     private string UnitPath => Path.Combine(_configHome, "systemd", "user", UnitName);
     private string DesktopPath => Path.Combine(_configHome, "autostart", DesktopFileName);
+
+    /// <summary>
+    /// The launcher path recorded in the installed XDG entry, or <c>null</c> when there is no entry
+    /// (or its <c>Exec</c> line can't be parsed).
+    /// </summary>
+    public string? InstalledLaunchTarget
+    {
+        get
+        {
+            try
+            {
+                return File.Exists(DesktopPath) ? ParseExecTarget(File.ReadAllText(DesktopPath)) : null;
+            }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "autostart: reading the installed entry failed");
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Re-point an installed autostart entry that has gone stale. The entry records an absolute
+    /// launcher path, and an AppImage carries its version in the filename — so upgrading by
+    /// downloading <c>AutoRoute-v0.3.1-x86_64.AppImage</c> next to the v0.2.0 one leaves autostart
+    /// aimed at a file that no longer exists, and it silently stops working. (An in-place self-update
+    /// keeps the same path and is unaffected; so is a distro install, whose path has no version in
+    /// it.) Re-pointing it at the running AutoRoute honours what the user already asked for.
+    ///
+    /// <para>Deliberately conservative: it only rewrites when the recorded launcher <b>no longer
+    /// exists</b>. If it is still there, two installs coexist and picking one for the user would be a
+    /// guess — a dead path is the only unambiguous case. Never creates an entry, so autostart the
+    /// user turned off stays off.</para>
+    /// </summary>
+    public AutostartRepair RepairStaleEntry()
+    {
+        var recorded = InstalledLaunchTarget;
+        if (recorded is null) return default;            // no entry, or unparseable — nothing to do
+        if (File.Exists(recorded)) return default;       // still a real launcher — leave it alone
+
+        var current = LaunchTarget;
+        if (string.IsNullOrEmpty(current) || current == recorded) return default;
+
+        try
+        {
+            WriteXdgEntry(current);
+            _log.LogInformation(
+                "autostart: repaired a stale entry — {Old} no longer exists, now launching {New}",
+                recorded, current);
+            return new AutostartRepair(true, recorded, current);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "autostart: repairing the stale entry failed");
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Pull the launcher out of a desktop entry's <c>Exec=</c> line. We write it quoted
+    /// (<c>Exec="/path" --background</c>); an unquoted first token is accepted too, so an entry a
+    /// user hand-wrote still parses.
+    /// </summary>
+    public static string? ParseExecTarget(string? desktopFile)
+    {
+        if (string.IsNullOrEmpty(desktopFile)) return null;
+
+        foreach (var raw in desktopFile.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith("Exec=", StringComparison.Ordinal)) continue;
+
+            var value = line["Exec=".Length..].Trim();
+            if (value.Length == 0) return null;
+
+            if (value[0] == '"')
+            {
+                var end = value.IndexOf('"', 1);
+                return end > 1 ? value[1..end] : null;
+            }
+
+            var space = value.IndexOf(' ');
+            return space < 0 ? value : value[..space];
+        }
+        return null;
+    }
 
     /// <summary>Report whether AutoRoute is set to start at login, and by which mechanism.</summary>
     public async Task<AutostartState> GetStateAsync(CancellationToken ct = default)

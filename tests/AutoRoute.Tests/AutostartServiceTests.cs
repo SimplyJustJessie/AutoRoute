@@ -149,4 +149,68 @@ public sealed class AutostartServiceTests : IDisposable
 
         Assert.Contains($"Exec=\"{spaced}\" --background", AutostartService.BuildDesktopFile(spaced));
     }
+
+    // ===== stale-entry repair ===========================================================
+    // The live bug: autostart was enabled from AutoRoute-v0.2.0-x86_64.AppImage, the user upgraded
+    // by downloading v0.3.1 alongside it and deleting the old file, and autostart silently died
+    // because the entry still named the v0.2.0 path.
+
+    /// <summary>An AppImage that exists on disk, standing in for an installed launcher.</summary>
+    private string MakeLauncher(string name)
+    {
+        var path = Path.Combine(_configHome, name);
+        File.WriteAllText(path, "#!/bin/sh\n");
+        return path;
+    }
+
+    [Fact]
+    public async Task Repair_repoints_an_entry_whose_launcher_is_gone()
+    {
+        var old = MakeLauncher("AutoRoute-v0.2.0-x86_64.AppImage");
+        await Service(new FakeProcessRunner(), old).EnableAsync();
+        File.Delete(old);                                    // the upgrade removes the old image
+        var current = MakeLauncher("AutoRoute-v0.3.1-x86_64.AppImage");
+
+        var repair = Service(new FakeProcessRunner(), current).RepairStaleEntry();
+
+        Assert.True(repair.Repaired);
+        Assert.Equal(old, repair.OldTarget);
+        Assert.Equal(current, repair.NewTarget);
+        Assert.Contains($"Exec=\"{current}\" --background", File.ReadAllText(DesktopPath));
+    }
+
+    [Fact]
+    public async Task Repair_leaves_an_entry_alone_while_its_launcher_still_exists()
+    {
+        // Two installs coexisting is not a broken entry — choosing between them would be a guess,
+        // so only a launcher that is actually gone counts as stale.
+        var other = MakeLauncher("AutoRoute-v0.2.0-x86_64.AppImage");
+        await Service(new FakeProcessRunner(), other).EnableAsync();
+        var current = MakeLauncher("AutoRoute-v0.3.1-x86_64.AppImage");
+
+        var repair = Service(new FakeProcessRunner(), current).RepairStaleEntry();
+
+        Assert.False(repair.Repaired);
+        Assert.Contains($"Exec=\"{other}\" --background", File.ReadAllText(DesktopPath));
+    }
+
+    [Fact]
+    public void Repair_never_creates_an_entry_when_autostart_is_off()
+    {
+        // Autostart the user turned off must stay off — repair only ever rewrites, never installs.
+        var repair = Service(new FakeProcessRunner(), MakeLauncher("AutoRoute")).RepairStaleEntry();
+
+        Assert.False(repair.Repaired);
+        Assert.False(File.Exists(DesktopPath));
+    }
+
+    [Theory]
+    [InlineData("[Desktop Entry]\nExec=\"/opt/AutoRoute.AppImage\" --background\n", "/opt/AutoRoute.AppImage")]
+    [InlineData("[Desktop Entry]\nExec=/usr/bin/autoroute --background\n", "/usr/bin/autoroute")]
+    [InlineData("[Desktop Entry]\nExec=\"/home/a b/AutoRoute\" --background\n", "/home/a b/AutoRoute")]
+    [InlineData("[Desktop Entry]\nExec=/usr/bin/autoroute\n", "/usr/bin/autoroute")]
+    [InlineData("[Desktop Entry]\nName=AutoRoute\n", null)]
+    [InlineData("", null)]
+    public void Parses_the_launcher_out_of_an_exec_line(string desktopFile, string? expected)
+        => Assert.Equal(expected, AutostartService.ParseExecTarget(desktopFile));
 }
