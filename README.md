@@ -28,11 +28,13 @@ AutoRoute makes those patches stick, in **both directions**:
 - **Sample rate & bit depth at a glance** — every source and sink wears a small badge showing what it's running at (e.g. `48 kHz · 24-bit`, `44.1 kHz · 32-bit float`), read straight from the live graph.
 - **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
 - **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
+- **A Video tab, same rules** — PipeWire carries video too, so the board has a second tab for it: route a Spout2PW sender (VTube Studio, an OBS overlay, …) into OBS's PipeWire Video Capture the same way you'd route audio — drag once, and AutoRoute reconnects it every time both apps come back up. Same reconciler, same `rules.json`, no separate config.
 
 ## Requirements
 
 - Linux with **PipeWire** and **WirePlumber** (`pw-dump`, `pw-link`, `pw-mon` available on your `PATH`)
 - The [**.NET 10 SDK**](https://dotnet.microsoft.com/download)
+- For the Video tab: a PipeWire video bridge such as **Spout2PW** on the sending side, and an app with PipeWire video capture (e.g. OBS) on the receiving side — AutoRoute just links whatever video nodes PipeWire already exposes, it doesn't install or configure the bridge itself
 
 ## Install
 

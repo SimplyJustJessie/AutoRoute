@@ -47,6 +47,14 @@ public static class DesignGraph
         Link(links, 503, zen1, game, unmanaged: false, ruleId: "design-rule-zen-game"); // managed
         Link(links, 504, codec, discord, unmanaged: true);  // long-named capture → a column card
 
+        // --- Video (Spout2PW/OBS shape): one output port, one input port, no channel — mirrors a
+        // real capture live (kwin's screencast nodes carry the same single "output_1"/"input_1"
+        // shape with no audio.channel prop at all). ---
+        var vtubeStudio = AppStreamVideo(nodes, ports, 700, "spout2pw", "spout2pw", "spout2pw", "VTube Studio");
+        var obsCam = AppStreamVideo(nodes, ports, 701, "spout2pw", "spout2pw", "spout2pw", "Webcam Overlay");
+        var obsCapture = StreamInputVideo(nodes, ports, 710, "OBS Studio", "OBS Studio", "PipeWire Video Capture");
+        Link(links, 505, vtubeStudio, obsCapture, unmanaged: false, ruleId: "design-rule-vtube-obs");
+
         return new PwGraph(nodes, ports, links);
     }
 
@@ -106,8 +114,30 @@ public static class DesignGraph
         return node;
     }
 
+    // A video stream/capture node carries one port with no channel and no AudioFormat — the real
+    // shape (confirmed live via pw-dump against kwin's screencast nodes and how Spout2PW/OBS's
+    // PipeWire Video Capture present).
+
+    private static PwNode AppStreamVideo(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string app, string binary, string mediaName)
+    {
+        var list = new List<PwPort> { P(ports, id, PortDirection.Output, "output_1", null, 0) };
+        var node = new PwNode(id, name, null, "Stream/Output/Video", app, binary, mediaName, list);
+        nodes[id] = node;
+        return node;
+    }
+
+    private static PwNode StreamInputVideo(IDictionary<int, PwNode> nodes, IDictionary<int, PwPort> ports,
+        int id, string name, string app, string mediaName)
+    {
+        var list = new List<PwPort> { P(ports, id, PortDirection.Input, "input_1", null, 0) };
+        var node = new PwNode(id, name, null, "Stream/Input/Video", app, null, mediaName, list);
+        nodes[id] = node;
+        return node;
+    }
+
     private static PwPort P(IDictionary<int, PwPort> ports, int nodeId, PortDirection dir,
-        string portName, string channel, int index)
+        string portName, string? channel, int index)
     {
         var pid = _port++;
         var port = new PwPort(pid, nodeId, dir, portName, channel, index);

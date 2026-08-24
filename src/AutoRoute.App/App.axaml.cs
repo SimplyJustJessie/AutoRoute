@@ -88,7 +88,9 @@ public partial class App : Application
             _shutdown = new GracefulShutdown(RunTeardown);
 
             var board = _services.GetRequiredService<BoardViewModel>();
-            _mainWindow = new MainWindow { DataContext = board };
+            var videoBoard = _services.GetRequiredService<VideoBoardViewModel>();
+            var tabs = _services.GetRequiredService<TabSelectionState>();
+            _mainWindow = new MainWindow { DataContext = new MainWindowViewModel(board, videoBoard, tabs) };
             _mainWindow.Closing += OnMainWindowClosing;
 
             var worker = _services.GetRequiredService<RoutingWorker>();
@@ -97,10 +99,13 @@ public partial class App : Application
             if (!_options.Background)
                 ShowMainWindow();
 
-            // Wire the board's own graph/rule subscriptions and render the first snapshot without
+            // Wire each board's own graph/rule subscriptions and render its first snapshot without
             // blocking the UI thread. The worker has already primed the shared graph, so this is a
-            // no-op reload; if it races ahead of the worker it does the real StartAsync safely.
+            // no-op reload; if it races ahead of the worker it does the real StartAsync safely. Both
+            // boards share the same underlying graph/rule-store singletons (see
+            // HostFactory/VideoBoardViewModel), so this is two cheap subscribes, not two pollers.
             InitializeBoard(board);
+            InitializeBoard(videoBoard);
 
             // Honour a signal that arrived while Avalonia was still initializing.
             if (_shutdownRequested)

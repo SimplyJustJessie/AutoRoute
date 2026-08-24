@@ -53,4 +53,27 @@ public class BoardModelBuilderTests
         // The first occurrence keeps the plain identity so diff-merge stays stable normally.
         Assert.Contains(snapshot.Columns, c => c.Key == "DiscordSink");
     }
+
+    [Fact]
+    public void Video_kind_surfaces_only_video_nodes_audio_kind_surfaces_only_audio_nodes()
+    {
+        // A mixed graph: one audio sink (GameSink) plus a Spout2PW-shaped video source/target pair
+        // (VTube Studio → OBS) — the two boards must partition it cleanly, neither leaking into
+        // the other's columns/palette.
+        var graph = GraphMutations.WithVideoTarget(
+            GraphMutations.WithVideoSource(
+                GraphMutations.WithNullSink(PwGraph.Empty, "GameSink", "Game Sink"),
+                "spout2pw", applicationName: "spout2pw", mediaName: "VTube Studio"),
+            "OBS Studio", applicationName: "OBS Studio");
+
+        var audio = BoardModelBuilder.Build(graph, RulesDocument.Empty, new RuleMatcher(), NoKeptManual, showMonitors: false, MediaKind.Audio);
+        Assert.Contains(audio.Columns, c => c.SinkName == "GameSink");
+        Assert.DoesNotContain(audio.Columns, c => c.Title == "OBS Studio");
+        Assert.DoesNotContain(audio.Palette, p => p.Title == "spout2pw");
+
+        var video = BoardModelBuilder.Build(graph, RulesDocument.Empty, new RuleMatcher(), NoKeptManual, showMonitors: false, MediaKind.Video);
+        Assert.DoesNotContain(video.Columns, c => c.SinkName == "GameSink");
+        Assert.Contains(video.Columns, c => c.Title == "OBS Studio");
+        Assert.Contains(video.Palette, p => p.Title == "spout2pw");
+    }
 }

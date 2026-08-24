@@ -7,8 +7,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="640"
         x:Class="AutoRoute.App.Views.MainWindow"
-        x:DataType="vm:BoardViewModel"
-        d:DataContext="{x:Static design:DesignData.Board}"
+        x:DataType="vm:MainWindowViewModel"
+        d:DataContext="{x:Static design:DesignData.MainWindow}"
         Width="1100" Height="640"
         MinWidth="720" MinHeight="420"
         Background="{DynamicResource BgBrush}"
@@ -16,10 +16,25 @@
         Title="AutoRoute"
         SystemDecorations="None">
 
-    <!-- Client-side decorations: the app draws its own title bar + caption buttons (BoardView's
-         toolbar) and its own resize grips (BoardView.axaml.cs). SystemDecorations="None" is used
-         instead of ExtendClientAreaToDecorationsHint because several Linux compositors (KWin among
-         them) ignore the extend-client-area hint and keep drawing their own caption — leaving a
-         double title bar. "None" is honoured everywhere; we supply move/maximise/resize ourselves. -->
-    <views:BoardView />
+    <!-- Client-side decorations: each BoardView draws its own title bar + caption buttons and its
+         own resize grips (BoardView.axaml.cs) — that keeps working unchanged no matter how deep it
+         sits in the visual tree (GetVisualRoot() always finds this Window). SystemDecorations="None"
+         is used instead of ExtendClientAreaToDecorationsHint because several Linux compositors (KWin
+         among them) ignore the extend-client-area hint and keep drawing their own caption — leaving
+         a double title bar. "None" is honoured everywhere; we supply move/maximise/resize ourselves.
+
+         Audio and Video are two independent, fully self-contained boards (own toolbar, filter,
+         palette, columns); only one is visible at a time. The Audio/Video switcher itself lives
+         inside BoardView's own toolbar (next to the brand) via a $parent[Window] binding back to
+         this VM — so there's exactly one toolbar on screen, not a second bar stacked above it. -->
+    <Grid Background="{DynamicResource BgBrush}">
+        <!-- IsVisible="False" also stops a board from hit-testing, so drag/drop and clicks on the
+             hidden one never fire. -->
+        <Panel IsVisible="{Binding Tabs.IsAudioSelected}">
+            <views:BoardView DataContext="{Binding Audio}" />
+        </Panel>
+        <Panel IsVisible="{Binding Tabs.IsVideoSelected}">
+            <views:BoardView DataContext="{Binding Video}" />
+        </Panel>
+    </Grid>
 </Window>

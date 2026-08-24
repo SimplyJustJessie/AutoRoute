@@ -42,6 +42,22 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Border>
+
+                    <!-- Audio/Video switcher: Tabs is the same TabSelectionState instance on both
+                         boards (see BoardViewModel.Tabs), so this is a plain binding off this board's
+                         own DataContext — no reaching into a sibling view or the Window. Both boards
+                         render this identically; only the visible one is ever shown. -->
+                    <Border Classes="tabPillGroup" Margin="4,0,0,0" IsVisible="{Binding Tabs, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Classes="tabPill" Content="Audio"
+                                    Classes.active="{Binding Tabs.IsAudioSelected}"
+                                    Command="{Binding Tabs.SelectAudioCommand}" />
+                            <Button Classes="tabPill" Content="Video"
+                                    Classes.active="{Binding Tabs.IsVideoSelected}"
+                                    Command="{Binding Tabs.SelectVideoCommand}"
+                                    ToolTip.Tip="Route Spout2PW / OBS video nodes — e.g. keep VTube Studio connected to OBS" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Filter -->
@@ -311,8 +327,7 @@
                             IsVisible="{Binding !HasColumns}">
                     <Path Data="{StaticResource IconSpeaker}" Fill="{DynamicResource FaintBrush}"
                           Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" />
-                    <TextBlock Classes="hint"
-                               Text="No Target Sinks in the graph yet. A Target Sink is any node with audio input ports — a hardware or null sink, or an app's recording stream." />
+                    <TextBlock Classes="hint" Text="{Binding EmptyStateHint}" />
                 </StackPanel>
             </Panel>
         </Grid>

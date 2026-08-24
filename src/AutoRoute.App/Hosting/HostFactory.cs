@@ -128,7 +128,9 @@ public static class HostFactory
             sp.GetRequiredService<AppVersion>(),
             sp.GetService<ILogger<UpdateService>>()));
 
+        services.AddSingleton<TabSelectionState>();
         services.AddSingleton<BoardViewModel>();
+        services.AddSingleton<VideoBoardViewModel>();
         services.AddSingleton<RoutingWorker>();
         services.AddHostedService(sp => sp.GetRequiredService<RoutingWorker>());
 

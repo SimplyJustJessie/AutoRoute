@@ -3,14 +3,15 @@ AutoRoute UI icons
 
 The toolbar / card icon glyphs defined in App.axaml (IconLock, IconUnlock,
 IconClose, IconCheck, IconSearch, IconWave, IconMic, IconHeadphones,
-IconSpeaker, IconGear) are taken from Bootstrap Icons, an open-source icon
-library. The path data is used unmodified (native 16x16 viewBox); each geometry
-is prefixed with the "F1" non-zero fill-rule token that Avalonia's path markup
-requires.
+IconSpeaker, IconGear, IconCameraVideo) are taken from Bootstrap Icons, an
+open-source icon library. The path data is used unmodified (native 16x16
+viewBox); each geometry is prefixed with the "F1" non-zero fill-rule token
+that Avalonia's path markup requires.
 
   Bootstrap Icons - https://icons.getbootstrap.com
   Source glyphs: lock-fill, unlock-fill, x-lg, check-lg, search, soundwave,
-                 mic-fill, headphones, volume-up-fill, gear-fill
+                 mic-fill, headphones, volume-up-fill, gear-fill,
+                 camera-video-fill
 
 IconDrop is an original, hand-authored geometry (not from the pack).
 

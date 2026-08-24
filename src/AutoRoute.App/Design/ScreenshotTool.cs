@@ -43,18 +43,37 @@ public static class ScreenshotTool
         // Deterministic design graph (not the captured fixture) so shots are reproducible, then
         // exercise the board a little so every card/column state is on screen: keep Spotify → Music
         // as Manual, protect the Desktop sink and the capture device.
-        var board = DevComposition.CreateInitializedBoard(DesignGraph.Build());
+        var tabs = new ViewModels.TabSelectionState();
+        var board = DevComposition.CreateInitializedBoard(DesignGraph.Build(), tabs);
         var spotify = board.Columns.SelectMany(c => c.Cards)
             .FirstOrDefault(c => c.IsUnsaved && string.Equals(c.Title, "Spotify", StringComparison.OrdinalIgnoreCase));
         if (spotify is not null) board.KeepManual(spotify);
         board.ToggleProtectAsync(90).GetAwaiter().GetResult(); // DesktopSink
         board.ToggleProtectAsync(56).GetAwaiter().GetResult(); // PRO X 2 Mono capture
 
-        var window = new MainWindow { DataContext = board, Width = 1400, Height = 800 };
+        var videoBoard = DevComposition.CreateInitializedVideoBoard(DesignGraph.Build(), tabs);
+        var mainVm = new ViewModels.MainWindowViewModel(board, videoBoard, tabs);
+
+        var window = new MainWindow { DataContext = mainVm, Width = 1400, Height = 800 };
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
         Capture(window, Path.Combine(dir, "board.png"));
+
+        // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
+        var videoTab = window.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => b.Content as string == "Video");
+        if (videoTab is not null)
+        {
+            videoTab.Command?.Execute(null); // OnClick invokes the Command; raising Click alone would not
+            Dispatcher.UIThread.RunJobs();
+            Capture(window, Path.Combine(dir, "board-video.png"));
+
+            var audioTab = window.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(b => b.Content as string == "Audio");
+            audioTab?.Command?.Execute(null); // back to Audio for the rest of the shots below
+            Dispatcher.UIThread.RunJobs();
+        }
 
         // Scroll to the far right where the routed columns (Game / Music / PRO X 2) live.
         var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()

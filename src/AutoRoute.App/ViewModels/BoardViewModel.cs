@@ -33,6 +33,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private readonly AppNotices? _notices;
     private readonly ILogger<BoardViewModel>? _log;
     private readonly PulseConfImporter? _importer;
+    private readonly MediaKind _kind;
 
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
@@ -59,6 +60,22 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private string _updateNoticeText = string.Empty;
 
     public bool HasUpdateNotice => UpdateNoticeText.Length > 0;
+
+    /// <summary>Which half of the graph this board views (Audio or Video) — set once at construction.</summary>
+    public MediaKind Kind => _kind;
+
+    /// <summary>The shared Audio/Video tab-switch state (same instance on both boards), for the
+    /// toolbar's tab pills to bind to directly. Null in contexts that don't wire tabs (a lone board
+    /// built without a sibling — tests, some design-time fixtures); the pills just stay inert then.</summary>
+    public TabSelectionState? Tabs { get; }
+
+    /// <summary>True for the Video tab's board — gates video-specific empty-state copy in the view.</summary>
+    public bool IsVideoBoard => _kind == MediaKind.Video;
+
+    /// <summary>Empty-state hint text, worded for whichever kind of node this board routes.</summary>
+    public string EmptyStateHint => _kind == MediaKind.Video
+        ? "No Target Sinks in the graph yet. A Target Sink is any node with video input ports — OBS's PipeWire Video Capture source, for example. Start VTube Studio (via Spout2PW) and OBS to see them here."
+        : "No Target Sinks in the graph yet. A Target Sink is any node with audio input ports — a hardware or null sink, or an app's recording stream.";
 
     [ObservableProperty]
     private bool _hasColumns;
@@ -88,7 +105,9 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         ILogger<BoardViewModel>? log = null,
         PulseConfImporter? importer = null,
         AutostartService? autostart = null,
-        UpdateService? update = null)
+        UpdateService? update = null,
+        MediaKind kind = MediaKind.Audio,
+        TabSelectionState? tabs = null)
     {
         _graph = graph;
         _linker = linker;
@@ -99,6 +118,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         _notices = notices;
         _log = log;
         _importer = importer;
+        Tabs = tabs;
+        _kind = kind;
         if (autostart is not null)
             Autostart = new AutostartViewModel(autostart);
         if (update is not null)
@@ -201,7 +222,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         try
         {
             var snapshot = BoardModelBuilder.Build(
-                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors);
+                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors, _kind);
 
             MergeColumns(snapshot.Columns);
             Palette.Merge(snapshot.Palette);
@@ -405,8 +426,11 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     // ===== Virtual sinks (ADR-0011) =====================================================
 
-    /// <summary>True when a sink controller is wired — gates the whole sink-management UI.</summary>
-    public bool CanManageSinks => _sinkController is not null;
+    /// <summary>True when a sink controller is wired — gates the whole sink-management UI. Virtual
+    /// sinks are a PulseAudio/PipeWire-Pulse concept with no video equivalent, so this is Audio-only
+    /// even if a sink controller happens to be wired (defense in depth alongside the Video board
+    /// never being constructed with one).</summary>
+    public bool CanManageSinks => _sinkController is not null && _kind == MediaKind.Audio;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NewSinkValidationMessage))]
@@ -536,8 +560,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     private async Task ConnectLinksAsync(PwGraph g, MatchCriteria src, MatchCriteria tgt, string ruleId)
     {
-        foreach (var s in _matcher.Resolve(src, g).Where(NodeRoles.IsAudioSource))
-        foreach (var t in _matcher.Resolve(tgt, g).Where(NodeRoles.IsTargetSink))
+        foreach (var s in _matcher.Resolve(src, g).Where(n => NodeRoles.IsSource(n, _kind)))
+        foreach (var t in _matcher.Resolve(tgt, g).Where(n => NodeRoles.IsTargetSink(n, _kind)))
         foreach (var pair in ChannelMapper.Map(s, t).Pairs)
         {
             try { await _linker.ConnectAsync(pair.OutPortId, pair.InPortId, ruleId).ConfigureAwait(true); }

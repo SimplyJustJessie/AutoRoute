@@ -71,6 +71,54 @@ public static class GraphMutations
     }
 
     /// <summary>
+    /// Returns a copy of <paramref name="graph"/> with a video Source node added: one output port,
+    /// no channel, no <see cref="AudioFormat"/> — the shape a Spout2PW sender (or kwin's screencast
+    /// nodes, confirmed live via pw-dump) actually presents as.
+    /// </summary>
+    public static PwGraph WithVideoSource(PwGraph graph, string name, string? applicationName = null, string? mediaName = null)
+    {
+        var nodeId = (graph.NodesById.Count == 0 ? 0 : graph.NodesById.Keys.Max()) + 500;
+        var portId = (graph.PortsById.Count == 0 ? 0 : graph.PortsById.Keys.Max()) + 500;
+
+        var port = new PwPort(portId, nodeId, PortDirection.Output, "output_1", null, 0);
+        var node = new PwNode(
+            nodeId, name, Description: null, MediaClass: "Stream/Output/Video",
+            ApplicationName: applicationName, ProcessBinary: null, MediaName: mediaName,
+            Ports: new[] { port });
+
+        var nodes = graph.NodesById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        nodes[nodeId] = node;
+        var allPorts = graph.PortsById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        allPorts[port.Id] = port;
+
+        return new PwGraph(nodes, allPorts, graph.LinksById.ToDictionary(kv => kv.Key, kv => kv.Value));
+    }
+
+    /// <summary>
+    /// Returns a copy of <paramref name="graph"/> with a video Target Sink node added: one input
+    /// port, no channel, no <see cref="AudioFormat"/> — the shape OBS's PipeWire Video Capture
+    /// source presents as.
+    /// </summary>
+    public static PwGraph WithVideoTarget(PwGraph graph, string name, string? applicationName = null)
+    {
+        var nodeId = (graph.NodesById.Count == 0 ? 0 : graph.NodesById.Keys.Max()) + 500;
+        var portId = (graph.PortsById.Count == 0 ? 0 : graph.PortsById.Keys.Max()) + 500;
+
+        var port = new PwPort(portId, nodeId, PortDirection.Input, "input_1", null, 0);
+        var node = new PwNode(
+            nodeId, name, Description: name, MediaClass: "Stream/Input/Video",
+            ApplicationName: applicationName, ProcessBinary: null, MediaName: null,
+            Ports: new[] { port });
+
+        var nodes = graph.NodesById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        nodes[nodeId] = node;
+        var allPorts = graph.PortsById.ToDictionary(kv => kv.Key, kv => kv.Value);
+        allPorts[port.Id] = port;
+
+        return new PwGraph(nodes, allPorts, graph.LinksById.ToDictionary(kv => kv.Key, kv => kv.Value));
+    }
+
+    /// <summary>
     /// Returns a copy of <paramref name="graph"/> in which the given nodes — and their ports, and
     /// any link endpoints touching them — have their ids shifted by <paramref name="offset"/>.
     /// Stable-key props (ApplicationName, NodeName, …) are preserved, so a Rule still resolves the

@@ -22,6 +22,12 @@
                 <Border Grid.Row="0" Classes="columnHeader">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                         <Path Grid.Column="0" Data="{StaticResource IconSpeaker}"
+                              IsVisible="{Binding !IsVideo}"
+                              Fill="{DynamicResource MutedBrush}"
+                              Width="13" Height="13" Stretch="Uniform"
+                              VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Path Grid.Column="0" Data="{StaticResource IconCameraVideo}"
+                              IsVisible="{Binding IsVideo}"
                               Fill="{DynamicResource MutedBrush}"
                               Width="13" Height="13" Stretch="Uniform"
                               VerticalAlignment="Center" Margin="0,0,8,0" />
