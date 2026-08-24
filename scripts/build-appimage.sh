@@ -39,8 +39,18 @@ fi
 # is NOT enabled here: ViewLocator.cs resolves views by reflection (Type.GetType on a string-built
 # name) and is explicitly marked [RequiresUnreferencedCode] — trimming it needs its own care pass
 # (root it, or replace the reflection lookup) rather than riding along with this change.
+# RestoreLockedMode on the publish itself, rather than a separate `dotnet restore --locked-mode`
+# followed by --no-restore: ReadyToRun pulls the crossgen2 runtime pack, and that only enters the
+# graph when PublishReadyToRun is set AT RESTORE TIME. A split restore doesn't see the publish
+# properties, so the publish then fails NETSDK1094 on a cold NuGet cache (green locally with a warm
+# one — it was CI that caught it). One restore, carrying the real publish properties, locked.
+#
+# Locked means the released binary is built from exactly the package set committed in
+# packages.lock.json (version-pinned, SHA-512 verified) or not at all — the same guarantee the AUR
+# package makes, so both shipping artifacts come from one audited dependency graph.
 dotnet publish "$ROOT/src/AutoRoute.App" -c Release -r linux-x64 --self-contained \
     -p:PublishReadyToRun=true \
+    -p:RestoreLockedMode=true \
     "${VERSION_PROPS[@]}" \
     -o "$APPDIR/usr/lib/autoroute"
 
