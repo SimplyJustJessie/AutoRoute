@@ -27,8 +27,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore
-        run: dotnet restore
+      # --locked-mode instead of a plain restore: fails (NU1004) if packages.lock.json and the
+      # projects disagree, so a dependency bump that forgets to refresh the lock can't land. The
+      # lock is what lets the AUR package fetch an audited, hash-pinned set (Directory.Build.props).
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
 
       - name: Build (Release)
         run: dotnet build --no-restore -c Release

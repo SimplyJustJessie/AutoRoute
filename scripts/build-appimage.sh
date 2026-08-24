@@ -39,7 +39,12 @@ fi
 # is NOT enabled here: ViewLocator.cs resolves views by reflection (Type.GetType on a string-built
 # name) and is explicitly marked [RequiresUnreferencedCode] — trimming it needs its own care pass
 # (root it, or replace the reflection lookup) rather than riding along with this change.
-dotnet publish "$ROOT/src/AutoRoute.App" -c Release -r linux-x64 --self-contained \
+# Locked restore: the released binary is built from exactly the package set committed in
+# packages.lock.json (version-pinned, SHA-512 verified) or the build fails — same guarantee the
+# AUR package makes, so both shipping artifacts come from one audited dependency graph.
+dotnet restore "$ROOT/src/AutoRoute.App" -r linux-x64 --locked-mode
+
+dotnet publish "$ROOT/src/AutoRoute.App" -c Release -r linux-x64 --self-contained --no-restore \
     -p:PublishReadyToRun=true \
     "${VERSION_PROPS[@]}" \
     -o "$APPDIR/usr/lib/autoroute"
