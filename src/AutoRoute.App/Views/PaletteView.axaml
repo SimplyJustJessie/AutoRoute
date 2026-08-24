@@ -49,9 +49,15 @@
                                     <Viewbox Width="14" Height="14"
                                              HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Panel>
-                                            <Path Data="{StaticResource IconWave}" IsVisible="{Binding IsAppKind}" />
-                                            <Path Data="{StaticResource IconMic}" IsVisible="{Binding IsCaptureKind}" />
-                                            <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding IsMonitorKind}" />
+                                            <!-- Video overrides App/Capture/Monitor entirely with one
+                                                 neutral camera glyph — the audio soundwave/mic/headphones
+                                                 trio doesn't map cleanly onto a Spout2PW sender vs. an
+                                                 OBS capture, and the kind tile's tint (bound above,
+                                                 unchanged) already carries that distinction. -->
+                                            <Path Data="{StaticResource IconWave}" IsVisible="{Binding ShowAppIcon}" />
+                                            <Path Data="{StaticResource IconMic}" IsVisible="{Binding ShowCaptureIcon}" />
+                                            <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding ShowMonitorIcon}" />
+                                            <Path Data="{StaticResource IconCameraVideo}" IsVisible="{Binding IsVideo}" />
                                         </Panel>
                                     </Viewbox>
                                 </Border>

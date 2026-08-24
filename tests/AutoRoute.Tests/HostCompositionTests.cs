@@ -30,6 +30,21 @@ public sealed class HostCompositionTests
     }
 
     [Fact]
+    public void Host_resolves_a_separate_video_board_singleton_sharing_the_same_graph_and_rules()
+    {
+        using var host = HostFactory.Build(new AppOptions());
+        var sp = host.Services;
+
+        var audio = sp.GetRequiredService<BoardViewModel>();
+        var video = sp.GetRequiredService<VideoBoardViewModel>();
+
+        Assert.NotSame(audio, video);
+        Assert.Same(video, sp.GetRequiredService<VideoBoardViewModel>());
+        Assert.Equal(MediaKind.Audio, audio.Kind);
+        Assert.Equal(MediaKind.Video, video.Kind);
+    }
+
+    [Fact]
     public void Host_resolves_the_full_pipewire_and_engine_graph()
     {
         using var host = HostFactory.Build(new AppOptions());

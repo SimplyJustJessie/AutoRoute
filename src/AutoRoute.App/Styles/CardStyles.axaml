@@ -450,6 +450,38 @@
         <Setter Property="CornerRadius" Value="7" />
     </Style>
 
+    <!-- Audio/Video switcher, inline in the board's own toolbar (BoardView.axaml) next to the brand. -->
+    <Style Selector="Border.tabPillGroup">
+        <Setter Property="Background" Value="{DynamicResource ColumnHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tabPill">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tabPill:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ManualDimBrush}" />
+    </Style>
+    <Style Selector="Button.tabPill.active">
+        <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="Button.tabPill.active:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentDimBrush}" />
+    </Style>
+
     <Style Selector="TextBox.search">
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="FontSize" Value="12.5" />

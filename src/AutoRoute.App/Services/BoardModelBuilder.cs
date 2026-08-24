@@ -23,9 +23,10 @@ public static class BoardModelBuilder
         RulesDocument rules,
         IRuleMatcher matcher,
         IReadOnlySet<string> keptManual,
-        bool showMonitors)
+        bool showMonitors,
+        MediaKind kind = MediaKind.Audio)
     {
-        var targets = graph.Nodes.Where(NodeRoles.IsTargetSink)
+        var targets = graph.Nodes.Where(n => NodeRoles.IsTargetSink(n, kind))
             .OrderBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -49,7 +50,7 @@ public static class BoardModelBuilder
         foreach (var rule in rules.Rules)
         {
             if (!rule.Enabled) continue;
-            var sources = matcher.Resolve(rule.Source, graph).Where(NodeRoles.IsAudioSource).ToList();
+            var sources = matcher.Resolve(rule.Source, graph).Where(n => NodeRoles.IsSource(n, kind)).ToList();
             if (sources.Count > 0) ruleSources.Add((rule, sources));
         }
 
@@ -98,7 +99,7 @@ public static class BoardModelBuilder
                          ? targetLinks : (IReadOnlyList<PwLink>)System.Array.Empty<PwLink>())
             {
                 var src = graph.Node(link.OutNodeId);
-                if (src is null || !NodeRoles.IsAudioSource(src)) continue;
+                if (src is null || !NodeRoles.IsSource(src, kind)) continue;
 
                 var key = NodeRoles.SourceIdentity(src);
                 if (cards.TryGetValue(key, out var existing))
@@ -150,26 +151,28 @@ public static class BoardModelBuilder
                 SinkName: target.NodeName,
                 IsManagedSink: target.NodeName is { } nn && declaredSinkNames.Contains(nn),
                 Cards: cardModels,
-                Format: NodeRoles.FormatLabel(target)));
+                Format: NodeRoles.FormatLabel(target),
+                MediaKind: kind));
         }
 
-        // --- Palette: every audio Source, app-granularity, monitors optional ---
-        var palette = graph.Nodes.Where(NodeRoles.IsAudioSource)
+        // --- Palette: every Source of this board's kind, app-granularity, monitors optional ---
+        var palette = graph.Nodes.Where(n => NodeRoles.IsSource(n, kind))
             .GroupBy(NodeRoles.SourceIdentity)
             .Select(g =>
             {
                 var rep = g.First();
-                var monitor = g.All(NodeRoles.IsMonitorSink);
+                var monitor = g.All(n => NodeRoles.IsMonitorSink(n, kind));
                 return new PaletteItemModel(
                     Key: g.Key,
                     RepresentativeNodeId: rep.Id,
                     AllNodeIds: g.Select(n => n.Id).ToList(),
                     Title: NodeRoles.SourceTitle(rep),
                     Subtitle: NodeRoles.SourceSubtitle(rep),
-                    Kind: NodeRoles.KindOf(rep),
+                    Kind: NodeRoles.KindOf(rep, kind),
                     IsMonitor: monitor,
                     Protected: protectedIds.Contains(rep.Id),
-                    Format: NodeRoles.FormatLabel(rep));
+                    Format: NodeRoles.FormatLabel(rep),
+                    MediaKind: kind);
             })
             .Where(p => showMonitors || !p.IsMonitor)
             .OrderBy(p => p.IsMonitor)

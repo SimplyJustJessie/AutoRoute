@@ -33,7 +33,8 @@ public sealed record ColumnModel(
     string? SinkName,
     bool IsManagedSink,
     IReadOnlyList<CardModel> Cards,
-    string Format = "");
+    string Format = "",
+    MediaKind MediaKind = MediaKind.Audio);
 
 /// <summary>Immutable description of one palette Source entry (app-granularity).</summary>
 public sealed record PaletteItemModel(
@@ -45,7 +46,8 @@ public sealed record PaletteItemModel(
     SourceKind Kind,
     bool IsMonitor,
     bool Protected,
-    string Format = "");
+    string Format = "",
+    MediaKind MediaKind = MediaKind.Audio);
 
 /// <summary>The whole board in one immutable snapshot: columns + palette.</summary>
 public sealed record BoardSnapshot(

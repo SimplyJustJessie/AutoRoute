@@ -34,11 +34,17 @@ public partial class SourceItemViewModel : ViewModelBase
     private string _format = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(KindLabel), nameof(IsAppKind), nameof(IsCaptureKind), nameof(IsMonitorKind))]
+    [NotifyPropertyChangedFor(nameof(KindLabel), nameof(IsAppKind), nameof(IsCaptureKind), nameof(IsMonitorKind),
+        nameof(ShowAppIcon), nameof(ShowCaptureIcon), nameof(ShowMonitorIcon))]
     private SourceKind _kind;
 
     [ObservableProperty]
     private bool _isMonitor;
+
+    /// <summary>True on the Video board — swaps the kind tile icon away from the audio glyphs (soundwave/mic/headphones).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAppIcon), nameof(ShowCaptureIcon), nameof(ShowMonitorIcon))]
+    private bool _isVideo;
 
     [ObservableProperty]
     private bool _isProtected;
@@ -63,6 +69,7 @@ public partial class SourceItemViewModel : ViewModelBase
         Format = model.Format;
         Kind = model.Kind;
         IsMonitor = model.IsMonitor;
+        IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
     }
 
@@ -70,6 +77,13 @@ public partial class SourceItemViewModel : ViewModelBase
     public bool IsAppKind => Kind == SourceKind.AppStream;
     public bool IsCaptureKind => Kind == SourceKind.Capture;
     public bool IsMonitorKind => Kind == SourceKind.Monitor;
+
+    /// <summary>Glyph choice: on Video, one neutral camera icon replaces the App/Capture/Monitor
+    /// audio trio entirely (soundwave/mic/headphones don't map cleanly onto a Spout2PW sender vs.
+    /// an OBS capture) — the kind tile's tint still varies by <see cref="Kind"/>, only the glyph doesn't.</summary>
+    public bool ShowAppIcon => IsAppKind && !IsVideo;
+    public bool ShowCaptureIcon => IsCaptureKind && !IsVideo;
+    public bool ShowMonitorIcon => IsMonitorKind && !IsVideo;
 
     public string KindLabel => Kind switch
     {

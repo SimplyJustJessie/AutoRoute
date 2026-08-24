@@ -46,27 +46,70 @@ public static class HeadlessSmoke
             if (!ok) failures.Add(label);
         }
 
-        var board = DevComposition.CreateInitializedBoard();
-        var window = new MainWindow { DataContext = board };
+        var tabs = new ViewModels.TabSelectionState();
+        var board = DevComposition.CreateInitializedBoard(tabs);
+        var videoBoard = DevComposition.CreateInitializedVideoBoard(DesignGraph.Build(), tabs);
+        var window = new MainWindow { DataContext = new ViewModels.MainWindowViewModel(board, videoBoard, tabs) };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         window.Measure(new Size(1100, 640));
         window.Arrange(new Rect(0, 0, 1100, 640));
         Dispatcher.UIThread.RunJobs();
 
-        var columns = window.GetVisualDescendants().OfType<SinkColumnView>().ToList();
-        var palettes = window.GetVisualDescendants().OfType<PaletteView>().ToList();
-        var cards = window.GetVisualDescendants().OfType<SourceCardView>().ToList();
+        // Both tabs' BoardViews exist in the tree at once (IsVisible toggles which one lays out) —
+        // scope the per-board checks to the Audio instance to keep them exactly as meaningful as
+        // before the tab strip landed, then check the Video one separately.
+        var boardViews = window.GetVisualDescendants().OfType<BoardView>().ToList();
+        var audioView = boardViews.FirstOrDefault(v => v.DataContext is ViewModels.BoardViewModel and not ViewModels.VideoBoardViewModel);
+        var videoView = boardViews.FirstOrDefault(v => v.DataContext is ViewModels.VideoBoardViewModel);
+        Check(audioView is not null, "Audio BoardView rendered");
+        Check(videoView is not null, "Video BoardView rendered");
 
-        Check(window.GetVisualDescendants().OfType<BoardView>().Any(), "BoardView rendered");
-        Check(palettes.Count == 1, "PaletteView rendered");
-        Check(columns.Count > 0, $"Target Sink columns rendered ({columns.Count})");
-        Check(cards.Count > 0, $"Source cards rendered ({cards.Count})");
+        var columns = audioView?.GetVisualDescendants().OfType<SinkColumnView>().ToList() ?? new();
+        var palettes = audioView?.GetVisualDescendants().OfType<PaletteView>().ToList() ?? new();
+        var cards = audioView?.GetVisualDescendants().OfType<SourceCardView>().ToList() ?? new();
+
+        Check(palettes.Count == 1, "Audio PaletteView rendered");
+        Check(columns.Count > 0, $"Audio Target Sink columns rendered ({columns.Count})");
+        Check(cards.Count > 0, $"Audio Source cards rendered ({cards.Count})");
 
         // A GameSink column must be present in the rendered tree.
         var gameRendered = columns.Any(c =>
             c.DataContext is ViewModels.SinkColumnViewModel col && SmokeTest.IsGameSink(col));
         Check(gameRendered, "GameSink column present in the visual tree");
+
+        // Switch to the Video tab (mimics the user clicking it) and re-layout, so the check below
+        // exercises the real flow — not just tree membership of an never-laid-out hidden panel.
+        var videoTab = window.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => b.Content as string == "Video");
+        Check(videoTab is not null, "'Video' tab button rendered");
+        // Execute the bound Command directly — Button.OnClick is what raises the Click routed
+        // event AND invokes the Command, so re-raising Click here (as opposed to inside OnClick
+        // itself) would never reach the Command (see CheckCreateFlyoutRegression below for the
+        // same lesson learned the hard way).
+        videoTab?.Command?.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        window.Measure(new Size(1100, 640));
+        window.Arrange(new Rect(0, 0, 1100, 640));
+        Dispatcher.UIThread.RunJobs();
+
+        // The fixture wires VTube Studio (via Spout2PW) → OBS's video capture, so a column + card
+        // must show up here too, proving the video-kind filter actually surfaces Stream/*/Video
+        // nodes instead of silently rendering an empty board.
+        var videoColumns = videoView?.GetVisualDescendants().OfType<SinkColumnView>().ToList() ?? new();
+        var videoCards = videoView?.GetVisualDescendants().OfType<SourceCardView>().ToList() ?? new();
+        Check(videoColumns.Count > 0, $"Video Target Sink columns rendered ({videoColumns.Count})");
+        Check(videoCards.Count > 0, $"Video Source cards rendered ({videoCards.Count})");
+
+        // Back to Audio before the flyout check below — it targets the Audio board's own
+        // "+ New Sink" button, which needs to be the laid-out (visible) one again.
+        var audioTab = window.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => b.Content as string == "Audio");
+        audioTab?.Command?.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        window.Measure(new Size(1100, 640));
+        window.Arrange(new Rect(0, 0, 1100, 640));
+        Dispatcher.UIThread.RunJobs();
 
         CheckCreateFlyoutRegression(window, board, Check);
         CheckHorizontalContainment(window, Check);

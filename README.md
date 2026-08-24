@@ -26,13 +26,15 @@ AutoRoute makes those patches stick, in **both directions**:
 - **Protected nodes** — mark routing that another tool owns (e.g. an EasyEffects chain) as off-limits, and AutoRoute won't touch it. Precedence is absolute: *protected > suppression > connect*.
 - **A board, not a patchbay** — a clean dark UI with one column per sink and a palette of draggable sources; drag to connect, drop into several columns to fan out, filter by name. Channels are paired for you, and each card's state — *managed*, *unsaved*, *manual*, or *protected* — is spelled out at a glance.
 - **Sample rate & bit depth at a glance** — every source and sink wears a small badge showing what it's running at (e.g. `48 kHz · 24-bit`, `44.1 kHz · 32-bit float`), read straight from the live graph.
+- **Video too, same rules** — PipeWire carries video, so the board has an **Audio / Video** switch in the toolbar. Route a Spout2PW sender (VTube Studio, an overlay, …) into OBS's PipeWire Video Capture exactly the way you route audio, and stop re-connecting it by hand every session.
 - **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
 - **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
 
 ## Requirements
 
 - Linux with **PipeWire** and **WirePlumber** (`pw-dump`, `pw-link`, `pw-mon` available on your `PATH`)
-- The [**.NET 10 SDK**](https://dotnet.microsoft.com/download)
+- `pactl` (from `libpulse`) for the virtual-sink features
+- The [**.NET 10 SDK**](https://dotnet.microsoft.com/download) — only to build from source; the AppImage and the AUR package don't need it
 
 ## Install
 
@@ -43,8 +45,18 @@ Once running, an AppImage keeps itself current: the ⬇ toolbar button checks th
 a newer version and installs it in place (download → checksum + boot self-test → atomic swap →
 restart). `AutoRoute --check-update` is the headless equivalent.
 
-**Arch (AUR)**: planned — a ready PKGBUILD lives in `packaging/aur/` and will be published
-after the first tagged release.
+**Arch (AUR)**: [`autoroute`](https://aur.archlinux.org/packages/autoroute) — build it with your
+AUR helper of choice:
+
+```bash
+paru -S autoroute
+```
+
+It builds framework-dependent against `dotnet-runtime-10.0`, so .NET security updates arrive
+through pacman rather than being frozen into the package. The PKGBUILD lives in
+[`packaging/aur/`](packaging/aur/PKGBUILD). A pacman install gets `/usr/bin/autoroute`, a desktop
+entry, and a `systemd --user` unit (see [Autostart](#autostart)); the in-app updater stays inert
+there, since pacman owns the files.
 
 **From source:**
 
@@ -79,6 +91,24 @@ Every card wears its state on its sleeve — **managed**, **unsaved**, **manual*
 ![The card-state legend — managed, unsaved, manual, and protected explained](screenshots/board-help.png)
 
 Rules are written to `~/.config/autoroute/rules.json` the moment you make a change — there is no Save button.
+
+### The Video tab
+
+PipeWire carries video alongside audio, and the same "the IDs changed, re-patch it by hand" problem
+applies — which is why reconnecting VTube Studio to OBS becomes a ritual every time you start them.
+The **Video** switch in the toolbar shows the video half of the graph: video Sources on the left
+(a [Spout2PW](https://github.com/SimplyJustJessie/spout2pw) sender, a screen-capture stream), video
+Target Sinks as columns (OBS's *PipeWire Video Capture* source).
+
+![The Video tab — a Spout2PW sender routed into OBS's PipeWire Video Capture](screenshots/board-video.png)
+
+It works exactly like the audio board: drag a Source onto a column once, and the link is re-created
+every time both apps come back. The rules live in the same `rules.json` and are re-applied by the
+same background reconciler — there is nothing extra to configure or enable.
+
+Both apps have to be running for their nodes to exist, so start VTube Studio (with Spout2PW) and OBS
+first, then make the connection once. Virtual-sink creation is audio-only, so **+ New Sink** is
+hidden on this tab.
 
 ## Autostart
 

@@ -10,9 +10,19 @@ namespace AutoRoute.App.Design;
 /// </summary>
 public static class DesignData
 {
+    /// <summary>Shared by <see cref="Board"/> and <see cref="VideoBoard"/> so the previewed tab pills actually switch.</summary>
+    private static readonly TabSelectionState Tabs = new();
+
     /// <summary>A fully wired board over the deterministic design graph.</summary>
     public static BoardViewModel Board { get; } =
-        DevComposition.CreateInitializedBoard(DesignGraph.Build());
+        DevComposition.CreateInitializedBoard(DesignGraph.Build(), Tabs);
+
+    /// <summary>The Video tab's board over the same design graph, for its own previews.</summary>
+    public static VideoBoardViewModel VideoBoard { get; } =
+        DevComposition.CreateInitializedVideoBoard(DesignGraph.Build(), Tabs);
+
+    /// <summary>The window root VM (Audio + Video) for MainWindow.axaml's design-time preview.</summary>
+    public static MainWindowViewModel MainWindow { get; } = new(Board, VideoBoard, Tabs);
 
     /// <summary>First column (a Target Sink with cards) for SinkColumnView previews.</summary>
     public static SinkColumnViewModel Column => FirstColumn();

@@ -35,6 +35,10 @@ public partial class SinkColumnViewModel : ViewModelBase
     [ObservableProperty]
     private string _format = string.Empty;
 
+    /// <summary>True on the Video board — swaps the header icon away from the audio-flavored speaker glyph.</summary>
+    [ObservableProperty]
+    private bool _isVideo;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
     private bool _isProtected;
@@ -66,6 +70,7 @@ public partial class SinkColumnViewModel : ViewModelBase
         Title = model.Title;
         Subtitle = model.Subtitle;
         Format = model.Format;
+        IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
         SinkName = model.SinkName;
         IsManagedSink = model.IsManagedSink;
