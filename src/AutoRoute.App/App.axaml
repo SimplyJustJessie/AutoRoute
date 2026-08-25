@@ -32,6 +32,25 @@
             <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource BorderColor}" />
             <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
 
+            <!-- Board overflow scrims (BoardView): the columns strip scrolls sideways, so give it a
+                 soft edge that the columns dissolve into rather than letting the window frame
+                 guillotine one mid-card. Both ramps run BgColor → the same colour at zero alpha
+                 (the alpha-prefixed-hex trick the *Dim brushes below use); fading to
+                 Colors.Transparent instead would interpolate through transparent *white* and haze
+                 the ramp grey. Weighted towards the edge so the falloff reads as a curve. -->
+            <LinearGradientBrush x:Key="BoardEdgeLeftBrush" StartPoint="0%,0%" EndPoint="100%,0%">
+                <GradientStop Offset="0" Color="{StaticResource BgColor}" />
+                <GradientStop Offset="0.35" Color="#CC0F1014" />
+                <GradientStop Offset="0.7" Color="#590F1014" />
+                <GradientStop Offset="1" Color="#000F1014" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="BoardEdgeRightBrush" StartPoint="100%,0%" EndPoint="0%,0%">
+                <GradientStop Offset="0" Color="{StaticResource BgColor}" />
+                <GradientStop Offset="0.35" Color="#CC0F1014" />
+                <GradientStop Offset="0.7" Color="#590F1014" />
+                <GradientStop Offset="1" Color="#000F1014" />
+            </LinearGradientBrush>
+
             <!-- ==================== Text ==================== -->
             <SolidColorBrush x:Key="TextBrush" Color="#E7E9F1" />
             <SolidColorBrush x:Key="MutedBrush" Color="#9CA1B3" />

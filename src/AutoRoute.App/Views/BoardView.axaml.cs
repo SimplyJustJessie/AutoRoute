@@ -28,6 +28,25 @@ public partial class BoardView : UserControl
         Dispatcher.UIThread.Post(() => flyout?.Hide());
     }
 
+    // === Board overflow scrims =========================================================
+    // The columns strip scrolls sideways, so light the scrim on whichever side still has columns
+    // hidden behind it. Toggling a class (rather than IsVisible) rides the style's opacity
+    // transition, so an edge fades away as you scroll into it instead of blinking out.
+    private void OnBoardScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (sender is not ScrollViewer scroll) return;
+
+        // Half a pixel of slack: a smooth/kinetic scroll settles on fractional offsets, and an
+        // exact comparison would leave a scrim lit at a hard end of the strip.
+        const double epsilon = 0.5;
+        var maxOffset = scroll.Extent.Width - scroll.Viewport.Width;
+        SetEdgeLit("BoardEdgeLeft", scroll.Offset.X > epsilon);
+        SetEdgeLit("BoardEdgeRight", scroll.Offset.X < maxOffset - epsilon);
+    }
+
+    private void SetEdgeLit(string name, bool lit) =>
+        this.FindControl<Border>(name)?.Classes.Set("on", lit);
+
     // === Client-side window chrome (single-row title bar) ==============================
     // The toolbar is the window's title bar, so its caption buttons and drag/maximise gestures
     // reach the hosting Window through the visual tree. Guarded everywhere for the headless

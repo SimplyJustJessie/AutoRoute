@@ -302,10 +302,11 @@
             <Panel Grid.Column="1">
                 <!-- AllowAutoHide=False: the board scrollbar is a primary control here, not a
                      transient indicator — always full-size instead of the hover-to-expand rail. -->
-                <ScrollViewer Classes="boardScroll"
+                <ScrollViewer Classes="boardScroll" Name="BoardScroll"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled"
-                              AllowAutoHide="False">
+                              AllowAutoHide="False"
+                              ScrollChanged="OnBoardScrollChanged">
                     <!-- Margin on the content (not ScrollViewer.Padding) so the scroll extent
                          includes it and the last column is fully reachable. -->
                     <ItemsControl ItemsSource="{Binding Columns}" Margin="16,16,16,10">
@@ -329,6 +330,23 @@
                           Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" />
                     <TextBlock Classes="hint" Text="{Binding EmptyStateHint}" />
                 </StackPanel>
+
+                <!-- Declared last so they sit over the columns. With more columns than fit, the
+                     strip used to just stop at the window frame mid-card, which reads as a
+                     clipping bug rather than "there's more this way" — these give it an edge to
+                     run under. Bottom margin clears the horizontal scrollbar's row (its Height in
+                     CardStyles.axaml), so a scrim dims columns and never the scroll thumb. -->
+                <Border Name="BoardEdgeLeft" Classes="boardEdge" HorizontalAlignment="Left"
+                        Margin="0,0,0,14" Background="{DynamicResource BoardEdgeLeftBrush}" />
+                <Border Name="BoardEdgeRight" Classes="boardEdge" HorizontalAlignment="Right"
+                        Margin="0,0,0,14" Background="{DynamicResource BoardEdgeRightBrush}" />
+
+                <!-- The closing rule, mirroring the palette's right border on the other side of
+                     the board: full height and always on, so the strip is a bounded panel that
+                     columns pass behind rather than an open area they run off. Declared after the
+                     scrims — the right one ends fully opaque, and would paint over this. -->
+                <Border Width="1" HorizontalAlignment="Right" IsHitTestVisible="False"
+                        Background="{DynamicResource CardBorderBrush}" />
             </Panel>
         </Grid>
 
