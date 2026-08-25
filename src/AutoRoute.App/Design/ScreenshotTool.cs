@@ -75,12 +75,20 @@ public static class ScreenshotTool
             Dispatcher.UIThread.RunJobs();
         }
 
-        // Scroll to the far right where the routed columns (Game / Music / PRO X 2) live.
+        // Scroll to the far right where the routed columns (Game / Music / PRO X 2) live. Match on
+        // the board scroller by name: the palette and every column carry a ScrollViewer too, and
+        // the palette's — first in visual-tree order — also overflows, so an overflow-only match
+        // silently scrolled *that* one sideways and left this shot identical to board.png.
         var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()
-            .FirstOrDefault(s => s.Extent.Width > s.Viewport.Width);
+            .FirstOrDefault(s => s.Name == "BoardScroll" && s.Extent.Width > s.Viewport.Width);
         if (scroller is not null)
         {
-            scroller.Offset = new Vector(scroller.Extent.Width, 0);
+            scroller.Offset = new Vector(scroller.Extent.Width, 0); // coerced to the max offset
+            Dispatcher.UIThread.RunJobs();
+
+            // A scroll only moves the presenter's transform, which the headless compositor won't
+            // pick up without a render tick — RunJobs alone left this shot rendering at offset 0.
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
             Capture(window, Path.Combine(dir, "board-states.png"));
         }

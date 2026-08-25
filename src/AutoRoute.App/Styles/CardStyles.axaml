@@ -571,4 +571,22 @@
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
     </Style>
 
+    <!-- Board overflow scrims. Always present, never hit-testable (a drag has to pass straight
+         through to the column underneath), and driven by opacity rather than IsVisible so the
+         edge fades in and out as you reach it instead of popping. BoardView.axaml.cs adds .on to
+         whichever side still has columns behind it. -->
+    <Style Selector="Border.boardEdge">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.boardEdge.on">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
 </Styles>
