@@ -14,6 +14,36 @@
 
     <!-- One output (Target Sink) row: what it is, its volume, and the sources feeding it.
          Comfortable = card with a two-line label; Compact (IsCompact) = dense one-line row. -->
+    <UserControl.Resources>
+            <Flyout x:Key="AddFlyout" Placement="BottomEdgeAlignedLeft">
+                <StackPanel Width="260" Spacing="2" Margin="2">
+                    <TextBlock Classes="groupHeader" Text="Nothing else to add" Margin="8,6"
+                               IsVisible="{Binding !HasAddOptions}" />
+                    <ItemsControl ItemsSource="{Binding AddOptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AddOption">
+                                <Button Classes="pickRow" Command="{Binding ConnectCommand}"
+                                        Click="OnPickClick">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Border Classes="tile chip" Background="{Binding TileBrush}">
+                                            <Panel>
+                                                <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                                                <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                                      Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Classes="nm" Text="{Binding Title}" FontSize="13"
+                                                   VerticalAlignment="Center" MaxWidth="150" />
+                                        <TextBlock Classes="typeLine" Text="{Binding TypeLine}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Flyout>
+    </UserControl.Resources>
+
     <StackPanel>
         <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
                    IsVisible="{Binding ShowGroupHeader}" Margin="2,14,0,8" />
@@ -24,12 +54,12 @@
                 behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
                 behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}"
                 ToolTip.Tip="{Binding Subtitle}">
-            <!-- Tile | [identity + volume] [chips] (the chips wrap under the name when the row is
-                 narrow, aligned with it) | row menu. -->
-            <Grid Classes="rowContent" ColumnDefinitions="Auto,*,Auto">
+            <!-- Tile | identity + volume | row menu, then the chips on their own line below,
+                 aligned with the name. -->
+            <Grid Classes="rowContent" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
 
                 <!-- Tile + in/out badge -->
-                <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,0,14,0">
+                <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
                     <Border Classes="tile" Classes.lg="{Binding !IsCompact}" Classes.sm="{Binding IsCompact}"
                             Background="{Binding TileBrush}">
                         <Panel>
@@ -48,10 +78,8 @@
                     </Border>
                 </Panel>
 
-                <WrapPanel Grid.Column="1">
-
-                <StackPanel Classes="head" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Name + type line + format -->
+                <!-- Line 1: identity, volume, and (when nothing feeds it yet) the Add button -->
+                <StackPanel Grid.Column="1" Classes="head" Orientation="Horizontal" VerticalAlignment="Center">
                 <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
@@ -85,10 +113,22 @@
                         <TextBlock Classes="pct" Text="{Binding VolumePercent}" />
                     </StackPanel>
                 </Panel>
+
+                <Panel VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                    <Button Classes="addChip" Name="AddButtonInline" IsVisible="{Binding AcceptsDrop}"
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}"
+                            ToolTip.Tip="Route a source here">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
+                            <TextBlock Text="Add" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Panel>
                 </StackPanel>
 
-                <!-- Sources feeding this output -->
-                <WrapPanel Classes="feeds" VerticalAlignment="Center">
+                <!-- Line 2: the sources feeding this output, with room to breathe -->
+                <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="feeds"
+                           Margin="0,10,0,0" IsVisible="{Binding !IsEmpty}">
                     <ItemsControl ItemsSource="{Binding Cards}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -101,50 +141,19 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
                     <Button Classes="addChip" Name="AddButton" IsVisible="{Binding AcceptsDrop}"
-                            Command="{Binding PrepareAddCommand}"
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}"
                             ToolTip.Tip="Route a source here">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
                             <TextBlock Text="Add" VerticalAlignment="Center" />
                         </StackPanel>
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedLeft">
-                                <StackPanel Width="260" Spacing="2" Margin="2">
-                                    <TextBlock Classes="groupHeader" Text="Nothing else to add" Margin="8,6"
-                                               IsVisible="{Binding !HasAddOptions}" />
-                                    <ItemsControl ItemsSource="{Binding AddOptions}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:AddOption">
-                                                <Button Classes="pickRow" Command="{Binding ConnectCommand}"
-                                                        Click="OnPickClick">
-                                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                                        <Border Classes="tile chip" Background="{Binding TileBrush}">
-                                                            <Panel>
-                                                                <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
-                                                                <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
-                                                                      Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
-                                                            </Panel>
-                                                        </Border>
-                                                        <TextBlock Classes="nm" Text="{Binding Title}" FontSize="13"
-                                                                   VerticalAlignment="Center" MaxWidth="150" />
-                                                        <TextBlock Classes="typeLine" Text="{Binding TypeLine}" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
                     </Button>
-                </WrapPanel>
                 </WrapPanel>
 
                 <!-- Row menu: details, hands off, delete (virtual sinks we own) -->
-                <Button Grid.Column="2" Classes="icon" Name="RowMenuButton" VerticalAlignment="Top"
-                        Margin="8,6,0,0" ToolTip.Tip="More"
+                <Button Grid.Column="2" Classes="icon" Name="RowMenuButton" VerticalAlignment="Center"
+                        Margin="8,0,0,0" ToolTip.Tip="More"
                         Command="{Binding PrepareDeleteSinkCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
                         <Ellipse Width="4" Height="4" Fill="{DynamicResource MutedBrush}" />

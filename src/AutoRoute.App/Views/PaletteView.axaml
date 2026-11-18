@@ -27,8 +27,8 @@
                                     behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
                                     behaviors:DragSourceBehavior.DragLabel="{Binding Title}"
                                     ToolTip.Tip="{Binding Subtitle}">
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Panel VerticalAlignment="Top" Margin="0,2,12,0">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                    <Panel VerticalAlignment="Center" Margin="0,0,12,0">
                                         <Border Classes="tile" Background="{Binding TileBrush}">
                                             <Panel>
                                                 <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
@@ -58,19 +58,19 @@
                                                 <TextBlock Text="{Binding Format}" />
                                             </Border>
                                         </WrapPanel>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasVolume}" Margin="-6,0,0,0">
-                                            <Button Classes="mute" Classes.on="{Binding IsMuted}"
-                                                    Command="{Binding ToggleMuteCommand}" ToolTip.Tip="Mute">
-                                                <Panel>
-                                                    <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsMuted}" />
-                                                    <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
-                                                </Panel>
-                                            </Button>
-                                            <controls:Fader Grid.Column="1" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
-                                                            AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
-                                            <TextBlock Grid.Column="2" Classes="pct" Text="{Binding VolumePercent}" />
-                                        </Grid>
                                     </StackPanel>
+                                    <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasVolume}" Margin="-4,6,0,0">
+                                        <Button Classes="mute" Classes.on="{Binding IsMuted}"
+                                                Command="{Binding ToggleMuteCommand}" ToolTip.Tip="Mute">
+                                            <Panel>
+                                                <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsMuted}" />
+                                                <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
+                                            </Panel>
+                                        </Button>
+                                        <controls:Fader Grid.Column="1" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
+                                        <TextBlock Grid.Column="2" Classes="pct" Text="{Binding VolumePercent}" />
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </StackPanel>

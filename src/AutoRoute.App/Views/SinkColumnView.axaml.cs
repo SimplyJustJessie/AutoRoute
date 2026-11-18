@@ -17,7 +17,12 @@ public partial class SinkColumnView : UserControl
     // runs it strictly after the command has been dispatched.
     private void OnConfirmDeleteSinkClick(object? sender, RoutedEventArgs e) => HideFlyoutOf("RowMenuButton");
 
-    private void OnPickClick(object? sender, RoutedEventArgs e) => HideFlyoutOf("AddButton");
+    // Both Add buttons (inline on an empty row, and after the chips) share one flyout resource.
+    private void OnPickClick(object? sender, RoutedEventArgs e)
+    {
+        var flyout = Resources["AddFlyout"] as Flyout;
+        Dispatcher.UIThread.Post(() => flyout?.Hide());
+    }
 
     private void HideFlyoutOf(string buttonName)
     {

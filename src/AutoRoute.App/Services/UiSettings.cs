@@ -20,6 +20,14 @@ public sealed partial class UiSettings : ObservableObject
     [ObservableProperty]
     private bool _isCompact;
 
+    public const double DefaultSidebarWidth = 300;
+    public const double MinSidebarWidth = 240;
+    public const double MaxSidebarWidth = 560;
+
+    /// <summary>Comfortable layout's sources sidebar width (dragged by its edge).</summary>
+    [ObservableProperty]
+    private double _sidebarWidth = DefaultSidebarWidth;
+
     /// <summary>In-memory only (tests, design data).</summary>
     public UiSettings() { }
 
@@ -39,7 +47,9 @@ public sealed partial class UiSettings : ObservableObject
 
     partial void OnIsCompactChanged(bool value) => Save();
 
-    private sealed record Dto(bool Compact);
+    partial void OnSidebarWidthChanged(double value) => Save();
+
+    private sealed record Dto(bool Compact, double? SidebarWidth = null);
 
     private void Load()
     {
@@ -50,6 +60,8 @@ public sealed partial class UiSettings : ObservableObject
             if (dto is null) return;
             _loading = true;
             IsCompact = dto.Compact;
+            if (dto.SidebarWidth is { } w && double.IsFinite(w))
+                SidebarWidth = Math.Clamp(w, MinSidebarWidth, MaxSidebarWidth);
         }
         catch (Exception) { /* defaults */ }
         finally { _loading = false; }
@@ -62,7 +74,7 @@ public sealed partial class UiSettings : ObservableObject
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(new Dto(IsCompact)));
+            File.WriteAllText(tmp, JsonSerializer.Serialize(new Dto(IsCompact, SidebarWidth)));
             File.Move(tmp, _path, overwrite: true);
         }
         catch (Exception) { /* preference only */ }

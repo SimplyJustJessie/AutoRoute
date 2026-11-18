@@ -205,14 +205,27 @@
         <!-- ===================== Sources + outputs =====================
              Comfortable: sources sidebar | output rows.
              Compact: output rows over a sources tray. Same view models either way. -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" RowDefinitions="*,Auto">
+        <!-- Column 0 width is driven from code-behind: the remembered sidebar width, or 0 in
+             Compact. The splitter on its edge resizes it. -->
+        <Grid Grid.Row="2" Name="BodyGrid" RowDefinitions="*,Auto">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="0" MaxWidth="560" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Grid.Row="0" Classes="panel" BorderThickness="0,0,1,0" Width="300"
+            <Border Grid.Column="0" Grid.Row="0" Classes="panel" BorderThickness="0,0,1,0"
                     ClipToBounds="True" IsVisible="{Binding !Ui.IsCompact}">
                 <views:PaletteView DataContext="{Binding Palette}" />
             </Border>
 
-            <Panel Grid.Column="1" Grid.Row="0">
+            <GridSplitter Grid.Column="1" Grid.Row="0" Name="SidebarSplitter" Width="5"
+                          Background="Transparent" ResizeDirection="Columns"
+                          IsVisible="{Binding !Ui.IsCompact}"
+                          DragCompleted="OnSidebarResized"
+                          ToolTip.Tip="Drag to resize" />
+
+            <Panel Grid.Column="2" Grid.Row="0">
                 <ScrollViewer Name="BoardScroll"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -234,7 +247,7 @@
                 </StackPanel>
             </Panel>
 
-            <Border Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Classes="panel"
+            <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1" Classes="panel"
                     BorderThickness="0,1,0,0" IsVisible="{Binding Ui.IsCompact}">
                 <views:SourceTrayView DataContext="{Binding Palette}" />
             </Border>

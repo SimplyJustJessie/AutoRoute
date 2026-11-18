@@ -33,7 +33,7 @@
          draws the corners; without one they render as plain square corners). Squared off when
          maximized (BoardStyles). -->
     <Border Name="Frame" Classes="windowFrame" Background="{DynamicResource BgBrush}"
-            BorderBrush="#2E3038" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+            BorderBrush="#4A4E5E" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
     <Grid>
         <!-- IsVisible="False" also stops a board from hit-testing, so drag/drop and clicks on the
              hidden one never fire. -->

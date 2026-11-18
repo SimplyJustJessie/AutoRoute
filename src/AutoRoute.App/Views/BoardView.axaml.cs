@@ -14,7 +14,54 @@ public partial class BoardView : UserControl
 {
     private Window? _trackedWindow;
 
-    public BoardView() => InitializeComponent();
+    private ViewModels.BoardViewModel? _boundVm;
+
+    public BoardView()
+    {
+        InitializeComponent();
+        DataContextChanged += (_, _) => BindLayout();
+    }
+
+    // === Sidebar width (Comfortable) / collapsed (Compact) ==============================
+    // ColumnDefinition.Width isn't bindable in a useful way here, so it's set from the shared
+    // UiSettings: the remembered width in Comfortable, 0 in Compact. The splitter writes back.
+    private void BindLayout()
+    {
+        if (_boundVm is not null) _boundVm.Ui.PropertyChanged -= OnUiChanged;
+        _boundVm = DataContext as ViewModels.BoardViewModel;
+        if (_boundVm is not null) _boundVm.Ui.PropertyChanged += OnUiChanged;
+        ApplySidebarWidth();
+    }
+
+    private void OnUiChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Services.UiSettings.IsCompact) or nameof(Services.UiSettings.SidebarWidth))
+            ApplySidebarWidth();
+    }
+
+    private void ApplySidebarWidth()
+    {
+        if (_boundVm is null || this.FindControl<Grid>("BodyGrid") is not { } grid) return;
+        var col = grid.ColumnDefinitions[0];
+        if (_boundVm.Ui.IsCompact)
+        {
+            col.MinWidth = 0;
+            col.Width = new GridLength(0);
+        }
+        else
+        {
+            col.MinWidth = Services.UiSettings.MinSidebarWidth;
+            col.Width = new GridLength(_boundVm.Ui.SidebarWidth);
+        }
+    }
+
+    private void OnSidebarResized(object? sender, VectorEventArgs e)
+    {
+        if (_boundVm is null || this.FindControl<Grid>("BodyGrid") is not { } grid) return;
+        var width = Math.Clamp(grid.ColumnDefinitions[0].ActualWidth,
+            Services.UiSettings.MinSidebarWidth, Services.UiSettings.MaxSidebarWidth);
+        _boundVm.Ui.SidebarWidth = Math.Round(width);
+    }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
