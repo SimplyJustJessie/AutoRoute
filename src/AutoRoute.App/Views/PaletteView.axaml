@@ -16,7 +16,8 @@
          each with its own volume. Margin on the content, not ScrollViewer.Padding (padding sits
          outside the content measure, so long names spilled past the edge). -->
     <Panel>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      behaviors:SmoothScroll.IsEnabled="True">
             <ItemsControl ItemsSource="{Binding Items}" Margin="10,10,10,14">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:SourceItemViewModel">

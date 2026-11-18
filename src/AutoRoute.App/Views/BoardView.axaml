@@ -125,7 +125,7 @@
                           ToolTip.Tip="Drag to resize" />
 
             <Panel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Name="MainArea">
-                <ScrollViewer Name="BoardScroll"
+                <ScrollViewer Name="BoardScroll" behaviors:SmoothScroll.IsEnabled="True"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding Columns}" Margin="20,6,20,20">

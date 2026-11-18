@@ -39,6 +39,13 @@ public sealed class Fader : Control
     private const double KnobRadius = 7;
 
     private bool _dragging;
+    private long _hoverSince = long.MaxValue;
+
+    /// <summary>
+    /// The pointer has rested on the fader long enough that a wheel turn is meant for it, not a
+    /// list scroll passing over it (see <see cref="Behaviors.SmoothScroll"/>).
+    /// </summary>
+    public bool WantsWheel => IsPointerOver && Environment.TickCount64 - _hoverSince >= 350;
 
     static Fader()
     {
@@ -107,9 +114,22 @@ public sealed class Fader : Control
         e.Handled = true;
     }
 
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+        _hoverSince = Environment.TickCount64;
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        _hoverSince = long.MaxValue;
+    }
+
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
+        if (!WantsWheel) return; // just passing over: let the list scroll
         Value = Math.Round(Value + Math.Sign(e.Delta.Y) * 0.02, 2);
         e.Handled = true;
     }

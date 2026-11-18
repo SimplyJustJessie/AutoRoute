@@ -134,6 +134,65 @@
             <StreamGeometry x:Key="StrokeMore">M5 12H5.01 M12 12H12.01 M19 12H19.01</StreamGeometry>
             <StreamGeometry x:Key="StrokeLock">M5 11H19V21H5Z M8 11V8A4 4 0 0 1 16 8V11</StreamGeometry>
 
+            <!-- ==================== Slim scrollbar (replaces Fluent's everywhere) ====================
+                 Fluent's bar expands on hover into a wide grey track with arrow buttons. This one is
+                 just a rounded thumb: 4 px idle, 7 px while hovered or dragged, no arrows. -->
+            <ControlTheme x:Key="SlimScrollThumb" TargetType="Thumb">
+                <Setter Property="Background" Value="#3A3D48" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover">
+                    <Setter Property="Background" Value="#5A5E6E" />
+                </Style>
+                <Style Selector="^:pressed">
+                    <Setter Property="Background" Value="#6C7186" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="Transparent">
+                            <Track Name="PART_Track"
+                                   Minimum="{TemplateBinding Minimum}"
+                                   Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                                   ViewportSize="{TemplateBinding ViewportSize}"
+                                   Orientation="{TemplateBinding Orientation}">
+                                <Thumb Name="thumb" Theme="{StaticResource SlimScrollThumb}" />
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:vertical">
+                    <Setter Property="Width" Value="11" />
+                </Style>
+                <Style Selector="^:vertical /template/ Track#PART_Track">
+                    <Setter Property="IsDirectionReversed" Value="True" />
+                </Style>
+                <Style Selector="^:horizontal">
+                    <Setter Property="Height" Value="11" />
+                </Style>
+                <Style Selector="^:vertical /template/ Thumb#thumb">
+                    <Setter Property="Width" Value="4" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
+                </Style>
+                <Style Selector="^:horizontal /template/ Thumb#thumb">
+                    <Setter Property="Height" Value="4" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+                <Style Selector="^:vertical:pointerover /template/ Thumb#thumb, ^:vertical /template/ Thumb#thumb:pressed">
+                    <Setter Property="Width" Value="7" />
+                </Style>
+                <Style Selector="^:horizontal:pointerover /template/ Thumb#thumb, ^:horizontal /template/ Thumb#thumb:pressed">
+                    <Setter Property="Height" Value="7" />
+                </Style>
+            </ControlTheme>
+
             <!-- ==================== Fluent control overrides (dark chrome) ==================== -->
             <SolidColorBrush x:Key="TextControlBackground" Color="#1B1C24" />
             <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#1F2029" />
