@@ -36,7 +36,8 @@ public readonly record struct UpdateOutcome(bool Success, bool NeedsRestart, str
 /// the running <c>$APPIMAGE</c> file. A final <see cref="Relaunch"/> restarts into the new version.
 ///
 /// <para>Only AppImage installs self-update (<see cref="AppImageInfo"/>); a package-manager install
-/// updates through its package manager, so <see cref="CanSelfUpdate"/> is false and the UI says so.
+/// updates through its package manager, so <see cref="CanSelfUpdate"/> is false: the check still runs
+/// and says whether a newer version exists, but there is nothing to install from here.
 /// Every failure path is caught and surfaced as an <see cref="UpdateOutcome"/> / <see cref="UpdateCheck"/>
 /// message — nothing here throws into the UI.</para>
 /// </summary>
@@ -90,8 +91,8 @@ public sealed class UpdateService
     {
         var current = _version.Current;
 
-        if (!CanSelfUpdate)
-            return NoUpdate(current, "Installed via a package manager — update through it.");
+        if (!AppVersion.TryParseTag(current, out _))
+            return NoUpdate(current, "Development build");
 
         try
         {
@@ -109,22 +110,24 @@ public sealed class UpdateService
                 else if (asset.Name == ChecksumsAssetName) checksums = asset;
             }
 
-            if (appImage?.BrowserDownloadUrl is null)
-                return NoUpdate(current, $"Release {release.TagName} has no AppImage asset.");
-
             if (!_version.IsNewer(release.TagName))
-                return NoUpdate(current, $"You're on the latest version ({current}).");
+                return NoUpdate(current, "Up to date");
+
+            // A package install only needs to know a newer version exists; an AppImage needs the
+            // asset to download.
+            if (CanSelfUpdate && appImage?.BrowserDownloadUrl is null)
+                return NoUpdate(current, "Up to date");
 
             _log.LogInformation("update available: {Latest} (current {Current})", release.TagName, current);
             return new UpdateCheck(
                 UpdateAvailable: true,
                 CurrentVersion: current,
                 LatestTag: release.TagName,
-                DownloadUrl: ForceHttps(appImage.BrowserDownloadUrl),
+                DownloadUrl: appImage?.BrowserDownloadUrl is { } du ? ForceHttps(du) : null,
                 ChecksumsUrl: checksums?.BrowserDownloadUrl is { } cu ? ForceHttps(cu) : null,
-                AssetName: appImage.Name,
-                AssetSize: appImage.Size,
-                Message: $"Version {release.TagName} is available.");
+                AssetName: appImage?.Name,
+                AssetSize: appImage?.Size ?? 0,
+                Message: $"Version {AppVersion.Normalize(release.TagName)} is available");
         }
         catch (OperationCanceledException)
         {
@@ -133,7 +136,7 @@ public sealed class UpdateService
         catch (Exception ex)
         {
             _log.LogDebug(ex, "update check failed");
-            return NoUpdate(current, $"Couldn't check for updates: {ex.Message}");
+            return NoUpdate(current, "Couldn't check for updates");
         }
     }
 

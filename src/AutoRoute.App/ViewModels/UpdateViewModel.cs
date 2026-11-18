@@ -27,16 +27,16 @@ public partial class UpdateViewModel : ViewModelBase
         _onStateChanged = onStateChanged;
         CurrentVersion = service.CurrentVersion;
         CanSelfUpdate = service.CanSelfUpdate;
-        StatusMessage = CanSelfUpdate
-            ? string.Empty
-            : "Installed via a package manager — update through it.";
     }
 
     /// <summary>The running app's version, shown in the flyout header.</summary>
     public string CurrentVersion { get; }
 
-    /// <summary>False for package-manager installs — hides the install affordance.</summary>
+    /// <summary>False for package-manager installs: they learn a newer version exists, nothing more.</summary>
     public bool CanSelfUpdate { get; }
+
+    /// <summary>A newer version exists and this install can fetch it itself (AppImage).</summary>
+    public bool CanInstall => UpdateAvailable && CanSelfUpdate;
 
     /// <summary>True while a check or install is in flight — disables the buttons.</summary>
     [ObservableProperty]
@@ -52,6 +52,7 @@ public partial class UpdateViewModel : ViewModelBase
 
     /// <summary>Whether a newer release is available to install.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInstall))]
     private bool _updateAvailable;
 
     /// <summary>The available release tag (e.g. <c>v0.3.1</c>), when <see cref="UpdateAvailable"/>.</summary>
@@ -69,9 +70,9 @@ public partial class UpdateViewModel : ViewModelBase
     [RelayCommand]
     public async Task CheckAsync()
     {
-        if (IsBusy || !CanSelfUpdate) return;
+        if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Checking for updates…";
+        StatusMessage = "Checking…";
         try
         {
             var check = await _service.CheckAsync().ConfigureAwait(true);
@@ -90,7 +91,7 @@ public partial class UpdateViewModel : ViewModelBase
     [RelayCommand]
     public async Task InstallAsync()
     {
-        if (IsBusy || !_latest.UpdateAvailable) return;
+        if (IsBusy || !_latest.UpdateAvailable || !CanSelfUpdate) return;
         IsBusy = true;
         Progress = 0;
         StatusMessage = $"Downloading {_latest.LatestTag}…";

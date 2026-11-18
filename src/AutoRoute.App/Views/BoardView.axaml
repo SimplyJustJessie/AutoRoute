@@ -82,7 +82,8 @@
                                Text="{Binding UpdateNoticeText}" />
                     <Button Grid.Column="1" Classes="chipAction" Margin="12,0,0,0"
                             VerticalAlignment="Center" Content="Update"
-                            Command="{Binding InstallUpdateCommand}" />
+                            Command="{Binding InstallUpdateCommand}"
+                            IsVisible="{Binding Update.CanInstall, FallbackValue=False}" />
                 </Grid>
             </Border>
             <Border Classes="panel" BorderThickness="0,0,0,1" Padding="14,8"
@@ -238,13 +239,12 @@
                                             <Button Classes="chipAction" HorizontalAlignment="Left"
                                                     Content="Check for updates"
                                                     Command="{Binding CheckCommand}"
-                                                    IsEnabled="{Binding !IsBusy}"
-                                                    IsVisible="{Binding CanSelfUpdate}" />
+                                                    IsEnabled="{Binding !IsBusy}" />
                                             <Button Classes="chipAction" HorizontalAlignment="Left"
                                                     Content="{Binding LatestVersion, StringFormat='Install {0}'}"
                                                     Command="{Binding InstallCommand}"
                                                     IsEnabled="{Binding !IsBusy}"
-                                                    IsVisible="{Binding UpdateAvailable}" />
+                                                    IsVisible="{Binding CanInstall}" />
                                             <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
                                                          IsVisible="{Binding IsBusy}" />
                                             <Button Classes="chipAction" HorizontalAlignment="Left"

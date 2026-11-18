@@ -31,7 +31,7 @@ public sealed class AppVersion
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
     /// <summary>Strip the <c>+&lt;git-sha&gt;</c> suffix .NET appends and any leading <c>v</c>; blank ⇒ <see cref="Dev"/>.</summary>
-    private static string Normalize(string? raw)
+    public static string Normalize(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return Dev;
         var s = raw.Trim();

@@ -179,7 +179,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     private void RefreshUpdateNotice()
     {
         UpdateNoticeText = Update is { UpdateAvailable: true }
-            ? $"AutoRoute {Update.LatestVersion} is available — you're on {Update.CurrentVersion}."
+            ? $"AutoRoute {AppVersion.Normalize(Update.LatestVersion)} is available"
             : string.Empty;
     }
 
