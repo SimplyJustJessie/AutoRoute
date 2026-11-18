@@ -57,8 +57,7 @@
 
         <Border Classes="row"
                 Classes.compact="{Binding IsCompact}"
-                Classes.protected="{Binding IsProtected}"
-                ToolTip.Tip="{Binding Subtitle}">
+                Classes.protected="{Binding IsProtected}">
             <!-- Tile | identity + volume | row menu, then the chips on their own line below,
                  aligned with the name. -->
             <Grid Classes="rowContent" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
@@ -88,7 +87,7 @@
                 <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
-                        <Path Classes="playing" Data="{StaticResource GlyphPlaying}" IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
+                        <Path Classes="playing" Data="{StaticResource GlyphPlaying}" IsVisible="{Binding IsRunning}" />
                     </StackPanel>
                     <WrapPanel IsVisible="{Binding !IsCompact}">
                         <TextBlock Classes="typeLine" Text="{Binding TypeLine}" Margin="0,0,8,2" MaxWidth="200"
@@ -121,8 +120,7 @@
 
                 <Panel VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
                     <Button Classes="addChip" Name="AddButtonInline" IsVisible="{Binding AcceptsDrop}"
-                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}"
-                            ToolTip.Tip="Route a source here">
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
                             <TextBlock Text="Add" VerticalAlignment="Center" />
@@ -147,8 +145,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Button Classes="addChip" Name="AddButton" IsVisible="{Binding AcceptsDrop}"
-                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}"
-                            ToolTip.Tip="Route a source here">
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
                             <TextBlock Text="Add" VerticalAlignment="Center" />
@@ -177,8 +174,7 @@
                                     <TextBlock Grid.Row="1" Grid.Column="1" Classes="typeLine" Text="{Binding Format}" />
                                 </Grid>
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Classes="body" Text="Hands off" VerticalAlignment="Center"
-                                               ToolTip.Tip="AutoRoute never creates or removes links on this output" />
+                                    <TextBlock Classes="body" Text="Hands off" VerticalAlignment="Center" />
                                     <ToggleSwitch Grid.Column="1" Classes="compact"
                                                   IsChecked="{Binding IsProtected, Mode=OneWay}"
                                                   Command="{Binding ToggleProtectCommand}" />

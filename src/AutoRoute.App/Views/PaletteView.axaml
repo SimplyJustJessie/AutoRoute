@@ -26,8 +26,7 @@
                                        IsVisible="{Binding ShowGroupHeader}" Margin="8,10,0,4" />
                             <Border Classes="srcEntry"
                                     behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
-                                    behaviors:DragSourceBehavior.DragLabel="{Binding Title}"
-                                    ToolTip.Tip="{Binding Subtitle}">
+                                    behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
                                 <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                                     <Panel VerticalAlignment="Center" Margin="0,0,12,0">
                                         <Border Classes="tile" Background="{Binding TileBrush}">
@@ -50,7 +49,7 @@
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="nm" Text="{Binding Title}" />
                                             <Path Grid.Column="1" Classes="playing" Data="{StaticResource GlyphPlaying}" Margin="8,0,2,0"
-                                                     IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
+                                                     IsVisible="{Binding IsRunning}" />
                                         </Grid>
                                         <WrapPanel>
                                             <TextBlock Classes="typeLine" Text="{Binding TypeLine}" MaxWidth="200" Margin="0,0,8,2"

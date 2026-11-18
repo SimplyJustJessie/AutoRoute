@@ -15,8 +15,7 @@
     <Border Classes="chip2"
             Classes.unsaved="{Binding IsUnsaved}"
             Classes.manual="{Binding IsManual}"
-            Classes.protected="{Binding IsProtected}"
-            ToolTip.Tip="{Binding Tooltip}">
+            Classes.protected="{Binding IsProtected}">
         <Border.ContextFlyout>
             <MenuFlyout>
                 <MenuItem Header="Keep (restore after restart)" Command="{Binding SaveCommand}"
@@ -41,8 +40,7 @@
                   Width="11" Height="11" VerticalAlignment="Center" />
             <TextBlock Classes="chipText" Text="{Binding Title}" />
             <Button Classes="keep" Content="Keep" Command="{Binding SaveCommand}"
-                    IsVisible="{Binding CanSave}"
-                    ToolTip.Tip="Keep this route — it comes back after a restart" />
+                    IsVisible="{Binding CanSave}" />
             <Button Classes="mini" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
                     ToolTip.Tip="Remove">
                 <Path Data="{StaticResource StrokeX}" />

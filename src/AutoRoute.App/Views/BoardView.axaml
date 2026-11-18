@@ -34,8 +34,7 @@
                                 Command="{Binding Tabs.SelectAudioCommand}" />
                         <Button Classes="tabPill" Content="Video"
                                 Classes.active="{Binding Tabs.IsVideoSelected}"
-                                Command="{Binding Tabs.SelectVideoCommand}"
-                                ToolTip.Tip="Route Spout2PW / OBS video nodes" />
+                                Command="{Binding Tabs.SelectVideoCommand}" />
                     </StackPanel>
                 </Border>
 
@@ -121,8 +120,7 @@
             <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Name="SidebarSplitter" Width="5"
                           Background="Transparent" ResizeDirection="Columns"
                           IsVisible="{Binding !Ui.IsCompact}"
-                          DragCompleted="OnSidebarResized"
-                          ToolTip.Tip="Drag to resize" />
+                          DragCompleted="OnSidebarResized" />
 
             <Panel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Name="MainArea">
                 <ScrollViewer Name="BoardScroll" behaviors:SmoothScroll.IsEnabled="True"
@@ -163,8 +161,7 @@
                           Margin="12,10" VerticalAlignment="Center">
                             <Button Grid.Column="0" Classes="primary" Name="NewSinkButton"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                    IsVisible="{Binding CanManageSinks}"
-                                    ToolTip.Tip="Create a virtual output — it survives reboots">
+                                    IsVisible="{Binding CanManageSinks}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
                                     <TextBlock Text="Virtual sink" VerticalAlignment="Center" />
