@@ -2,7 +2,7 @@
 Type=Application
 Name=AutoRoute
 GenericName=PipeWire routing manager
-Comment=Wire your PipeWire audio once, and keep it wired
+Comment=Keep PipeWire routes in place when apps restart
 Exec=autoroute
 Icon=autoroute
 Terminal=false

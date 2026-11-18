@@ -287,7 +287,7 @@ public sealed class AutostartService
         [Desktop Entry]
         Type=Application
         Name=AutoRoute
-        Comment=Wire your PipeWire audio once, and keep it wired
+        Comment=Keep PipeWire routes in place when apps restart
         Exec="{target}" --background
         Terminal=false
         X-GNOME-Autostart-enabled=true
