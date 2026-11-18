@@ -49,7 +49,7 @@
                                     <StackPanel Grid.Column="1" Spacing="5">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="nm" Text="{Binding Title}" />
-                                            <Ellipse Grid.Column="1" Classes="playing" Margin="8,0,2,0"
+                                            <Path Grid.Column="1" Classes="playing" Data="{StaticResource GlyphPlaying}" Margin="8,0,2,0"
                                                      IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
                                         </Grid>
                                         <WrapPanel>

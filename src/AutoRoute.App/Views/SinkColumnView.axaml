@@ -88,7 +88,7 @@
                 <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
-                        <Ellipse Classes="playing" IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
+                        <Path Classes="playing" Data="{StaticResource GlyphPlaying}" IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
                     </StackPanel>
                     <WrapPanel IsVisible="{Binding !IsCompact}">
                         <TextBlock Classes="typeLine" Text="{Binding TypeLine}" Margin="0,0,8,2" MaxWidth="200"

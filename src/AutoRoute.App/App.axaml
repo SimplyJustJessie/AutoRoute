@@ -125,6 +125,7 @@
             <StreamGeometry x:Key="GlyphWave">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
             <StreamGeometry x:Key="GlyphCamera">M3 7H15V17H3Z M15 11L21 8V16L15 13</StreamGeometry>
             <StreamGeometry x:Key="GlyphApp">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
+            <StreamGeometry x:Key="GlyphPlaying">M4 20V13 M10 20V5 M16 20V10 M22 20V15</StreamGeometry>
             <StreamGeometry x:Key="BadgeOut">M10 5L6 9H3V15H6L10 19Z M15.5 9A4.5 4.5 0 0 1 15.5 15 M18.5 6A8.5 8.5 0 0 1 18.5 18</StreamGeometry>
             <StreamGeometry x:Key="BadgeIn">M9 6A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11Z M5.5 11A6.5 6.5 0 0 0 18.5 11 M12 17.5V21</StreamGeometry>
             <StreamGeometry x:Key="StrokePlus">M12 5V19 M5 12H19</StreamGeometry>

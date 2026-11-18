@@ -37,7 +37,7 @@
                             </Border>
                         </Panel>
                         <TextBlock Classes="nm" FontSize="13" Text="{Binding Title}" MaxWidth="160" VerticalAlignment="Center" />
-                        <Ellipse Classes="playing" IsVisible="{Binding IsRunning}" />
+                        <Path Classes="playing" Data="{StaticResource GlyphPlaying}" IsVisible="{Binding IsRunning}" />
                         <Button Classes="mute" Width="24" Height="24" Classes.on="{Binding IsMuted}"
                                 IsVisible="{Binding HasVolume}" ToolTip.Tip="Volume">
                             <Panel>

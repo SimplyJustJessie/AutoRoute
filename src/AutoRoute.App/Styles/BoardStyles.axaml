@@ -151,11 +151,15 @@
         <Setter Property="Foreground" Value="{DynamicResource ProtectedBrush}" />
     </Style>
 
-    <!-- Playing dot: green while audio flows, hidden otherwise. -->
-    <Style Selector="Ellipse.playing">
-        <Setter Property="Width" Value="7" />
-        <Setter Property="Height" Value="7" />
-        <Setter Property="Fill" Value="{DynamicResource OnlineBrush}" />
+    <!-- Playing indicator: green equaliser bars while audio flows, hidden otherwise. Static on
+         purpose (no animation, no redraws); the fader's level fill shows the actual signal. -->
+    <Style Selector="Path.playing">
+        <Setter Property="Width" Value="13" />
+        <Setter Property="Height" Value="13" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Stroke" Value="{DynamicResource OnlineBrush}" />
+        <Setter Property="StrokeThickness" Value="3" />
+        <Setter Property="StrokeLineCap" Value="Round" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
