@@ -148,6 +148,7 @@ public static class HostFactory
         services.AddSingleton<ILevelMeter>(sp => new PulseLevelMeter(sp.GetService<ILogger<PulseLevelMeter>>()));
 
         services.AddSingleton<TabSelectionState>();
+        services.AddSingleton<AutomationState>();
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<VideoBoardViewModel>();
         services.AddSingleton<RoutingWorker>();

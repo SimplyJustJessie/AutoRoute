@@ -123,7 +123,11 @@ public partial class App : Application
             tabs.PropertyChanged += (_, _) => UpdateMeters();
 
             var worker = _services.GetRequiredService<RoutingWorker>();
-            _tray = new TrayController(this, worker, onOpen: ShowMainWindow, onQuit: Quit);
+            // One Auto-route switch: the worker follows whatever the tray or the top bar sets.
+            var automation = _services.GetRequiredService<AutomationState>();
+            automation.Enabled = worker.AutomationEnabled;
+            automation.PropertyChanged += (_, _) => worker.AutomationEnabled = automation.Enabled;
+            _tray = new TrayController(this, automation, onOpen: ShowMainWindow, onQuit: Quit);
 
             if (!_options.Background)
                 ShowMainWindow();

@@ -499,4 +499,10 @@
     <Style Selector="Border.row.disconnected TextBlock.nm, Border.row.disconnected controls|GlyphIcon">
         <Setter Property="Opacity" Value="0.55" />
     </Style>
+
+    <!-- Top-bar label next to a switch (Auto-route). -->
+    <Style Selector="TextBlock.barLabel">
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
 </Styles>

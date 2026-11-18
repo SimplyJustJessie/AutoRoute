@@ -51,6 +51,9 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     /// <summary>Shared UI preferences (Compact layout) — the same instance on both boards.</summary>
     public UiSettings Ui { get; }
 
+    /// <summary>The shared Auto-route switch (top bar; the tray shows the same one).</summary>
+    public AutomationState Automation { get; }
+
     private readonly VolumeSender? _volume;
     public FilterViewModel Filter { get; } = new();
 
@@ -121,10 +124,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         MediaKind kind = MediaKind.Audio,
         TabSelectionState? tabs = null,
         IVolumeController? volume = null,
-        UiSettings? ui = null)
+        UiSettings? ui = null,
+        AutomationState? automation = null)
     {
         _volume = volume is null ? null : new VolumeSender(volume);
         Ui = ui ?? new UiSettings();
+        Automation = automation ?? new AutomationState();
         _graph = graph;
         _linker = linker;
         _ruleStore = ruleStore;
