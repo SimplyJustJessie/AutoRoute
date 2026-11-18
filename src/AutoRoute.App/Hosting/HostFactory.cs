@@ -4,6 +4,7 @@ using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
 using AutoRoute.PipeWire;
+using AutoRoute.PipeWire.Meters;
 using AutoRoute.PipeWire.Process;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -143,6 +144,8 @@ public static class HostFactory
             sp.GetRequiredService<IProcessRunner>(),
             sp.GetService<ILogger<WpctlVolumeController>>()));
         services.AddSingleton(_ => new UiSettings(UiSettings.DefaultPath()));
+        // Live level meters; idle (no server connection at all) unless the window is showing.
+        services.AddSingleton<ILevelMeter>(sp => new PulseLevelMeter(sp.GetService<ILogger<PulseLevelMeter>>()));
 
         services.AddSingleton<TabSelectionState>();
         services.AddSingleton<BoardViewModel>();

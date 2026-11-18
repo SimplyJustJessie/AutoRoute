@@ -48,7 +48,7 @@
                                     <StackPanel Grid.Column="1" Spacing="5">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="nm" Text="{Binding Title}" />
-                                            <Path Grid.Column="1" Classes="playing" Data="{StaticResource GlyphPlaying}" Margin="8,0,2,0"
+                                            <controls:LevelBars Grid.Column="1" Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" Margin="8,0,2,0"
                                                      IsVisible="{Binding IsRunning}" />
                                         </Grid>
                                         <WrapPanel>
@@ -67,7 +67,7 @@
                                                 <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
                                             </Panel>
                                         </Button>
-                                        <controls:Fader Grid.Column="1" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
+                                        <controls:Fader Grid.Column="1" Value="{Binding Volume}" Level="{Binding Level}" IsMuted="{Binding IsMuted}"
                                                         AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
                                         <TextBlock Grid.Column="2" Classes="pct" Text="{Binding VolumePercent}" />
                                     </Grid>

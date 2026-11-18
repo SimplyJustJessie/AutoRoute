@@ -5,6 +5,9 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using AutoRoute.App.Hosting;
+using AutoRoute.App.Services;
+using AutoRoute.PipeWire;
+using AutoRoute.PipeWire.Meters;
 using AutoRoute.App.ViewModels;
 using AutoRoute.App.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +22,7 @@ public partial class App : Application
     private AppOptions _options = new();
     private MainWindow? _mainWindow;
     private TrayController? _tray;
+    private LevelMeterFeed? _meters;
     private GracefulShutdown? _shutdown;
     private bool _quitting;
 
@@ -92,6 +96,24 @@ public partial class App : Application
             var tabs = _services.GetRequiredService<TabSelectionState>();
             _mainWindow = new MainWindow { DataContext = new MainWindowViewModel(board, videoBoard, tabs) };
             _mainWindow.Closing += OnMainWindowClosing;
+
+            // Live levels only while they can be seen: window shown, not minimized, Audio tab.
+            _meters = new LevelMeterFeed(
+                _services.GetRequiredService<ILevelMeter>(),
+                _services.GetRequiredService<IPwGraphService>(),
+                board);
+            void UpdateMeters()
+            {
+                if (_meters is null || _mainWindow is null) return;
+                _meters.Active = !_quitting && _mainWindow.IsVisible
+                                 && _mainWindow.WindowState != WindowState.Minimized && !tabs.VideoSelected;
+            }
+            _mainWindow.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
+                    UpdateMeters();
+            };
+            tabs.PropertyChanged += (_, _) => UpdateMeters();
 
             var worker = _services.GetRequiredService<RoutingWorker>();
             _tray = new TrayController(this, worker, onOpen: ShowMainWindow, onQuit: Quit);
@@ -173,6 +195,9 @@ public partial class App : Application
 
         _tray?.Dispose();
         _tray = null;
+
+        _meters?.Dispose();
+        _meters = null;
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.Shutdown();

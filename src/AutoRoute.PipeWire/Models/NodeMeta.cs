@@ -12,6 +12,7 @@ namespace AutoRoute.PipeWire.Models;
 /// <param name="State"><c>info.state</c>: <c>running</c>, <c>idle</c>, <c>suspended</c>…</param>
 /// <param name="Volume">Volume on the user-facing cubic scale (what <c>wpctl</c> and pavucontrol show, 1.0 = 100%): the cube root of the loudest <c>channelVolumes</c> entry. Null when the node has no volume.</param>
 /// <param name="Muted"><c>Props.mute</c>, null when not reported.</param>
+/// <param name="Serial"><c>object.serial</c>: never reused, and what pipewire-pulse calls the object's index.</param>
 public sealed record NodeMeta(
     string? Nick = null,
     string? DeviceBus = null,
@@ -20,7 +21,8 @@ public sealed record NodeMeta(
     string? ApplicationId = null,
     string? State = null,
     double? Volume = null,
-    bool? Muted = null)
+    bool? Muted = null,
+    uint? Serial = null)
 {
     public static readonly NodeMeta Empty = new();
 

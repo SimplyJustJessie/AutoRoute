@@ -36,7 +36,7 @@
                             </Border>
                         </Panel>
                         <TextBlock Classes="nm" FontSize="13" Text="{Binding Title}" MaxWidth="160" VerticalAlignment="Center" />
-                        <Path Classes="playing" Data="{StaticResource GlyphPlaying}" IsVisible="{Binding IsRunning}" />
+                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding IsRunning}" />
                         <Button Classes="mute" Width="24" Height="24" Classes.on="{Binding IsMuted}"
                                 IsVisible="{Binding HasVolume}" ToolTip.Tip="Volume">
                             <Panel>
@@ -53,7 +53,7 @@
                                                 <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
                                             </Panel>
                                         </Button>
-                                        <controls:Fader Width="160" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
+                                        <controls:Fader Width="160" Value="{Binding Volume}" Level="{Binding Level}" IsMuted="{Binding IsMuted}"
                                                         AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
                                         <TextBlock Classes="pct" Text="{Binding VolumePercent}" />
                                     </StackPanel>

@@ -83,6 +83,20 @@ public static class ScreenshotTool
         board.Ui.IsCompact = false;
         Dispatcher.UIThread.RunJobs();
 
+        // Live meters, staged: a few frames of made-up levels into every running entry, so the
+        // fader fills and the equaliser bars show their live shape.
+        var rng = new Random(7);
+        var metered = board.Columns.Cast<ViewModels.VolumeNodeViewModel>()
+            .Concat(board.Palette.Items).Where(v => v.IsRunning).ToList();
+        foreach (var v in metered) v.IsMetered = true;
+        for (var f = 0; f < 4; f++)
+            foreach (var v in metered) v.Level = 0.45 + rng.NextDouble() * 0.5;
+        Dispatcher.UIThread.RunJobs();
+        if (metered.Count > 0) // the design graph has nothing running; --live usually does
+            Capture(window, Path.Combine(dir, "board-meters.png"));
+        foreach (var v in metered) { v.Level = 0; v.IsMetered = false; }
+        Dispatcher.UIThread.RunJobs();
+
         // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
         var videoTab = window.GetVisualDescendants().OfType<Button>()
             .FirstOrDefault(b => b.Content as string == "Video");

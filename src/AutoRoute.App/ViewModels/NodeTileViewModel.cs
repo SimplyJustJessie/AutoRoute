@@ -84,6 +84,21 @@ public abstract partial class VolumeNodeViewModel : NodeTileViewModel
     /// <summary>The node ids the fader drives (one sink, or every stream of an app).</summary>
     protected abstract IReadOnlyList<int> VolumeNodeIds { get; }
 
+    /// <summary>The nodes behind this entry, for the level meter.</summary>
+    public IReadOnlyList<int> NodeIds => VolumeNodeIds;
+
+    /// <summary>
+    /// Live signal level before this entry's own volume, in fader units (0..1, the same cube-root
+    /// scale as <see cref="Volume"/>), so the fader can draw <c>Level × Volume</c> as what comes out.
+    /// Set by <see cref="Services.LevelMeterFeed"/> while the window shows; 0 otherwise.
+    /// </summary>
+    [ObservableProperty]
+    private double _level;
+
+    /// <summary>A live meter is feeding <see cref="Level"/> right now.</summary>
+    [ObservableProperty]
+    private bool _isMetered;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VolumePercent))]
     private double _volume;

@@ -87,6 +87,7 @@ public sealed class PwDumpReader
         var nodeShells = new Dictionary<int, PwNode>();
         var ports = new Dictionary<int, PwPort>();
         var links = new Dictionary<int, PwLink>();
+        var hidden = new HashSet<int>(); // our own level-meter streams (see PulseLevelMeter)
 
         if (root.ValueKind != JsonValueKind.Array)
             throw new JsonException("pw-dump root is not a JSON array");
@@ -101,7 +102,8 @@ public sealed class PwDumpReader
             switch (typeEl.GetString())
             {
                 case NodeType:
-                    nodeShells[id] = ParseNode(id, obj);
+                    if (IsOwnMeter(obj)) hidden.Add(id);
+                    else nodeShells[id] = ParseNode(id, obj);
                     break;
                 case PortType:
                     var port = ParsePort(id, obj);
@@ -112,6 +114,16 @@ public sealed class PwDumpReader
                     if (link is not null) links[id] = link;
                     break;
             }
+        }
+
+        // Our meter streams stay invisible: no node, no ports, no links, so the board never shows
+        // them and the reconciler never sees their links as something to clean up.
+        if (hidden.Count > 0)
+        {
+            foreach (var (pid, p) in ports.ToArray())
+                if (hidden.Contains(p.NodeId)) ports.Remove(pid);
+            foreach (var (lid, l) in links.ToArray())
+                if (hidden.Contains(l.OutNodeId) || hidden.Contains(l.InNodeId)) links.Remove(lid);
         }
 
         // Attach ports to their owning node.
@@ -134,6 +146,9 @@ public sealed class PwDumpReader
 
         return new PwGraph(nodes, ports, links);
     }
+
+    private static bool IsOwnMeter(JsonElement obj) =>
+        GetProps(obj) is { } props && props.TryGetProperty(Meters.PulseLevelMeter.MeterProperty, out _);
 
     private static PwNode ParseNode(int id, JsonElement obj)
     {
@@ -189,7 +204,10 @@ public sealed class PwDumpReader
             }
         }
 
+        uint? serial = props is { } pr && TryGetInt(pr, "object.serial", out var ser) && ser >= 0 ? (uint)ser : null;
+
         return new NodeMeta(
+            Serial: serial,
             Nick: PropString(props, "node.nick"),
             DeviceBus: PropString(props, "device.bus"),
             DeviceId: int.TryParse(PropString(props, "device.id"), out var did) ? did : null,
