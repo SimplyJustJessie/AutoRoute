@@ -114,7 +114,7 @@ public partial class BoardView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (this.GetVisualRoot() is Window window)
+        if (TopLevel.GetTopLevel(this) is Window window)
         {
             _trackedWindow = window;
             window.PropertyChanged += OnWindowPropertyChanged;
@@ -136,7 +136,7 @@ public partial class BoardView : UserControl
             UpdateMaximizeGlyph(window);
     }
 
-    private Window? HostWindow => this.GetVisualRoot() as Window;
+    private Window? HostWindow => TopLevel.GetTopLevel(this) as Window;
 
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {

@@ -35,7 +35,7 @@ public sealed class LevelMeterFeed : IDisposable
     private readonly ILevelMeter _meter;
     private readonly IPwGraphService _graph;
     private readonly BoardViewModel _board;
-    private readonly DispatcherTimer _timer;
+    private readonly IFrameTimer _timer;
 
     private readonly Dictionary<MeterKey, Reading> _readings = new();
     private readonly List<Entry> _plan = new();
@@ -57,15 +57,15 @@ public sealed class LevelMeterFeed : IDisposable
         public int LastSoundTick = int.MinValue / 2;
     }
 
-    public LevelMeterFeed(ILevelMeter meter, IPwGraphService graph, BoardViewModel board)
+    /// <param name="timer">The frame clock; a UI-thread timer unless a test supplies one (any real
+    /// dispatcher in a unit test claims Avalonia's UI dispatcher for every other test).</param>
+    public LevelMeterFeed(ILevelMeter meter, IPwGraphService graph, BoardViewModel board, IFrameTimer? timer = null)
     {
         _meter = meter;
         _graph = graph;
         _board = board;
-        // Not the (interval, priority, handler) constructor: that one starts the timer at once, which
-        // ran the meters from launch — 18 streams open and 25 ticks a second while in the tray.
-        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = Frame };
-        _timer.Tick += (_, _) => Tick();
+        _timer = timer ?? new UiFrameTimer(Frame);
+        _timer.Tick += Tick;
     }
 
     /// <summary>The frame timer is running (only ever while <see cref="Active"/>).</summary>
@@ -216,4 +216,32 @@ public sealed class LevelMeterFeed : IDisposable
         _timer.Stop();
         _meter.Dispose();
     }
+}
+
+/// <summary>The meter feed's frame clock.</summary>
+public interface IFrameTimer
+{
+    event Action? Tick;
+    bool IsEnabled { get; }
+    void Start();
+    void Stop();
+}
+
+/// <summary>A UI-thread <see cref="DispatcherTimer"/>, created stopped.</summary>
+public sealed class UiFrameTimer : IFrameTimer
+{
+    private readonly DispatcherTimer _timer;
+
+    public UiFrameTimer(TimeSpan interval)
+    {
+        // Not the (interval, priority, handler) constructor: that one starts the timer at once, which
+        // ran the meters from launch — 18 streams open and 25 ticks a second while in the tray.
+        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = interval };
+        _timer.Tick += (_, _) => Tick?.Invoke();
+    }
+
+    public event Action? Tick;
+    public bool IsEnabled => _timer.IsEnabled;
+    public void Start() => _timer.Start();
+    public void Stop() => _timer.Stop();
 }

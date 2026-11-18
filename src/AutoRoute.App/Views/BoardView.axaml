@@ -41,7 +41,7 @@
                 <TextBox Grid.Column="1" Classes="search"
                          Margin="12,0" MaxWidth="380" HorizontalAlignment="Left"
                          Width="380"
-                         Watermark="Search"
+                         PlaceholderText="Search"
                          Text="{Binding Filter.Text}">
                     <TextBox.InnerLeftContent>
                         <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource FaintBrush}"
@@ -170,8 +170,8 @@
                                 <Button.Flyout>
                                     <Flyout Placement="TopEdgeAlignedLeft">
                                         <StackPanel Width="300" Spacing="10" Margin="6">
-                                            <TextBox Watermark="Name (e.g. Game)" Text="{Binding NewSinkName}" />
-                                            <TextBox Watermark="Label (optional)" Text="{Binding NewSinkDescription}" />
+                                            <TextBox PlaceholderText="Name (e.g. Game)" Text="{Binding NewSinkName}" />
+                                            <TextBox PlaceholderText="Label (optional)" Text="{Binding NewSinkDescription}" />
                                             <StackPanel Orientation="Horizontal" Spacing="14">
                                                 <RadioButton GroupName="NewSinkChannels" Content="Stereo"
                                                              IsChecked="{Binding !NewSinkMono}" />

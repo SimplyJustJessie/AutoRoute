@@ -26,7 +26,7 @@ public sealed class TrayController : IDisposable
 
         _automationItem = new NativeMenuItem("Automation Enabled")
         {
-            ToggleType = NativeMenuItemToggleType.CheckBox,
+            ToggleType = MenuItemToggleType.CheckBox,
             IsChecked = worker.AutomationEnabled,
         };
         _automationItem.Click += (_, _) =>

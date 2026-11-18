@@ -165,7 +165,7 @@ public static class ScreenshotTool
             Console.WriteLine("  FAIL  no frame captured for " + path);
             return;
         }
-        frame.Save(path);
+        frame.Save(path, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
         Console.WriteLine("  WROTE " + path);
     }
 }

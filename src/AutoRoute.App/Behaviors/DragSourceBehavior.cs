@@ -13,8 +13,12 @@ namespace AutoRoute.App.Behaviors;
 /// </summary>
 public static class DragSourceBehavior
 {
-    /// <summary>Data-object format key for the dragged Source node id (boxed int).</summary>
-    public const string SourceNodeFormat = "autoroute/source-node-id";
+    /// <summary>The dragged Source node id, as an in-process drag payload.</summary>
+    public static readonly DataFormat<SourceNode> SourceNodeFormat =
+        DataFormat.CreateInProcessFormat<SourceNode>("autoroute-source-node");
+
+    /// <summary>Drag payload: the live node id of the Source being dragged.</summary>
+    public sealed record SourceNode(int NodeId);
 
     private const double DragThreshold = 4.0;
 
@@ -63,7 +67,7 @@ public static class DragSourceBehavior
     {
         if (sender is not Control control) return;
         if (!e.GetCurrentPoint(control).Properties.IsLeftButtonPressed) return;
-        State.AddOrUpdate(control, new PressState { Origin = e.GetPosition(control), Armed = true });
+        State.AddOrUpdate(control, new PressState { Origin = e.GetPosition(control), Armed = true, Press = e });
     }
 
     private static async void OnPointerMoved(object? sender, PointerEventArgs e)
@@ -76,7 +80,7 @@ public static class DragSourceBehavior
         if (System.Math.Abs(delta.X) < DragThreshold && System.Math.Abs(delta.Y) < DragThreshold) return;
 
         var nodeId = GetSourceNodeId(control);
-        if (nodeId is null) return;
+        if (nodeId is null || st.Press is not { } press) return;
 
         st.Armed = false; // one drag per press
 
@@ -91,14 +95,13 @@ public static class DragSourceBehavior
         DragGhost.Show(control, GetDragLabel(control) ?? "Source",
             layer is null ? default : e.GetPosition(layer));
 
-        // Classic DragDrop API: deprecated in Avalonia 11.3 in favour of DataTransfer, but stable
-        // and fully functional. Kept intentionally; Wave 3 may migrate to DoDragDropAsync/DataTransfer.
-#pragma warning disable CS0618
-        var data = new DataObject();
-        data.Set(SourceNodeFormat, nodeId.Value);
+        // The drag starts once the pointer has moved past the threshold, but Avalonia wants the
+        // press that began it.
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.Create(SourceNodeFormat, new SourceNode(nodeId.Value)));
         try
         {
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy | DragDropEffects.Link);
+            await DragDrop.DoDragDropAsync(press, data, DragDropEffects.Copy | DragDropEffects.Link);
         }
         finally
         {
@@ -106,8 +109,8 @@ public static class DragSourceBehavior
             control.Classes.Remove("dragging");
             root?.Classes.Remove("dragActive");
             DropTargetBehavior.ClearCurrent();
+            st.Press = null;
         }
-#pragma warning restore CS0618
     }
 
     private static void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -120,5 +123,6 @@ public static class DragSourceBehavior
     {
         public Point Origin;
         public bool Armed;
+        public PointerPressedEventArgs? Press;
     }
 }

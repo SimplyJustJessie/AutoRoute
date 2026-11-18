@@ -67,12 +67,10 @@ public static class DropTargetBehavior
         }
     }
 
-    // Classic DragDrop API (e.Data): deprecated in Avalonia 11.3 in favour of DataTransfer, but
-    // stable and functional. Kept intentionally; Wave 3 may migrate to the DataTransfer API.
-#pragma warning disable CS0618
     private static bool Compatible(Control control, DragEventArgs e) =>
-        GetAcceptsDrop(control) && e.Data.Contains(DragSourceBehavior.SourceNodeFormat)
-        && !(e.Data.Get(DragSourceBehavior.SourceNodeFormat) is int id && id == GetRejectNodeId(control));
+        GetAcceptsDrop(control)
+        && e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat) is { } src
+        && src.NodeId != GetRejectNodeId(control);
 
     // Exactly one highlighted target at a time. Leave events can be missed on slow moves (and a
     // leave inside a row's own bounds is ignored on purpose), so highlighting a new target always
@@ -138,7 +136,7 @@ public static class DropTargetBehavior
         ClearCurrent();
         if (!Compatible(control, e)) return;
 
-        if (e.Data.Get(DragSourceBehavior.SourceNodeFormat) is int nodeId)
+        if (e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat) is { NodeId: var nodeId })
         {
             var command = GetDropCommand(control);
             if (command is not null && command.CanExecute(nodeId))
@@ -146,5 +144,4 @@ public static class DropTargetBehavior
         }
         e.Handled = true;
     }
-#pragma warning restore CS0618
 }

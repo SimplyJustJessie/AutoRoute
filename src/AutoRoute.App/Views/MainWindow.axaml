@@ -15,11 +15,11 @@
         TransparencyLevelHint="Transparent"
         Icon="/Assets/tray-icon.png"
         Title="AutoRoute"
-        SystemDecorations="None">
+        WindowDecorations="None">
 
     <!-- Client-side decorations: each BoardView draws its own title bar + caption buttons and its
          own resize grips (BoardView.axaml.cs) — that keeps working unchanged no matter how deep it
-         sits in the visual tree (GetVisualRoot() always finds this Window). SystemDecorations="None"
+         sits in the visual tree (TopLevel.GetTopLevel always finds this Window). WindowDecorations="None"
          is used instead of ExtendClientAreaToDecorationsHint because several Linux compositors (KWin
          among them) ignore the extend-client-area hint and keep drawing their own caption — leaving
          a double title bar. "None" is honoured everywhere; we supply move/maximise/resize ourselves.

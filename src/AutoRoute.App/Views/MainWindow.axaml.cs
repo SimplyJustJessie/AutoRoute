@@ -12,9 +12,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-#if DEBUG
-        this.AttachDevTools();
-#endif
         if (this.FindControl<Grid>("FrameContent") is { } content)
         {
             content.SizeChanged += (_, _) => UpdateContentClip(content);

@@ -111,17 +111,25 @@ public sealed class LevelMeterFeedTests
         public void Dispose() { }
     }
 
+    private sealed class FakeTimer : IFrameTimer
+    {
+        public event System.Action? Tick { add { } remove { } }
+        public bool IsEnabled { get; private set; }
+        public void Start() => IsEnabled = true;
+        public void Stop() => IsEnabled = false;
+    }
+
     [Fact]
     public void A_new_feed_is_idle_until_activated()
     {
-        // Regression: the timer used to start in the constructor, so a --background launch opened a
-        // meter for every node and ticked 25×/s in the tray.
+        // Regression: the timer used to start in the constructor (UiFrameTimer now builds it stopped), so a
+        // --background launch opened a meter for every node and ticked 25×/s in the tray.
         var meter = new RecordingMeter();
         var graph = new AutoRoute.App.Design.MockPwGraphService(PwGraph.Empty);
         var board = new AutoRoute.App.ViewModels.BoardViewModel(graph,
             new AutoRoute.App.Design.RecordingPwLinker(), new AutoRoute.App.Design.MockRuleStore(),
             new AutoRoute.App.Design.MockReconciler(), new AutoRoute.App.Services.UiRuleMatcher());
-        var feed = new LevelMeterFeed(meter, graph, board);
+        var feed = new LevelMeterFeed(meter, graph, board, new FakeTimer());
 
         Assert.False(feed.IsTicking);
         Assert.Equal(0, meter.SetTargetsCalls);
