@@ -171,8 +171,10 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
         // Fire-and-forget: a background update check that never blocks startup. It resumes on the UI
         // thread (ConfigureAwait(true) inside), catches its own failures, and lights the banner via
-        // RefreshUpdateNotice if a newer release is out.
-        if (Update is not null)
+        // RefreshUpdateNotice if a newer release is out. Only an AppImage checks at startup (it can
+        // install the update); a package install checks when the Updates menu opens, so a plain
+        // tray start never loads the HTTPS stack.
+        if (Update is { CanSelfUpdate: true })
             _ = Update.CheckAsync();
     }
 

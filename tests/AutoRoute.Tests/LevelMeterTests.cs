@@ -99,3 +99,38 @@ public sealed class LevelBarsTests
         Assert.Equal(0, AutoRoute.App.Controls.LevelBars.Loudness(0));
     }
 }
+
+public sealed class LevelMeterFeedTests
+{
+    private sealed class RecordingMeter : ILevelMeter
+    {
+        public int SetTargetsCalls;
+        public void SetTargets(System.Collections.Generic.IReadOnlyCollection<MeterKey> keys) => SetTargetsCalls++;
+        public bool TryTake(MeterKey key, out float peak) { peak = 0; return false; }
+        public void Stop() { }
+        public void Dispose() { }
+    }
+
+    [Fact]
+    public void A_new_feed_is_idle_until_activated()
+    {
+        // Regression: the timer used to start in the constructor, so a --background launch opened a
+        // meter for every node and ticked 25×/s in the tray.
+        var meter = new RecordingMeter();
+        var graph = new AutoRoute.App.Design.MockPwGraphService(PwGraph.Empty);
+        var board = new AutoRoute.App.ViewModels.BoardViewModel(graph,
+            new AutoRoute.App.Design.RecordingPwLinker(), new AutoRoute.App.Design.MockRuleStore(),
+            new AutoRoute.App.Design.MockReconciler(), new AutoRoute.App.Services.UiRuleMatcher());
+        var feed = new LevelMeterFeed(meter, graph, board);
+
+        Assert.False(feed.IsTicking);
+        Assert.Equal(0, meter.SetTargetsCalls);
+
+        feed.Active = true;
+        Assert.True(feed.IsTicking);
+        Assert.Equal(1, meter.SetTargetsCalls);
+
+        feed.Active = false;
+        Assert.False(feed.IsTicking);
+    }
+}

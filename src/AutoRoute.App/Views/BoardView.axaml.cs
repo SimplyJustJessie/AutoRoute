@@ -24,6 +24,10 @@ public partial class BoardView : UserControl
         // Rows mark their DragOver handled; anything reaching the board unhandled is empty space.
         AddHandler(DragDrop.DragOverEvent, (_, e) => Behaviors.DropTargetBehavior.OnUnclaimedDragOver(e));
         AddHandler(DragDrop.DragEnterEvent, (_, e) => Behaviors.DropTargetBehavior.OnUnclaimedDragOver(e));
+
+        // Opening the Updates menu is when a package install checks (see UpdateViewModel).
+        if (this.FindControl<Button>("UpdatesButton")?.Flyout is { } updates)
+            updates.Opened += (_, _) => _ = _boundVm?.Update?.EnsureCheckedAsync();
     }
 
     // === Sidebar width (Comfortable) / collapsed (Compact) ==============================

@@ -23,6 +23,11 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private TrayController? _tray;
     private LevelMeterFeed? _meters;
+
+    // Whether we have put the window on screen (Show) and not hidden it since: meters key off this
+    // as well as IsVisible, so nothing but a real Show can switch them on.
+    private bool _windowShown;
+    private Action? _updateMeters;
     private GracefulShutdown? _shutdown;
     private bool _quitting;
 
@@ -105,11 +110,13 @@ public partial class App : Application
             void UpdateMeters()
             {
                 if (_meters is null || _mainWindow is null) return;
-                _meters.Active = !_quitting && _mainWindow.IsVisible
+                _meters.Active = !_quitting && _windowShown && _mainWindow.IsVisible
                                  && _mainWindow.WindowState != WindowState.Minimized && !tabs.VideoSelected;
             }
+            _updateMeters = UpdateMeters;
             _mainWindow.PropertyChanged += (_, e) =>
             {
+                if (e.Property == Visual.IsVisibleProperty && e.NewValue is false) _windowShown = false;
                 if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
                     UpdateMeters();
             };
@@ -155,8 +162,10 @@ public partial class App : Application
         if (_mainWindow is null) return;
         if (_mainWindow.WindowState == WindowState.Minimized)
             _mainWindow.WindowState = WindowState.Normal;
+        _windowShown = true;
         _mainWindow.Show();
         _mainWindow.Activate();
+        _updateMeters?.Invoke();
     }
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -179,7 +188,9 @@ public partial class App : Application
 
         // Ordinary user close (the window's X button): hide to the tray and keep running.
         e.Cancel = true;
+        _windowShown = false;
         _mainWindow?.Hide();
+        _updateMeters?.Invoke();
     }
 
     // Tray "Quit" and POSIX signals both funnel through the one-shot GracefulShutdown.

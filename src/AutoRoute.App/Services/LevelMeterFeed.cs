@@ -62,8 +62,14 @@ public sealed class LevelMeterFeed : IDisposable
         _meter = meter;
         _graph = graph;
         _board = board;
-        _timer = new DispatcherTimer(Frame, DispatcherPriority.Background, (_, _) => Tick());
+        // Not the (interval, priority, handler) constructor: that one starts the timer at once, which
+        // ran the meters from launch — 18 streams open and 25 ticks a second while in the tray.
+        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = Frame };
+        _timer.Tick += (_, _) => Tick();
     }
+
+    /// <summary>The frame timer is running (only ever while <see cref="Active"/>).</summary>
+    public bool IsTicking => _timer.IsEnabled;
 
     /// <summary>Meters run while true (window visible on the Audio tab).</summary>
     public bool Active
@@ -101,6 +107,7 @@ public sealed class LevelMeterFeed : IDisposable
 
     private void Tick()
     {
+        if (!_active) return;
         _tick++;
         if (_tick % PlanEveryTicks == 0) RefreshPlan();
 

@@ -66,6 +66,16 @@ public partial class UpdateViewModel : ViewModelBase
     partial void OnUpdateAvailableChanged(bool value) => _onStateChanged?.Invoke();
     partial void OnNeedsRestartChanged(bool value) => _onStateChanged?.Invoke();
 
+    private DateTime _checkedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// Check unless a recent result is in hand — what opening the Updates menu calls. Package
+    /// installs only ever check this way: a startup check would load the whole TLS stack
+    /// (OpenSSL, ~20 MiB) into a tray app just to print "Up to date".
+    /// </summary>
+    public Task EnsureCheckedAsync() =>
+        DateTime.UtcNow - _checkedAt < TimeSpan.FromHours(1) ? Task.CompletedTask : CheckAsync();
+
     /// <summary>Query Gitea for a newer release and reflect the result. Never throws.</summary>
     [RelayCommand]
     public async Task CheckAsync()
@@ -76,6 +86,7 @@ public partial class UpdateViewModel : ViewModelBase
         try
         {
             var check = await _service.CheckAsync().ConfigureAwait(true);
+            _checkedAt = DateTime.UtcNow;
             _latest = check;
             UpdateAvailable = check.UpdateAvailable;
             LatestVersion = check.LatestTag ?? string.Empty;
