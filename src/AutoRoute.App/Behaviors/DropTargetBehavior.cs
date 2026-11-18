@@ -69,8 +69,12 @@ public static class DropTargetBehavior
 
     private static bool Compatible(Control control, DragEventArgs e) =>
         GetAcceptsDrop(control)
-        && e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat) is { } src
+        && Payload(e) is { } src
         && src.NodeId != GetRejectNodeId(control);
+
+    // Our own drag in flight first (readable while hovering), then the transfer itself.
+    private static DragSourceBehavior.SourceNode? Payload(DragEventArgs e) =>
+        DragSourceBehavior.Current ?? e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat);
 
     // Exactly one highlighted target at a time. Leave events can be missed on slow moves (and a
     // leave inside a row's own bounds is ignored on purpose), so highlighting a new target always
@@ -136,7 +140,7 @@ public static class DropTargetBehavior
         ClearCurrent();
         if (!Compatible(control, e)) return;
 
-        if (e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat) is { NodeId: var nodeId })
+        if (Payload(e) is { NodeId: var nodeId })
         {
             var command = GetDropCommand(control);
             if (command is not null && command.CanExecute(nodeId))

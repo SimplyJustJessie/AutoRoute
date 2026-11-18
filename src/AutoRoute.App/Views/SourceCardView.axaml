@@ -31,7 +31,7 @@
         <StackPanel Orientation="Horizontal" Spacing="8">
             <Border Classes="tile chip" Background="{Binding TileBrush}">
                 <Panel>
-                    <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                    <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
                     <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                           Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                 </Panel>

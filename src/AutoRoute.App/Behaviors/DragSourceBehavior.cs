@@ -20,6 +20,13 @@ public static class DragSourceBehavior
     /// <summary>Drag payload: the live node id of the Source being dragged.</summary>
     public sealed record SourceNode(int NodeId);
 
+    /// <summary>
+    /// The Source being dragged right now, if this app started the drag. Drop targets read it while
+    /// hovering: on X11 a drag runs through the XDND protocol even inside one app, and the payload's
+    /// value isn't readable until the drop, so hovering rows answered "can't drop".
+    /// </summary>
+    public static SourceNode? Current { get; private set; }
+
     private const double DragThreshold = 4.0;
 
     public static readonly AttachedProperty<int?> SourceNodeIdProperty =
@@ -97,8 +104,10 @@ public static class DragSourceBehavior
 
         // The drag starts once the pointer has moved past the threshold, but Avalonia wants the
         // press that began it.
+        var payload = new SourceNode(nodeId.Value);
         var data = new DataTransfer();
-        data.Add(DataTransferItem.Create(SourceNodeFormat, new SourceNode(nodeId.Value)));
+        data.Add(DataTransferItem.Create(SourceNodeFormat, payload));
+        Current = payload;
         try
         {
             await DragDrop.DoDragDropAsync(press, data, DragDropEffects.Copy | DragDropEffects.Link);
@@ -110,6 +119,7 @@ public static class DragSourceBehavior
             root?.Classes.Remove("dragActive");
             DropTargetBehavior.ClearCurrent();
             st.Press = null;
+            Current = null;
         }
     }
 
