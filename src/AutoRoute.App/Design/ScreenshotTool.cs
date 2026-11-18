@@ -100,7 +100,7 @@ public static class ScreenshotTool
 
         // Simulated drag-over: light up the drop highlight on the last droppable row.
         var column = window.GetVisualDescendants().OfType<SinkColumnView>()
-            .Select(v => v.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault(b => b.Classes.Contains("rowHost")))
+            .Select(v => v.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("rowHost")))
             .LastOrDefault(b => b is not null && Behaviors.DropTargetBehavior.GetAcceptsDrop(b));
         if (column is not null)
         {

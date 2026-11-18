@@ -128,7 +128,7 @@
                 <ScrollViewer Name="BoardScroll" behaviors:SmoothScroll.IsEnabled="True"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Columns}" Margin="20,6,20,20">
+                    <ItemsControl ItemsSource="{Binding Columns}" Margin="0,6,0,20">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:SinkColumnViewModel">
                                 <views:SinkColumnView IsVisible="{Binding IsVisible}" />

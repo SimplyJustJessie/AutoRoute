@@ -44,12 +44,14 @@
             </Flyout>
     </UserControl.Resources>
 
-    <!-- The drop target is the whole host, gap below the row included, so dragging down the list
-         never crosses a no-target strip (which flickered the cursor between rows). Transparent
-         background so the gap hit-tests. -->
-    <StackPanel Classes="rowHost" Background="Transparent"
-                behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
-                behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
+    <!-- The drop target is the whole host: the gap below the row and the list's side margins
+         included (the padding lives here, not on the list), so dragging over the list never
+         crosses a no-target strip — Breeze's no-target drag cursor is a closed hand, which
+         flickered in between rows and at their edges. Transparent background so it hit-tests. -->
+    <Border Classes="rowHost" Background="Transparent" Padding="20,0"
+            behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
+            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
+    <StackPanel>
         <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
                    IsVisible="{Binding ShowGroupHeader}" Margin="2,14,0,8" />
 
@@ -200,4 +202,5 @@
             </Grid>
         </Border>
     </StackPanel>
+    </Border>
 </UserControl>
