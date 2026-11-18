@@ -44,15 +44,18 @@
             </Flyout>
     </UserControl.Resources>
 
-    <StackPanel>
+    <!-- The drop target is the whole host, gap below the row included, so dragging down the list
+         never crosses a no-target strip (which flickered the cursor between rows). Transparent
+         background so the gap hit-tests. -->
+    <StackPanel Classes="rowHost" Background="Transparent"
+                behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
+                behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
         <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
                    IsVisible="{Binding ShowGroupHeader}" Margin="2,14,0,8" />
 
         <Border Classes="row"
                 Classes.compact="{Binding IsCompact}"
                 Classes.protected="{Binding IsProtected}"
-                behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
-                behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}"
                 ToolTip.Tip="{Binding Subtitle}">
             <!-- Tile | identity + volume | row menu, then the chips on their own line below,
                  aligned with the name. -->

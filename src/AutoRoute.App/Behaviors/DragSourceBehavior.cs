@@ -105,6 +105,7 @@ public static class DragSourceBehavior
             DragGhost.Hide();
             control.Classes.Remove("dragging");
             root?.Classes.Remove("dragActive");
+            DropTargetBehavior.ClearCurrent();
         }
 #pragma warning restore CS0618
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -57,6 +58,34 @@ public static class DropTargetBehavior
     private static bool Compatible(Control control, DragEventArgs e) =>
         GetAcceptsDrop(control) && e.Data.Contains(DragSourceBehavior.SourceNodeFormat);
 
+    // Exactly one highlighted target at a time. Leave events can be missed on slow moves (and a
+    // leave inside a row's own bounds is ignored on purpose), so highlighting a new target always
+    // un-highlights the previous one, and the board clears it when the pointer is over no target.
+    private static WeakReference<Control>? _current;
+
+    private static void SetCurrent(Control? control)
+    {
+        if (_current is not null && _current.TryGetTarget(out var previous) && previous != control)
+            SetIsDragOver(previous, false);
+        _current = control is null ? null : new WeakReference<Control>(control);
+        if (control is not null) SetIsDragOver(control, true);
+    }
+
+    /// <summary>Drop the highlight wherever it is (drag ended, or the pointer is over no target).</summary>
+    public static void ClearCurrent() => SetCurrent(null);
+
+    /// <summary>
+    /// For a drag-aware container (the board root): a DragOver no target claimed means the pointer
+    /// is over empty space — clear the highlight and show a steady "can't drop" cursor rather than
+    /// whatever the platform picks for an unhandled effect.
+    /// </summary>
+    public static void OnUnclaimedDragOver(DragEventArgs e)
+    {
+        ClearCurrent();
+        e.DragEffects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
     private static void OnDragOver(object? sender, DragEventArgs e)
     {
         if (sender is not Control control) return;
@@ -65,7 +94,7 @@ public static class DropTargetBehavior
             // Copy, not Link: X11 asks the cursor theme for "dnd-link", which Breeze doesn't ship,
             // so a Link drag fell back to the plain arrow. "dnd-copy" exists everywhere.
             e.DragEffects = DragDropEffects.Copy;
-            SetIsDragOver(control, true);
+            SetCurrent(control);
         }
         else
         {
@@ -83,12 +112,13 @@ public static class DropTargetBehavior
         var p = e.GetPosition(control);
         if (new Rect(control.Bounds.Size).Contains(p)) return;
         SetIsDragOver(control, false);
+        if (_current is not null && _current.TryGetTarget(out var cur) && cur == control) _current = null;
     }
 
     private static void OnDrop(object? sender, DragEventArgs e)
     {
         if (sender is not Control control) return;
-        SetIsDragOver(control, false);
+        ClearCurrent();
         if (!Compatible(control, e)) return;
 
         if (e.Data.Get(DragSourceBehavior.SourceNodeFormat) is int nodeId)
