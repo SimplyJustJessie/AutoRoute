@@ -45,7 +45,7 @@
                                             </Border>
                                         </Border>
                                     </Panel>
-                                    <StackPanel Grid.Column="1" Spacing="2">
+                                    <StackPanel Grid.Column="1" Spacing="5">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="nm" Text="{Binding Title}" />
                                             <Ellipse Grid.Column="1" Classes="playing" Margin="8,0,2,0"

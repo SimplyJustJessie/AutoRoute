@@ -24,10 +24,12 @@
                 behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
                 behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}"
                 ToolTip.Tip="{Binding Subtitle}">
-            <Grid ColumnDefinitions="Auto,230,Auto,Auto,*,Auto">
+            <!-- Tile | [identity + volume] [chips] (the chips wrap under the name when the row is
+                 narrow, aligned with it) | row menu. -->
+            <Grid Classes="rowContent" ColumnDefinitions="Auto,*,Auto">
 
                 <!-- Tile + in/out badge -->
-                <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
+                <Panel Grid.Column="0" VerticalAlignment="Top" Margin="0,0,14,0">
                     <Border Classes="tile" Classes.lg="{Binding !IsCompact}" Classes.sm="{Binding IsCompact}"
                             Background="{Binding TileBrush}">
                         <Panel>
@@ -46,10 +48,13 @@
                     </Border>
                 </Panel>
 
+                <WrapPanel Grid.Column="1">
+
+                <StackPanel Classes="head" Orientation="Horizontal" VerticalAlignment="Center">
                 <!-- Name + type line + format -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="200" />
+                        <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
                         <Ellipse Classes="playing" IsVisible="{Binding IsRunning}" ToolTip.Tip="Playing" />
                     </StackPanel>
                     <WrapPanel IsVisible="{Binding !IsCompact}">
@@ -64,9 +69,8 @@
                     </WrapPanel>
                 </StackPanel>
 
-                <!-- Volume: mute + fader + percent -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
-                            Width="210" Margin="0,0,8,0">
+                <!-- Volume: mute + fader + percent (keeps its width when absent so rows align) -->
+                <Panel Width="214" VerticalAlignment="Center" Margin="0,0,20,0">
                     <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasVolume}">
                         <Button Classes="mute" Classes.on="{Binding IsMuted}"
                                 Command="{Binding ToggleMuteCommand}"
@@ -76,16 +80,15 @@
                                 <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
                             </Panel>
                         </Button>
-                        <controls:Fader Width="140" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
+                        <controls:Fader Width="144" Value="{Binding Volume}" IsMuted="{Binding IsMuted}"
                                         AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
                         <TextBlock Classes="pct" Text="{Binding VolumePercent}" />
                     </StackPanel>
+                </Panel>
                 </StackPanel>
 
-                <Border Grid.Column="3" Classes="feedsDivider" />
-
                 <!-- Sources feeding this output -->
-                <WrapPanel Grid.Column="4" Margin="12,8,0,0" VerticalAlignment="Center">
+                <WrapPanel Classes="feeds" VerticalAlignment="Center">
                     <ItemsControl ItemsSource="{Binding Cards}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -137,10 +140,11 @@
                         </Button.Flyout>
                     </Button>
                 </WrapPanel>
+                </WrapPanel>
 
                 <!-- Row menu: details, hands off, delete (virtual sinks we own) -->
-                <Button Grid.Column="5" Classes="icon" Name="RowMenuButton" VerticalAlignment="Center"
-                        Margin="8,0,0,0" ToolTip.Tip="More"
+                <Button Grid.Column="2" Classes="icon" Name="RowMenuButton" VerticalAlignment="Top"
+                        Margin="8,6,0,0" ToolTip.Tip="More"
                         Command="{Binding PrepareDeleteSinkCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
                         <Ellipse Width="4" Height="4" Fill="{DynamicResource MutedBrush}" />

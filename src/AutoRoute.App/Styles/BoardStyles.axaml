@@ -5,6 +5,11 @@
     <!-- Destinations-first board (Comfortable + Compact). Tokens come from App.axaml; the few
          literal colours here are the row/chip greys from the approved design. -->
 
+    <Style Selector=":is(Window)[WindowState=Maximized] Border.windowFrame">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
     <!-- ============================ Tiles + badges ============================ -->
     <Style Selector="Border.tile">
         <Setter Property="Width" Value="36" />
@@ -163,9 +168,26 @@
         <Setter Property="Padding" Value="14,10" />
         <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
+    <!-- Drop target under the pointer: accent outline, and its content greyed out so the row
+         reads as one target rather than a set of buttons. -->
     <Style Selector="Border.row[(behaviors|DropTargetBehavior.IsDragOver)=True]">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="Background" Value="#1A1C26" />
+    </Style>
+    <Style Selector="Border.row Grid.rowContent">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.row[(behaviors|DropTargetBehavior.IsDragOver)=True] Grid.rowContent">
+        <Setter Property="Opacity" Value="0.3" />
+    </Style>
+    <!-- While any drag is in flight, nothing inside a row hit-tests: the row is the only target,
+         so crossing its icon, fader or chips no longer flickers the highlight or lights buttons. -->
+    <Style Selector=":is(TopLevel).dragActive Border.row Grid.rowContent">
+        <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
     <Style Selector="Border.row.protected">
         <Setter Property="Opacity" Value="0.75" />
@@ -176,10 +198,8 @@
         <Setter Property="Padding" Value="12,4" />
         <Setter Property="Margin" Value="0,0,0,4" />
     </Style>
-    <Style Selector="Border.feedsDivider">
-        <Setter Property="Width" Value="1" />
-        <Setter Property="Background" Value="#2A2C33" />
-        <Setter Property="Margin" Value="4,6" />
+    <Style Selector="Border.row.compact StackPanel.who">
+        <Setter Property="Orientation" Value="Horizontal" />
     </Style>
 
     <!-- ============================ Chips ============================ -->
@@ -189,7 +209,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="999" />
         <Setter Property="Padding" Value="4,4,10,4" />
-        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Margin" Value="0,4,8,4" />
     </Style>
     <Style Selector="Border.chip2.unsaved">
         <Setter Property="Background" Value="#231E15" />
@@ -264,7 +284,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="999" />
         <Setter Property="Padding" Value="10,5" />
-        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Margin" Value="0,4,0,4" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Cursor" Value="Hand" />
@@ -357,7 +377,7 @@
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="8" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Cursor" Value="SizeAll" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Border.srcEntry:pointerover">
         <Setter Property="Background" Value="#1B1C21" />
@@ -372,7 +392,7 @@
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="5,5,10,5" />
         <Setter Property="Margin" Value="0,0,8,8" />
-        <Setter Property="Cursor" Value="SizeAll" />
+        <Setter Property="Cursor" Value="Hand" />
     </Style>
     <Style Selector="Border.trayChip:pointerover">
         <Setter Property="BorderBrush" Value="#4A4D57" />

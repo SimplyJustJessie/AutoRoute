@@ -62,7 +62,9 @@ public static class DropTargetBehavior
         if (sender is not Control control) return;
         if (Compatible(control, e))
         {
-            e.DragEffects = DragDropEffects.Link;
+            // Copy, not Link: X11 asks the cursor theme for "dnd-link", which Breeze doesn't ship,
+            // so a Link drag fell back to the plain arrow. "dnd-copy" exists everywhere.
+            e.DragEffects = DragDropEffects.Copy;
             SetIsDragOver(control, true);
         }
         else
@@ -74,7 +76,13 @@ public static class DropTargetBehavior
 
     private static void OnDragLeave(object? sender, DragEventArgs e)
     {
-        if (sender is Control control) SetIsDragOver(control, false);
+        if (sender is not Control control) return;
+        // DragLeave bubbles up from children: crossing from the row onto its icon, fader or a chip
+        // "leaves" the child and used to clear the highlight on every crossing (the flicker). Only
+        // clear it when the pointer has actually left this control's bounds.
+        var p = e.GetPosition(control);
+        if (new Rect(control.Bounds.Size).Contains(p)) return;
+        SetIsDragOver(control, false);
     }
 
     private static void OnDrop(object? sender, DragEventArgs e)

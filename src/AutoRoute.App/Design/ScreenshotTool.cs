@@ -64,7 +64,14 @@ public static class ScreenshotTool
         var videoBoard = DevComposition.CreateInitializedVideoBoard(graph, tabs);
         var mainVm = new ViewModels.MainWindowViewModel(board, videoBoard, tabs);
 
-        var window = new MainWindow { DataContext = mainVm, Width = 1400, Height = 800 };
+        // --size WxH: render at a specific window size (default 1400x800).
+        double width = 1400, height = 800;
+        var sizeIdx = Array.IndexOf(args, "--size");
+        if (sizeIdx >= 0 && sizeIdx + 1 < args.Length && args[sizeIdx + 1].Split('x') is [var w, var h]
+            && double.TryParse(w, out var pw) && double.TryParse(h, out var ph))
+            (width, height) = (pw, ph);
+
+        var window = new MainWindow { DataContext = mainVm, Width = width, Height = height };
         window.Show();
         Dispatcher.UIThread.RunJobs();
 

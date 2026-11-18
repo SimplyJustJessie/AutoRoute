@@ -11,7 +11,8 @@
         d:DataContext="{x:Static design:DesignData.MainWindow}"
         Width="1100" Height="640"
         MinWidth="720" MinHeight="420"
-        Background="{DynamicResource BgBrush}"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
         Icon="/Assets/tray-icon.png"
         Title="AutoRoute"
         SystemDecorations="None">
@@ -27,7 +28,13 @@
          palette, columns); only one is visible at a time. The Audio/Video switcher itself lives
          inside BoardView's own toolbar (next to the brand) via a $parent[Window] binding back to
          this VM — so there's exactly one toolbar on screen, not a second bar stacked above it. -->
-    <Grid Background="{DynamicResource BgBrush}">
+    <!-- The frame: rounded corners + a hairline border, so the window reads as a window and not
+         as content sliced off at the screen edge. Needs the transparent window above (a compositor
+         draws the corners; without one they render as plain square corners). Squared off when
+         maximized (BoardStyles). -->
+    <Border Name="Frame" Classes="windowFrame" Background="{DynamicResource BgBrush}"
+            BorderBrush="#2E3038" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+    <Grid>
         <!-- IsVisible="False" also stops a board from hit-testing, so drag/drop and clicks on the
              hidden one never fire. -->
         <Panel IsVisible="{Binding Tabs.IsAudioSelected}">
@@ -37,4 +44,5 @@
             <views:BoardView DataContext="{Binding Video}" />
         </Panel>
     </Grid>
+    </Border>
 </Window>

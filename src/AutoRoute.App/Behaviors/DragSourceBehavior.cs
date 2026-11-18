@@ -84,6 +84,10 @@ public static class DragSourceBehavior
         // whole drag (Avalonia renders no native drag image).
         var layer = Avalonia.Controls.Primitives.OverlayLayer.GetOverlayLayer(control);
         control.Classes.Add("dragging");
+        // While a drag is in flight, row internals stop hit-testing (BoardStyles) so the drop
+        // target is always the row itself: no hover flicker on buttons, no enter/leave churn.
+        var root = TopLevel.GetTopLevel(control);
+        root?.Classes.Add("dragActive");
         DragGhost.Show(control, GetDragLabel(control) ?? "Source",
             layer is null ? default : e.GetPosition(layer));
 
@@ -94,12 +98,13 @@ public static class DragSourceBehavior
         data.Set(SourceNodeFormat, nodeId.Value);
         try
         {
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Link | DragDropEffects.Copy);
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy | DragDropEffects.Link);
         }
         finally
         {
             DragGhost.Hide();
             control.Classes.Remove("dragging");
+            root?.Classes.Remove("dragActive");
         }
 #pragma warning restore CS0618
     }
