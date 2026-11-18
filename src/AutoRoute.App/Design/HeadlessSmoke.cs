@@ -29,7 +29,8 @@ public static class HeadlessSmoke
         try
         {
             AppBuilder.Configure<App>()
-                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true })
+                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+                .UseSkia() // a real scene: Avalonia 12 hit-tests what was rendered (the drag check needs it)
                 .LogToTrace(LogEventLevel.Warning)
                 .SetupWithoutStarting();
         }
@@ -111,6 +112,7 @@ public static class HeadlessSmoke
         window.Arrange(new Rect(0, 0, 1100, 640));
         Dispatcher.UIThread.RunJobs();
 
+        CheckDragToConnect(window, Check); // first: the flyout check leaves a light-dismiss popup open
         CheckCreateFlyoutRegression(window, board, Check);
         CheckHorizontalContainment(window, Check);
 
@@ -134,6 +136,78 @@ public static class HeadlessSmoke
         }
         Console.WriteLine($"UI SMOKE: FAIL ({failures.Count} check(s) failed)");
         return 1;
+    }
+
+    /// <summary>
+    /// The in-window drag, driven with real (headless) pointer input: press a sidebar Source, move
+    /// past the threshold onto an output row — the row lights up and the cursor is "copy" — and
+    /// release, which runs the row's connect command with the Source's node id. Over empty space
+    /// the cursor is "no"; Escape cancels without connecting.
+    /// </summary>
+    private static void CheckDragToConnect(Window window, Action<bool, string> check)
+    {
+        static Point Centre(Visual v, Visual root) =>
+            v.TranslatePoint(new Point(v.Bounds.Width / 2, v.Bounds.Height / 2), root) ?? default;
+
+        var entry = window.GetVisualDescendants().OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("srcEntry") && b.IsEffectivelyVisible
+                                 && Behaviors.DragSourceBehavior.GetSourceNodeId(b) is not null);
+        var row = window.GetVisualDescendants().OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("rowHost") && b.IsEffectivelyVisible
+                                 && Behaviors.DropTargetBehavior.GetAcceptsDrop(b)
+                                 && Behaviors.DropTargetBehavior.GetDropCommand(b) is not null);
+        if (entry is null || row is null)
+        {
+            check(false, "drag: found a sidebar Source and an output row");
+            return;
+        }
+        var nodeId = Behaviors.DragSourceBehavior.GetSourceNodeId(entry)!.Value;
+
+        // Record the drop instead of really connecting (the row's own command is bound; a local
+        // value overrides it for this check).
+        int? dropped = null;
+        Behaviors.DropTargetBehavior.SetDropCommand(row,
+            new CommunityToolkit.Mvvm.Input.RelayCommand<int>(id => dropped = id));
+
+        // The tile/name corner: the entry's middle is its volume fader, which keeps its own presses.
+        const Avalonia.Input.RawInputModifiers Held = Avalonia.Input.RawInputModifiers.LeftMouseButton;
+        var from = entry.TranslatePoint(new Point(20, 16), window) ?? default;
+        var to = Centre(row, window);
+        var empty = new Point(to.X, 25); // the top bar: no drop target there
+
+        // Avalonia 12 hit-tests the composited scene: render the laid-out board before any input.
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+
+        window.MouseDown(from, Avalonia.Input.MouseButton.Left);
+        window.MouseMove(from + new Point(12, 0), Held);
+        window.MouseMove(empty, Held);
+        Dispatcher.UIThread.RunJobs();
+        check(Behaviors.DragSourceBehavior.IsDragging, "drag: moving past the threshold picks the Source up");
+        check(entry.Cursor == Behaviors.DragSourceBehavior.NoCursor, "drag: cursor is 'no' over empty space");
+
+        window.MouseMove(to, Held);
+        Dispatcher.UIThread.RunJobs();
+        check(Behaviors.DropTargetBehavior.GetIsDragOver(row), "drag: the row under the pointer lights up");
+        check(entry.Cursor == Behaviors.DragSourceBehavior.CopyCursor, "drag: cursor is 'copy' over a row");
+
+        window.MouseUp(to, Avalonia.Input.MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        check(dropped == nodeId, "drag: releasing over the row connects that Source");
+        check(!Behaviors.DragSourceBehavior.IsDragging && !Behaviors.DropTargetBehavior.GetIsDragOver(row)
+              && entry.Cursor != Behaviors.DragSourceBehavior.CopyCursor, "drag: everything resets after the drop");
+
+        dropped = null;
+        window.MouseDown(from, Avalonia.Input.MouseButton.Left);
+        window.MouseMove(from + new Point(12, 0), Held);
+        window.MouseMove(to, Held);
+        window.KeyPress(Avalonia.Input.Key.Escape, Avalonia.Input.RawInputModifiers.None,
+            Avalonia.Input.PhysicalKey.Escape, null);
+        window.MouseUp(to, Avalonia.Input.MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        check(dropped is null && !Behaviors.DragSourceBehavior.IsDragging, "drag: Escape cancels without connecting");
+
+        row.ClearValue(Behaviors.DropTargetBehavior.DropCommandProperty);
     }
 
     /// <summary>

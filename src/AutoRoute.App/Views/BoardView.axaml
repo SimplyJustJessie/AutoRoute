@@ -11,10 +11,7 @@
              x:DataType="vm:BoardViewModel"
              d:DataContext="{x:Static design:DesignData.Board}">
 
-    <!-- AllowDrop on the root keeps DragOver events flowing over the whole board, so the drag
-         ghost follows the pointer between rows (drops outside a row are no-ops). -->
-    <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}"
-          DragDrop.AllowDrop="True">
+    <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}">
 
         <!-- ===================== Top bar (doubles as the title bar) =====================
              Drag it to move the window, double-click to maximise. No wordmark: the window

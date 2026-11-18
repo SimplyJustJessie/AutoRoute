@@ -3,15 +3,21 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 
 namespace AutoRoute.App.Behaviors;
 
 /// <summary>
-/// Attached behavior that makes a Target Sink column accept dropped Sources. Bind
-/// <see cref="DropCommandProperty"/> to the column's connect command; on drop the dragged Source
-/// node id (see <see cref="DragSourceBehavior.SourceNodeFormat"/>) is passed to that command as the
-/// "connect Source → this Target" intent. <see cref="AcceptsDropProperty"/> (bound to the column's
-/// AcceptsDrop) lets a Protected column refuse drops.
+/// Attached behavior that makes an output row accept dragged Sources. Bind
+/// <see cref="DropCommandProperty"/> to the row's connect command; on drop the dragged Source's node
+/// id is passed to it as the "connect Source → this output" intent. <see cref="AcceptsDropProperty"/>
+/// lets a Hands-off row refuse drops, and <see cref="RejectNodeIdProperty"/> refuses the row's own
+/// node.
+/// <para>
+/// The drag itself is run in-window by <see cref="DragSourceBehavior"/> (pointer capture + hit
+/// testing), not through the platform's drag and drop: on X11, Avalonia 12 routes even an in-app drag
+/// through XDND, which can't carry our payload, so every target read as "can't drop".
+/// </para>
 /// </summary>
 public static class DropTargetBehavior
 {
@@ -28,10 +34,7 @@ public static class DropTargetBehavior
     public static readonly AttachedProperty<int> RejectNodeIdProperty =
         AvaloniaProperty.RegisterAttached<Control, int>("RejectNodeId", typeof(DropTargetBehavior), -1);
 
-    public static void SetRejectNodeId(Control c, int v) => c.SetValue(RejectNodeIdProperty, v);
-    public static int GetRejectNodeId(Control c) => c.GetValue(RejectNodeIdProperty);
-
-    /// <summary>True while a compatible drag is hovering — for a drop-highlight style trigger.</summary>
+    /// <summary>True while an acceptable drag is hovering — for the drop-highlight style.</summary>
     public static readonly AttachedProperty<bool> IsDragOverProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("IsDragOver", typeof(DropTargetBehavior));
 
@@ -39,46 +42,12 @@ public static class DropTargetBehavior
     public static ICommand? GetDropCommand(Control c) => c.GetValue(DropCommandProperty);
     public static void SetAcceptsDrop(Control c, bool v) => c.SetValue(AcceptsDropProperty, v);
     public static bool GetAcceptsDrop(Control c) => c.GetValue(AcceptsDropProperty);
+    public static void SetRejectNodeId(Control c, int v) => c.SetValue(RejectNodeIdProperty, v);
+    public static int GetRejectNodeId(Control c) => c.GetValue(RejectNodeIdProperty);
     public static void SetIsDragOver(Control c, bool v) => c.SetValue(IsDragOverProperty, v);
     public static bool GetIsDragOver(Control c) => c.GetValue(IsDragOverProperty);
 
-    static DropTargetBehavior()
-    {
-        DropCommandProperty.Changed.AddClassHandler<Control>(OnDropCommandChanged);
-    }
-
-    private static void OnDropCommandChanged(Control control, AvaloniaPropertyChangedEventArgs e)
-    {
-        control.RemoveHandler(DragDrop.DragEnterEvent, OnDragOver);
-        control.RemoveHandler(DragDrop.DragOverEvent, OnDragOver);
-        control.RemoveHandler(DragDrop.DragLeaveEvent, OnDragLeave);
-        control.RemoveHandler(DragDrop.DropEvent, OnDrop);
-
-        if (e.NewValue is ICommand)
-        {
-            DragDrop.SetAllowDrop(control, true);
-            // DragEnter too: crossing from a row's padding onto its card raises DragEnter for the
-            // card before the next DragOver; left unanswered, that one event had no effect and the
-            // cursor flashed to the no-target hand for a pixel.
-            control.AddHandler(DragDrop.DragEnterEvent, OnDragOver);
-            control.AddHandler(DragDrop.DragOverEvent, OnDragOver);
-            control.AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
-            control.AddHandler(DragDrop.DropEvent, OnDrop);
-        }
-    }
-
-    private static bool Compatible(Control control, DragEventArgs e) =>
-        GetAcceptsDrop(control)
-        && Payload(e) is { } src
-        && src.NodeId != GetRejectNodeId(control);
-
-    // Our own drag in flight first (readable while hovering), then the transfer itself.
-    private static DragSourceBehavior.SourceNode? Payload(DragEventArgs e) =>
-        DragSourceBehavior.Current ?? e.DataTransfer.TryGetValue(DragSourceBehavior.SourceNodeFormat);
-
-    // Exactly one highlighted target at a time. Leave events can be missed on slow moves (and a
-    // leave inside a row's own bounds is ignored on purpose), so highlighting a new target always
-    // un-highlights the previous one, and the board clears it when the pointer is over no target.
+    // Exactly one highlighted target at a time.
     private static WeakReference<Control>? _current;
 
     private static void SetCurrent(Control? control)
@@ -89,63 +58,37 @@ public static class DropTargetBehavior
         if (control is not null) SetIsDragOver(control, true);
     }
 
-    /// <summary>Drop the highlight wherever it is (drag ended, or the pointer is over no target).</summary>
+    /// <summary>Drop the highlight wherever it is (drag ended or left every target).</summary>
     public static void ClearCurrent() => SetCurrent(null);
 
-    /// <summary>
-    /// For a drag-aware container (the board root): a DragOver no target claimed means the pointer
-    /// is over empty space — clear the highlight and show a steady "can't drop" cursor rather than
-    /// whatever the platform picks for an unhandled effect.
-    /// </summary>
-    public static void OnUnclaimedDragOver(DragEventArgs e)
+    /// <summary>The drop target under <paramref name="point"/> (in <paramref name="top"/>'s space), if any.</summary>
+    public static Control? TargetAt(TopLevel top, Point point)
+    {
+        for (var v = top.InputHitTest(point) as Visual; v is not null; v = v.GetVisualParent())
+            if (v is Control c && GetDropCommand(c) is not null)
+                return c;
+        return null;
+    }
+
+    /// <summary>Would <paramref name="target"/> take <paramref name="nodeId"/>?</summary>
+    public static bool Accepts(Control? target, int nodeId) =>
+        target is not null && GetAcceptsDrop(target) && GetDropCommand(target) is { } cmd
+        && nodeId != GetRejectNodeId(target) && cmd.CanExecute(nodeId);
+
+    /// <summary>Hovering <paramref name="target"/>: highlight it if it takes the node. Returns that answer.</summary>
+    public static bool Hover(Control? target, int nodeId)
+    {
+        var ok = Accepts(target, nodeId);
+        SetCurrent(ok ? target : null);
+        return ok;
+    }
+
+    /// <summary>Released over <paramref name="target"/>: connect if it takes the node.</summary>
+    public static bool Drop(Control? target, int nodeId)
     {
         ClearCurrent();
-        e.DragEffects = DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private static void OnDragOver(object? sender, DragEventArgs e)
-    {
-        if (sender is not Control control) return;
-        if (Compatible(control, e))
-        {
-            // Copy, not Link: X11 asks the cursor theme for "dnd-link", which Breeze doesn't ship,
-            // so a Link drag fell back to the plain arrow. "dnd-copy" exists everywhere.
-            e.DragEffects = DragDropEffects.Copy;
-            SetCurrent(control);
-        }
-        else
-        {
-            ClearCurrent(); // no lingering highlight on the row we just came from
-            e.DragEffects = DragDropEffects.None;
-        }
-        e.Handled = true;
-    }
-
-    private static void OnDragLeave(object? sender, DragEventArgs e)
-    {
-        if (sender is not Control control) return;
-        // DragLeave bubbles up from children: crossing from the row onto its icon, fader or a chip
-        // "leaves" the child and used to clear the highlight on every crossing (the flicker). Only
-        // clear it when the pointer has actually left this control's bounds.
-        var p = e.GetPosition(control);
-        if (new Rect(control.Bounds.Size).Contains(p)) return;
-        SetIsDragOver(control, false);
-        if (_current is not null && _current.TryGetTarget(out var cur) && cur == control) _current = null;
-    }
-
-    private static void OnDrop(object? sender, DragEventArgs e)
-    {
-        if (sender is not Control control) return;
-        ClearCurrent();
-        if (!Compatible(control, e)) return;
-
-        if (Payload(e) is { NodeId: var nodeId })
-        {
-            var command = GetDropCommand(control);
-            if (command is not null && command.CanExecute(nodeId))
-                command.Execute(nodeId);
-        }
-        e.Handled = true;
+        if (!Accepts(target, nodeId)) return false;
+        GetDropCommand(target!)!.Execute(nodeId);
+        return true;
     }
 }
