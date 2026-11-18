@@ -39,6 +39,7 @@ public static class DropTargetBehavior
 
     private static void OnDropCommandChanged(Control control, AvaloniaPropertyChangedEventArgs e)
     {
+        control.RemoveHandler(DragDrop.DragEnterEvent, OnDragOver);
         control.RemoveHandler(DragDrop.DragOverEvent, OnDragOver);
         control.RemoveHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         control.RemoveHandler(DragDrop.DropEvent, OnDrop);
@@ -46,6 +47,10 @@ public static class DropTargetBehavior
         if (e.NewValue is ICommand)
         {
             DragDrop.SetAllowDrop(control, true);
+            // DragEnter too: crossing from a row's padding onto its card raises DragEnter for the
+            // card before the next DragOver; left unanswered, that one event had no effect and the
+            // cursor flashed to the no-target hand for a pixel.
+            control.AddHandler(DragDrop.DragEnterEvent, OnDragOver);
             control.AddHandler(DragDrop.DragOverEvent, OnDragOver);
             control.AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
             control.AddHandler(DragDrop.DropEvent, OnDrop);
