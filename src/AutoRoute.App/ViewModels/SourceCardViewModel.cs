@@ -15,6 +15,10 @@ public partial class SourceCardViewModel : NodeTileViewModel
 {
     private readonly IBoardCoordinator _coordinator;
 
+    /// <summary>A saved route whose app isn't running: shown faded.</summary>
+    [ObservableProperty]
+    private bool _isNotRunning;
+
     /// <summary>This chip is the focused Source.</summary>
     [ObservableProperty]
     private bool _isFocused;
@@ -83,6 +87,7 @@ public partial class SourceCardViewModel : NodeTileViewModel
         RuleId = model.RuleId;
         LinkId = model.LinkId;
         State = model.State;
+        IsNotRunning = model.NotRunning;
         ApplyLook(model.Look);
     }
 

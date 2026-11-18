@@ -53,11 +53,13 @@ public static class BoardModelBuilder
         // A rule's Source resolution is target-independent — resolve each enabled rule once,
         // not once per column (was: rules × columns × nodes matcher calls).
         var ruleSources = new List<(Rule Rule, List<PwNode> Sources)>();
+        var idleRules = new List<Rule>(); // saved routes whose source app isn't running
         foreach (var rule in rules.Rules)
         {
             if (!rule.Enabled) continue;
             var sources = matcher.Resolve(rule.Source, graph).Where(n => NodeRoles.IsSource(n, kind)).ToList();
             if (sources.Count > 0) ruleSources.Add((rule, sources));
+            else idleRules.Add(rule);
         }
 
         // Live links indexed by target node in one pass (was: an O(links) scan per column).
@@ -138,7 +140,9 @@ public static class BoardModelBuilder
 
             var cardModels = cards.Values
                 .Select(b => b.ToModel(columnProtected || protectedIds.Contains(b.Representative.Id), graph, kind))
-                .OrderBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
+                .Concat(IdleCards(idleRules.Where(r => matcher.Matches(r.Target, target)), cards.Keys))
+                .OrderBy(c => c.NotRunning)
+                .ThenBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var columnKey = NodeRoles.TargetIdentity(target);
@@ -161,6 +165,17 @@ public static class BoardModelBuilder
                 MediaKind: kind,
                 Look: targetLooks[target.Id]));
         }
+
+        // --- Disconnected: saved routes to an output that isn't here (device unplugged, virtual
+        // sink not loaded). Audio only, and only for outputs we can recognise as such, so a closed
+        // app's recording stream or a video target never shows up as a ghost row.
+        if (kind == MediaKind.Audio)
+            columns.AddRange(DisconnectedColumns(rules, graph, matcher, declaredSinkNames, targets, ruleSources, idleRules, kind));
+        columns = columns
+            .OrderBy(c => c.Look?.Group ?? 0)
+            .ThenBy(c => c.Disconnected)
+            .ThenBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         // --- Palette: every Source of this board's kind, app-granularity, monitors optional ---
         var palette = graph.Nodes.Where(n => NodeRoles.IsSource(n, kind))
@@ -189,6 +204,98 @@ public static class BoardModelBuilder
             .ToList();
 
         return new BoardSnapshot(columns, palette);
+    }
+
+    // ---- Saved routes that aren't live right now ---------------------------------------------
+
+    /// <summary>"Zen → Music" → ("Zen", "Music"); falls back to the first predicate's value.</summary>
+    internal static (string Source, string Target) RuleTitles(Rule rule)
+    {
+        var parts = rule.Name.Split(" → ");
+        if (parts.Length == 2 && parts[0].Length > 0 && parts[1].Length > 0) return (parts[0], parts[1]);
+        static string First(MatchCriteria m) => m.Predicates.FirstOrDefault()?.Value ?? "?";
+        return (First(rule.Source), First(rule.Target));
+    }
+
+    /// <summary>Faded chips for saved routes whose app isn't running (no live node behind them).</summary>
+    private static IEnumerable<CardModel> IdleCards(IEnumerable<Rule> rules, IEnumerable<string> liveKeys)
+    {
+        var seen = new HashSet<string>(liveKeys, System.StringComparer.Ordinal);
+        foreach (var rule in rules)
+        {
+            var title = RuleTitles(rule).Source;
+            var key = "idle:" + title.ToLowerInvariant();
+            if (!seen.Add(key)) continue;
+            var app = rule.Source.Predicates.FirstOrDefault(p => p.Field == Field.ApplicationName)?.Value;
+            var bin = rule.Source.Predicates.FirstOrDefault(p => p.Field == Field.ProcessBinary)?.Value;
+            var (initials, color) = NodePresentation.Tile(title, app ?? title);
+            yield return new CardModel(
+                Key: key, RepresentativeNodeId: -1, SourceIdentity: key, AllSourceNodeIds: System.Array.Empty<int>(),
+                Title: title, Subtitle: string.Empty, State: CardState.Managed, RuleId: rule.Id, RuleName: rule.Name,
+                LinkId: null, Tooltip: string.Empty,
+                Look: new NodeLook(string.Empty, NodeGlyph.App, false, initials, color, 0, string.Empty, null, false, false,
+                    app is null && bin is null ? null : new IconHints(null, null, null, app ?? title, bin)),
+                NotRunning: true);
+        }
+    }
+
+    private static IEnumerable<ColumnModel> DisconnectedColumns(
+        RulesDocument rules, PwGraph graph, IRuleMatcher matcher, IReadOnlySet<string> declaredSinkNames,
+        IReadOnlyList<PwNode> presentTargets, List<(Rule Rule, List<PwNode> Sources)> ruleSources,
+        List<Rule> idleRules, MediaKind kind)
+    {
+        var byTarget = new Dictionary<string, List<Rule>>(System.StringComparer.Ordinal);
+        foreach (var rule in rules.Rules)
+        {
+            if (!rule.Enabled || presentTargets.Any(t => matcher.Matches(rule.Target, t))) continue;
+            var name = rule.Target.Predicates.FirstOrDefault(p => p.Field == Field.NodeName)?.Value;
+            if (name is null || !(name.StartsWith("alsa_output.", System.StringComparison.Ordinal)
+                                  || name.StartsWith("bluez_output.", System.StringComparison.Ordinal)
+                                  || declaredSinkNames.Contains(name)))
+                continue;
+            if (!byTarget.TryGetValue(name, out var list)) byTarget[name] = list = new List<Rule>();
+            list.Add(rule);
+        }
+
+        var id = -1000;
+        foreach (var (name, targetRules) in byTarget)
+        {
+            var title = RuleTitles(targetRules[0]).Target;
+            var isVirtual = declaredSinkNames.Contains(name);
+            var cards = new List<CardModel>();
+            var liveKeys = new List<string>();
+            foreach (var rule in targetRules)
+            {
+                if (ruleSources.FirstOrDefault(rs => rs.Rule == rule) is { Sources: { Count: > 0 } sources })
+                {
+                    var rep = NodeRoles.PickRepresentative(sources, kind);
+                    var key = NodeRoles.SourceIdentity(rep);
+                    if (liveKeys.Contains(key)) continue;
+                    liveKeys.Add(key);
+                    var b = new CardBuild(rep) { State = CardState.Managed, RuleId = rule.Id, RuleName = rule.Name };
+                    foreach (var s in sources) b.AddNode(s);
+                    cards.Add(b.ToModel(false, graph, kind));
+                }
+            }
+            cards.AddRange(IdleCards(targetRules.Where(idleRules.Contains), liveKeys));
+
+            var group = isVirtual ? TargetGroup.Virtual : TargetGroup.Device;
+            yield return new ColumnModel(
+                TargetNodeId: id--,
+                Key: "disconnected:" + name,
+                Title: title,
+                Subtitle: string.Empty,
+                Protected: false,
+                SinkName: null,
+                IsManagedSink: false,
+                Cards: cards.OrderBy(c => c.NotRunning).ThenBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase).ToList(),
+                MediaKind: kind,
+                Look: new NodeLook("Disconnected",
+                    isVirtual ? NodeGlyph.Virtual : name.StartsWith("bluez", System.StringComparison.Ordinal) ? NodeGlyph.Headset : NodeGlyph.Speaker,
+                    false, "?", NodePresentation.NeutralTile, (int)group,
+                    isVirtual ? "Virtual" : "Devices", null, false, false),
+                Disconnected: true);
+        }
     }
 
     /// <summary>The keptManual set key: a card is per (target, source identity).</summary>

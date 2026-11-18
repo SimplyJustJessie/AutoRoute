@@ -32,6 +32,26 @@ public sealed class LevelMeterTests
     """;
 
     [Fact]
+    public void Other_mixers_peak_meters_are_left_out_too()
+    {
+        // KDE's volume popup meters every device with a pulse peak-detect stream.
+        const string dump = """
+        [
+          { "id": 305, "type": "PipeWire:Interface:Node",
+            "info": { "state": "running",
+              "props": { "media.class": "Stream/Input/Audio", "media.name": "PlasmaPA-VolumeMeter",
+                         "application.id": "org.kde.plasma-pa", "resample.peaks": true, "node.rate": "1/25" } } },
+          { "id": 306, "type": "PipeWire:Interface:Node",
+            "info": { "state": "running",
+              "props": { "media.class": "Stream/Input/Audio", "application.name": "WEBRTC VoiceEngine" } } }
+        ]
+        """;
+        var g = PwDumpReader.Parse(dump);
+        Assert.Null(g.Node(305));
+        Assert.NotNull(g.Node(306)); // a real recording app stays
+    }
+
+    [Fact]
     public void Own_meter_streams_are_left_out_of_the_graph()
     {
         var g = PwDumpReader.Parse(DumpWithMeter);

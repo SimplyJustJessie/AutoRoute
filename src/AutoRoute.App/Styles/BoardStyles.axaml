@@ -484,4 +484,19 @@
         <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     </Style>
+
+    <!-- Saved routes that aren't live: a chip whose app isn't running, a row whose output is
+         unplugged. Faded, still removable. -->
+    <Style Selector="Border.chip2.idle">
+        <Setter Property="Opacity" Value="0.5" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#3A3D48" />
+    </Style>
+    <Style Selector="Border.row.disconnected">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#2E3038" />
+    </Style>
+    <Style Selector="Border.row.disconnected TextBlock.nm, Border.row.disconnected controls|GlyphIcon">
+        <Setter Property="Opacity" Value="0.55" />
+    </Style>
 </Styles>

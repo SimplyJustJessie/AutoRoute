@@ -15,6 +15,7 @@
          manual = muted; hands off = lock, no remove. Right-click for the rest. -->
     <Border Classes="chip2"
             Classes.focused="{Binding IsFocused}"
+            Classes.idle="{Binding IsNotRunning}"
             Classes.unsaved="{Binding IsUnsaved}"
             Classes.manual="{Binding IsManual}"
             Classes.protected="{Binding IsProtected}">

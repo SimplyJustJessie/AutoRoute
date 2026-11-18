@@ -20,7 +20,8 @@ public sealed record CardModel(
     string? RuleName,
     int? LinkId,
     string Tooltip,
-    NodeLook? Look = null);
+    NodeLook? Look = null,
+    bool NotRunning = false);
 
 /// <summary>Immutable description of one Target Sink column.</summary>
 /// <param name="SinkName">The node's <c>node.name</c> — the identity a declared virtual sink is keyed by.</param>
@@ -36,7 +37,8 @@ public sealed record ColumnModel(
     IReadOnlyList<CardModel> Cards,
     string Format = "",
     MediaKind MediaKind = MediaKind.Audio,
-    NodeLook? Look = null);
+    NodeLook? Look = null,
+    bool Disconnected = false);
 
 /// <summary>Immutable description of one palette Source entry (app-granularity).</summary>
 public sealed record PaletteItemModel(

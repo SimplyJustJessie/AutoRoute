@@ -60,6 +60,7 @@
         <Border Classes="row"
                 Classes.compact="{Binding IsCompact}"
                 Classes.dimmed="{Binding IsDimmed}"
+                Classes.disconnected="{Binding IsDisconnected}"
                 Classes.focusMatch="{Binding IsFocusMatch}"
                 Classes.protected="{Binding IsProtected}">
             <!-- Tile | identity + volume | row menu, then the chips on their own line below,
@@ -160,6 +161,7 @@
 
                 <!-- Row menu: details, hands off, delete (virtual sinks we own) -->
                 <Button Grid.Column="2" Classes="icon" Name="RowMenuButton" VerticalAlignment="Center"
+                        IsVisible="{Binding !IsDisconnected}"
                         Margin="8,0,0,0" ToolTip.Tip="More"
                         Command="{Binding PrepareDeleteSinkCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">

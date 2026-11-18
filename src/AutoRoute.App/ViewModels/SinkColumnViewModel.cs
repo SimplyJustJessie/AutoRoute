@@ -58,6 +58,11 @@ public partial class SinkColumnViewModel : VolumeNodeViewModel
     [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
     private bool _isProtected;
 
+    /// <summary>Saved routes to an output that isn't here (unplugged, not loaded): shown greyed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
+    private bool _isDisconnected;
+
     /// <summary>Set by the filter pass; false hides the whole column.</summary>
     [ObservableProperty]
     private bool _isVisible = true;
@@ -77,7 +82,7 @@ public partial class SinkColumnViewModel : VolumeNodeViewModel
     private bool _isDimmed;
 
     /// <summary>A Protected column is locked — drops are refused.</summary>
-    public bool AcceptsDrop => !IsProtected;
+    public bool AcceptsDrop => !IsProtected && !IsDisconnected;
 
     public SinkColumnViewModel(IBoardCoordinator coordinator, ColumnModel model,
         Func<IEnumerable<SourceItemViewModel>>? addCandidates = null)
@@ -97,6 +102,7 @@ public partial class SinkColumnViewModel : VolumeNodeViewModel
         Format = model.Format;
         IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
+        IsDisconnected = model.Disconnected;
         SinkName = model.SinkName;
         IsManagedSink = model.IsManagedSink;
         ApplyLook(model.Look);

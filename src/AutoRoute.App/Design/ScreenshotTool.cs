@@ -51,7 +51,15 @@ public static class ScreenshotTool
             : DesignGraph.Build();
 
         var tabs = new ViewModels.TabSelectionState();
-        var board = DevComposition.CreateInitializedBoard(graph, tabs);
+        // --live also reads the real rules file (read-only: the board gets an in-memory copy), so
+        // saved routes that aren't live right now show the way they would in the app.
+        Engine.Model.RulesDocument? rules = null;
+        if (live && File.Exists(Engine.RuleStore.DefaultPath()))
+        {
+            using var store = new Engine.RuleStore(); // only reads; the board below never saves to it
+            rules = store.LoadAsync().GetAwaiter().GetResult();
+        }
+        var board = DevComposition.CreateInitializedBoard(graph, tabs, rules);
         if (!live)
         {
             var spotify = board.Columns.SelectMany(c => c.Cards)
