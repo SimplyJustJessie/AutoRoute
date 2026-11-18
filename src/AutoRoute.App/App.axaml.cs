@@ -169,6 +169,7 @@ public partial class App : Application
     private void RunTeardown()
     {
         _quitting = true;
+        ShutdownExceptionFilter.MarkShuttingDown();
 
         _tray?.Dispose();
         _tray = null;

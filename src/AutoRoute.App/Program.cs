@@ -89,6 +89,10 @@ sealed class Program
         // teardown as tray Quit; without this the classic-desktop lifetime blocks the main thread and
         // the default disposition would either hang the stop to its timeout or kill us and leave a
         // stale socket. Registered before Avalonia starts so a stop during startup is honoured too.
+        // A late Avalonia DBus callback onto the already-stopped dispatcher must not turn a clean
+        // stop into a SIGABRT (see ShutdownExceptionFilter); only that case, only once stopping.
+        ShutdownExceptionFilter.Install();
+
         using var sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, OnPosixSignal);
         using var sigInt = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnPosixSignal);
 
@@ -105,6 +109,9 @@ sealed class Program
         }
         finally
         {
+            // However the lifetime ended, the dispatcher is gone from here on.
+            ShutdownExceptionFilter.MarkShuttingDown();
+
             // Tray Quit / signal path: stop the worker, dispose the host (which disposes the
             // RuleStore's watcher and the graph service's monitor), and unlink the socket.
             host.StopAsync().GetAwaiter().GetResult();
@@ -120,6 +127,7 @@ sealed class Program
         // Take over from the default disposition (which would kill us and leave a stale socket) and
         // run the same graceful teardown as tray Quit, marshalled to the UI thread by App.
         context.Cancel = true;
+        ShutdownExceptionFilter.MarkShuttingDown();
 
         // A second signal — the user/systemd insisting, or a stop timeout escalating — means "go
         // now": stop intercepting and exit immediately rather than keep the process alive.
