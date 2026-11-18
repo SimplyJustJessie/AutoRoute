@@ -160,7 +160,7 @@ public static class BoardModelBuilder
             .GroupBy(NodeRoles.SourceIdentity)
             .Select(g =>
             {
-                var rep = g.First();
+                var rep = NodeRoles.PickRepresentative(g, kind);
                 var monitor = g.All(n => NodeRoles.IsMonitorSink(n, kind));
                 return new PaletteItemModel(
                     Key: g.Key,

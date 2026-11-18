@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using AutoRoute.PipeWire.Models;
 
 namespace AutoRoute.App.Services;
@@ -43,7 +45,23 @@ public static class NodeRoles
     public static bool IsAudioSource(PwNode n) => IsSource(n, MediaKind.Audio);
 
     /// <summary>A draggable Source of the given kind: has output ports (app stream, capture, or a sink's monitor).</summary>
-    public static bool IsSource(PwNode n, MediaKind kind) => IsOfKind(n, kind) && n.HasOutputPorts;
+    public static bool IsSource(PwNode n, MediaKind kind) => IsOfKind(n, kind) && n.IsDraggableSource;
+
+    /// <summary>
+    /// Which node of an app-granularity group stands for it in the palette (its glyph, subtitle and
+    /// drag ports): playback stream first, then capture, monitor, anything else; ties by id so the
+    /// choice is stable across snapshots rather than following graph enumeration order.
+    /// </summary>
+    public static PwNode PickRepresentative(IEnumerable<PwNode> group, MediaKind kind) =>
+        group.OrderBy(n => KindOf(n, kind) switch
+            {
+                SourceKind.AppStream => 0,
+                SourceKind.Capture => 1,
+                SourceKind.Monitor => 2,
+                _ => 3,
+            })
+            .ThenBy(n => n.Id)
+            .First();
 
     /// <summary>A Target Sink column candidate: audio + has input ports (hardware/null sink or app-input target).</summary>
     public static bool IsTargetSink(PwNode n) => IsTargetSink(n, MediaKind.Audio);

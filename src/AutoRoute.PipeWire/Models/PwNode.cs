@@ -36,8 +36,16 @@ public sealed record PwNode(
     public bool HasOutputPorts => Ports.Any(p => p.IsOutput);
     public bool HasInputPorts => Ports.Any(p => p.IsInput);
 
+    /// <summary>
+    /// An app's recording stream (<c>Stream/Input/*</c>, e.g. Discord capturing the mic). Its only
+    /// outputs are <c>monitor_*</c> taps of what the app is recording, so it is never a Source:
+    /// routing "legcord" must link its playback, not echo its mic capture into the target.
+    /// </summary>
+    public bool IsCaptureStream =>
+        MediaClass is { } mc && mc.StartsWith("Stream/Input", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>True when the node exposes output ports, i.e. it can be dragged FROM as a Source.</summary>
-    public bool IsDraggableSource => HasOutputPorts;
+    public bool IsDraggableSource => HasOutputPorts && !IsCaptureStream;
 
     /// <summary>True when the node exposes input ports, i.e. a Source can be dropped ONTO it as a Target Sink.</summary>
     public bool IsDropTarget => HasInputPorts;

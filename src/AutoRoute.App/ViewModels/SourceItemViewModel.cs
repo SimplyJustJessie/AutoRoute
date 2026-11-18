@@ -81,7 +81,9 @@ public partial class SourceItemViewModel : ViewModelBase
     /// <summary>Glyph choice: on Video, one neutral camera icon replaces the App/Capture/Monitor
     /// audio trio entirely (soundwave/mic/headphones don't map cleanly onto a Spout2PW sender vs.
     /// an OBS capture) — the kind tile's tint still varies by <see cref="Kind"/>, only the glyph doesn't.</summary>
-    public bool ShowAppIcon => IsAppKind && !IsVideo;
+    // Anything unclassified (SourceKind.Other) falls back to the generic soundwave on the neutral
+    // tile — the tile must never render empty.
+    public bool ShowAppIcon => (IsAppKind || Kind == SourceKind.Other) && !IsVideo;
     public bool ShowCaptureIcon => IsCaptureKind && !IsVideo;
     public bool ShowMonitorIcon => IsMonitorKind && !IsVideo;
 

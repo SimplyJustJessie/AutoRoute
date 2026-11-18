@@ -128,7 +128,10 @@ public sealed class Reconciler : IReconciler
             if (!rule.Enabled) continue;
 
             // Resolve both sides once, dropping Protected endpoints up front.
+            // An app-name rule also matches the app's recording stream; its outputs are only monitor
+            // taps of the capture (e.g. your mic as Discord hears it), never something to route.
             var sources = ResolveUnprotected(rule.Source, graph, protectedNodeIds);
+            sources.RemoveAll(n => n.IsCaptureStream);
             if (sources.Count == 0) continue;
             var targets = ResolveUnprotected(rule.Target, graph, protectedNodeIds);
             if (targets.Count == 0) continue;
