@@ -19,7 +19,7 @@ namespace AutoRoute.App.Controls;
 /// when <see cref="Level"/> changes, which only happens while the meter feed runs.
 /// </para>
 /// </summary>
-public sealed class LevelBars : Control
+public sealed class LevelBars : Control, IClockAnimated
 {
     public static readonly StyledProperty<double> LevelProperty =
         AvaloniaProperty.Register<LevelBars, double>(nameof(Level));
@@ -52,7 +52,7 @@ public sealed class LevelBars : Control
     private readonly double[] _target = { 0.6, 0.9, 0.75 };
     private readonly int[] _hold = new int[Bars];
     private readonly double[] _goal = new double[Bars];   // set 25×/s from the meter
-    private readonly double[] _height = new double[Bars]; // eased towards _goal every display frame
+    private readonly double[] _height = new double[Bars]; // eased towards _goal on the animation clock
     private double _slow;
     private TimeSpan? _lastFrame;
     private bool _animating;
@@ -142,26 +142,26 @@ public sealed class LevelBars : Control
     }
 
     /// <summary>
-    /// Glide the bars towards their goals at the display's frame rate, so 25 meter updates a second
-    /// read as smooth motion. Rises are quick (~45 ms), falls slower (~140 ms). Runs only until the
+    /// Glide the bars towards their goals on the shared <see cref="AnimationClock"/>, so 25 meter
+    /// updates a second read as motion. Rises are quick (~45 ms), falls slower (~140 ms). Runs only until the
     /// bars settle, and only while attached, so a hidden or silent entry costs nothing.
     /// </summary>
     private void Animate()
     {
         if (_animating) return;
-        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top)
+        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is null)
         {
             Array.Clear(_height); // hidden: when it shows, the bars grow in from the bottom
             return;
         }
         _animating = true;
         _lastFrame = null;
-        top.RequestAnimationFrame(OnFrame);
+        AnimationClock.Subscribe(this);
     }
 
-    private void OnFrame(TimeSpan now)
+    bool IClockAnimated.OnAnimationFrame(TimeSpan now)
     {
-        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : 1 / 60.0;
+        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : AnimationClock.FrameSeconds;
         _lastFrame = now;
 
         var moving = false;
@@ -175,8 +175,16 @@ public sealed class LevelBars : Control
         }
         InvalidateVisual();
 
-        if (moving && IsLive && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnFrame);
-        else _animating = false;
+        if (moving && IsLive && TopLevel.GetTopLevel(this) is not null) return true;
+        _animating = false;
+        return false;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        AnimationClock.Unsubscribe(this);
+        _animating = false;
     }
 
     protected override Size MeasureOverride(Size availableSize) => new(14, 13);

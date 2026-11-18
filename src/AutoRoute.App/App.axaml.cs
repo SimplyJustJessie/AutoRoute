@@ -1,4 +1,5 @@
 using System;
+using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -21,6 +22,14 @@ public partial class App : Application
     private IServiceProvider? _services;
     private AppOptions _options = new();
     private MainWindow? _mainWindow;
+    private MainWindowViewModel? _mainViewModel;
+    // A hidden window still holds its visual tree, render caches and the GPU state behind them
+    // (~130 MiB). Once it has been hidden this long it is closed for real, and the next Open builds
+    // a fresh one; a quick close-and-reopen keeps the same window.
+    private static readonly TimeSpan ReleaseHiddenWindowAfter = TimeSpan.FromSeconds(30);
+    private DispatcherTimer? _releaseTimer;
+    private bool _releasingWindow;
+    private WindowPlacement? _placement;
     private TrayController? _tray;
     private LevelMeterFeed? _meters;
 
@@ -92,6 +101,7 @@ public partial class App : Application
             // SIGTERM/SIGINT (systemctl stop / Ctrl-C) — are the real stops (ADR-0005 / PLAN
             // "Process, tray, autostart").
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            ShutdownExceptionFilter.InstallOnDispatcher(Dispatcher.UIThread);
 
             // One teardown path shared by tray Quit and the POSIX signal handler; runs at most once.
             _shutdown = new GracefulShutdown(RunTeardown);
@@ -99,8 +109,7 @@ public partial class App : Application
             var board = _services.GetRequiredService<BoardViewModel>();
             var videoBoard = _services.GetRequiredService<VideoBoardViewModel>();
             var tabs = _services.GetRequiredService<TabSelectionState>();
-            _mainWindow = new MainWindow { DataContext = new MainWindowViewModel(board, videoBoard, tabs) };
-            _mainWindow.Closing += OnMainWindowClosing;
+            _mainViewModel = new MainWindowViewModel(board, videoBoard, tabs);
 
             // Live levels only while they can be seen: window shown, not minimized, Audio tab.
             _meters = new LevelMeterFeed(
@@ -114,12 +123,6 @@ public partial class App : Application
                                  && _mainWindow.WindowState != WindowState.Minimized && !tabs.VideoSelected;
             }
             _updateMeters = UpdateMeters;
-            _mainWindow.PropertyChanged += (_, e) =>
-            {
-                if (e.Property == Visual.IsVisibleProperty && e.NewValue is false) _windowShown = false;
-                if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
-                    UpdateMeters();
-            };
             tabs.PropertyChanged += (_, _) => UpdateMeters();
 
             var worker = _services.GetRequiredService<RoutingWorker>();
@@ -161,21 +164,39 @@ public partial class App : Application
         }
     }
 
+    private MainWindow? EnsureMainWindow()
+    {
+        if (_mainWindow is not null || _mainViewModel is null || _quitting) return _mainWindow;
+        var window = new MainWindow { DataContext = _mainViewModel };
+        _placement?.ApplyTo(window);
+        window.Closing += OnMainWindowClosing;
+        window.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Visual.IsVisibleProperty && e.NewValue is false) _windowShown = false;
+            if (e.Property == Visual.IsVisibleProperty || e.Property == Window.WindowStateProperty)
+                _updateMeters?.Invoke();
+        };
+        _mainWindow = window;
+        return window;
+    }
+
     private void ShowMainWindow()
     {
-        if (_mainWindow is null) return;
-        if (_mainWindow.WindowState == WindowState.Minimized)
-            _mainWindow.WindowState = WindowState.Normal;
+        _releaseTimer?.Stop();
+        if (EnsureMainWindow() is not { } window) return;
+        if (window.WindowState == WindowState.Minimized)
+            window.WindowState = WindowState.Normal;
         _windowShown = true;
-        _mainWindow.Show();
-        _mainWindow.Activate();
+        window.Show();
+        window.Activate();
         _updateMeters?.Invoke();
     }
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
-        // A real shutdown (tray Quit / signal) sets _quitting first, so the close is allowed through.
-        if (_quitting) return;
+        // A real shutdown (tray Quit / signal) sets _quitting first, and releasing a hidden window
+        // closes it on purpose, so both are allowed through.
+        if (_quitting || _releasingWindow) return;
 
         // The desktop session is logging out or the PC is restarting: the session manager asks the
         // window to close as part of teardown. Vetoing that (as hide-on-close does below) makes
@@ -195,6 +216,62 @@ public partial class App : Application
         _windowShown = false;
         _mainWindow?.Hide();
         _updateMeters?.Invoke();
+        ScheduleWindowRelease();
+    }
+
+    private void ScheduleWindowRelease()
+    {
+        if (_releaseTimer is null)
+        {
+            // The (interval, priority, handler) constructor starts the timer, so build it stopped.
+            _releaseTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = ReleaseHiddenWindowAfter };
+            _releaseTimer.Tick += (_, _) =>
+            {
+                _releaseTimer?.Stop();
+                ReleaseHiddenWindow();
+            };
+        }
+        _releaseTimer.Stop();
+        _releaseTimer.Start();
+    }
+
+    private void ReleaseHiddenWindow()
+    {
+        if (_mainWindow is not { } window || window.IsVisible || _quitting) return;
+        _placement = WindowPlacement.From(window);
+        _mainWindow = null;
+        _releasingWindow = true;
+        try { window.Close(); }
+        finally { _releasingWindow = false; }
+        window.DataContext = null;
+        _updateMeters?.Invoke();
+
+        // Hand the memory back to the system now rather than whenever the next GC runs: an idle
+        // tray app allocates too little to trigger one, and an ordinary collection keeps the freed
+        // segments committed. Posted so the closed window's last render work has drained.
+        Dispatcher.UIThread.Post(() =>
+        {
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            NativeHeap.TrimFreePages();
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>Where the window was, so a rebuilt one opens in the same place and size.</summary>
+    private sealed record WindowPlacement(PixelPoint Position, double Width, double Height, WindowState State)
+    {
+        public static WindowPlacement From(Window w) =>
+            new(w.Position, w.Width, w.Height, w.WindowState == WindowState.Minimized ? WindowState.Normal : w.WindowState);
+
+        public void ApplyTo(Window w)
+        {
+            w.WindowStartupLocation = WindowStartupLocation.Manual;
+            w.Position = Position;
+            if (double.IsFinite(Width) && double.IsFinite(Height)) { w.Width = Width; w.Height = Height; }
+            w.WindowState = State;
+        }
     }
 
     // Tray "Quit" and POSIX signals both funnel through the one-shot GracefulShutdown.

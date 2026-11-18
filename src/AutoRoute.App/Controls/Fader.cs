@@ -15,7 +15,7 @@ namespace AutoRoute.App.Controls;
 /// click to set, mouse wheel and arrow keys to nudge. <see cref="Level"/> is for the live meter
 /// (0..1, post-fader); while it is 0 the fader is simply a volume slider.
 /// </summary>
-public sealed class Fader : Control
+public sealed class Fader : Control, IClockAnimated
 {
     public static readonly StyledProperty<double> ValueProperty =
         AvaloniaProperty.Register<Fader, double>(nameof(Value), defaultBindingMode: BindingMode.TwoWay,
@@ -40,7 +40,7 @@ public sealed class Fader : Control
 
     private bool _dragging;
 
-    // The drawn level glides towards Level on display frames, so small wobbles in loudness don't
+    // The drawn level glides towards Level on the animation clock, so small wobbles in loudness don't
     // make the fill vibrate: up in ~80 ms, down in ~300 ms.
     private double _shownLevel;
     private TimeSpan? _lastFrame;
@@ -103,7 +103,7 @@ public sealed class Fader : Control
     private void AnimateLevel()
     {
         if (_animating) return;
-        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top)
+        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is null)
         {
             _shownLevel = Level;
             InvalidateVisual();
@@ -111,12 +111,12 @@ public sealed class Fader : Control
         }
         _animating = true;
         _lastFrame = null;
-        top.RequestAnimationFrame(OnLevelFrame);
+        AnimationClock.Subscribe(this);
     }
 
-    private void OnLevelFrame(TimeSpan now)
+    bool IClockAnimated.OnAnimationFrame(TimeSpan now)
     {
-        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : 1 / 60.0;
+        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : AnimationClock.FrameSeconds;
         _lastFrame = now;
         var target = Math.Clamp(Level, 0, 1);
         var diff = target - _shownLevel;
@@ -125,8 +125,16 @@ public sealed class Fader : Control
         if (settled) _shownLevel = target;
         InvalidateVisual();
 
-        if (!settled && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnLevelFrame);
-        else _animating = false;
+        if (!settled && TopLevel.GetTopLevel(this) is not null) return true;
+        _animating = false;
+        return false;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        AnimationClock.Unsubscribe(this);
+        _animating = false;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)

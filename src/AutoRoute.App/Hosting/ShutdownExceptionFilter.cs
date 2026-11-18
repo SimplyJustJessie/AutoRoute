@@ -38,6 +38,28 @@ public static class ShutdownExceptionFilter
     /// </summary>
     public static void Install() => ExceptionHandling.SetUnhandledExceptionHandler(Handle);
 
+    /// <summary>
+    /// The UI-thread half. On Avalonia 12 the tray's StatusNotifierItem watcher
+    /// (<c>DBusTrayIconImpl.WatchAsync</c>) is cancelled when the tray is disposed, and the
+    /// cancellation surfaces from a dispatcher job on the main thread, where the process-wide
+    /// handler above never sees it: every stop ended in SIGABRT. Call once from the UI thread.
+    /// </summary>
+    public static void InstallOnDispatcher(Avalonia.Threading.Dispatcher dispatcher) =>
+        dispatcher.UnhandledException += (_, e) =>
+        {
+            if (!IsBenignDispatcherException(e.Exception, IsShuttingDown)) return;
+            Console.Error.WriteLine(
+                "shutdown: ignored a UI-thread cancellation during teardown (" + e.Exception.GetType().Name + ")");
+            e.Handled = true;
+        };
+
+    /// <summary>
+    /// The dispatcher-side filter, kept pure for tests: any cancellation the dispatcher reports once
+    /// shutdown has begun. It already came from a dispatcher job, so no stack check is needed.
+    /// </summary>
+    public static bool IsBenignDispatcherException(Exception ex, bool shuttingDown) =>
+        shuttingDown && ex is OperationCanceledException;
+
     private static bool Handle(Exception ex)
     {
         if (!IsBenignTeardownException(ex, IsShuttingDown)) return false;

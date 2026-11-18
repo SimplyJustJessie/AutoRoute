@@ -165,6 +165,16 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            // Software rendering: the GL driver (Mesa's libLLVM + libgallium) costs ~60 MiB from
+            // launch, tray-only included, and ~80 MiB more once the window has drawn, while this
+            // UI animates at 30 fps (AnimationClock) and draws about as cheaply on the CPU. The
+            // retained framebuffer keeps one bitmap per window instead of allocating a new one
+            // every frame, which forced several full GCs a second.
+            .With(new X11PlatformOptions
+            {
+                RenderingMode = [X11RenderingMode.Software],
+                UseRetainedFramebuffer = true,
+            })
             .WithInterFont()
             .LogToTrace();
 }

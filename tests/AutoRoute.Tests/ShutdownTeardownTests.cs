@@ -32,6 +32,17 @@ public sealed class ShutdownTeardownTests
     }
 
     [Fact]
+    public void Ui_thread_tray_cancellation_is_benign_only_once_stopping()
+    {
+        // Avalonia 12: disposing the tray cancels DBusTrayIconImpl.WatchAsync on the UI thread.
+        var cancel = new TaskCanceledException();
+        Assert.True(ShutdownExceptionFilter.IsBenignDispatcherException(cancel, shuttingDown: true));
+        Assert.False(ShutdownExceptionFilter.IsBenignDispatcherException(cancel, shuttingDown: false));
+        Assert.False(ShutdownExceptionFilter.IsBenignDispatcherException(
+            new InvalidOperationException(), shuttingDown: true));
+    }
+
+    [Fact]
     public void Same_exception_before_shutdown_stays_fatal()
     {
         Assert.False(ShutdownExceptionFilter.IsBenignTeardownException(
