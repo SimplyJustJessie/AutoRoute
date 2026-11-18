@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AutoRoute.App.ViewModels"
              xmlns:views="using:AutoRoute.App.Views"
+             xmlns:controls="using:AutoRoute.App.Controls"
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -31,7 +32,7 @@
             <Border Classes="tile chip" Background="{Binding TileBrush}">
                 <Panel>
                     <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
-                    <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                    <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                           Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                 </Panel>
             </Border>

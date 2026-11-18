@@ -118,15 +118,20 @@
                  Own drawings, not Bootstrap: the device tiles and in/out badges read better as
                  thin outlines at 16–22 px. Keys are "Glyph" + NodeGlyph name (GlyphConverter). -->
             <StreamGeometry x:Key="GlyphHeadset">M4 15V12A8 8 0 0 1 20 12V15 M3 14H7V21H3Z M17 14H21V21H17Z</StreamGeometry>
-            <StreamGeometry x:Key="GlyphMic">M9 3.5A3 3 0 0 1 15 3.5V11A3 3 0 0 1 9 11Z M5.5 10.5A6.5 6.5 0 0 0 18.5 10.5 M12 17V21 M8.5 21H15.5</StreamGeometry>
+            <StreamGeometry x:Key="GlyphMic">M9 6A3 3 0 0 1 15 6V10A3 3 0 0 1 9 10Z M5.5 10A6.5 6.5 0 0 0 18.5 10 M12 16.5V21 M8.5 21H15.5</StreamGeometry>
             <StreamGeometry x:Key="GlyphSpeaker">M11 5L6 9H3V15H6L11 19Z M15.5 8.5A5 5 0 0 1 15.5 15.5 M18.5 5.5A9 9 0 0 1 18.5 18.5</StreamGeometry>
             <StreamGeometry x:Key="GlyphMonitor">M3 4H21V16H3Z M8 20H16 M12 16V20</StreamGeometry>
             <StreamGeometry x:Key="GlyphInterface">M9 3V8 M15 3V8 M6 8H18V11A6 6 0 0 1 6 11Z M12 17V21</StreamGeometry>
-            <StreamGeometry x:Key="GlyphVirtual">M12 3L21 8L12 13L3 8Z M3 13L12 18L21 13</StreamGeometry>
+            <!-- Virtual sink: inputs merging into one output (a mix bus). -->
+            <StreamGeometry x:Key="GlyphVirtual">M3.5 6H8.5L14.5 12 M3.5 18H8.5L14.5 12 M3.5 12H20.5 M17 8.5L20.5 12L17 15.5</StreamGeometry>
             <StreamGeometry x:Key="GlyphWave">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
             <StreamGeometry x:Key="GlyphCamera">M3 7H15V17H3Z M15 11L21 8V16L15 13</StreamGeometry>
             <StreamGeometry x:Key="GlyphApp">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
-            <StreamGeometry x:Key="BadgeOut">M10 5L6 9H3V15H6L10 19Z M15.5 9A4.5 4.5 0 0 1 15.5 15 M18.5 6A8.5 8.5 0 0 1 18.5 18</StreamGeometry>
+            <!-- In/out badges: a solid body (filled) plus a stroke, drawn by GlyphIcon at ~11 px. -->
+            <StreamGeometry x:Key="BadgeOutBody">M5.5 9.5H9L13.5 5.5V18.5L9 14.5H5.5Z</StreamGeometry>
+            <StreamGeometry x:Key="BadgeOutWave">M17 8.5A5 5 0 0 1 17 15.5</StreamGeometry>
+            <StreamGeometry x:Key="BadgeInBody">M9 6A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11Z</StreamGeometry>
+            <StreamGeometry x:Key="BadgeInStand">M5.5 11A6.5 6.5 0 0 0 18.5 11 M12 17.5V21</StreamGeometry>
             <StreamGeometry x:Key="BadgeIn">M9 6A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11Z M5.5 11A6.5 6.5 0 0 0 18.5 11 M12 17.5V21</StreamGeometry>
             <StreamGeometry x:Key="StrokePlus">M12 5V19 M5 12H19</StreamGeometry>
             <StreamGeometry x:Key="StrokeX">M6 6L18 18 M18 6L6 18</StreamGeometry>

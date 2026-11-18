@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -72,6 +73,13 @@ public partial class BoardView : UserControl
             Grid.SetColumn(actions, compact ? 1 : 0);
             Grid.SetColumnSpan(actions, compact ? 1 : 2);
         }
+
+        // The actions sit at the window's left edge in Comfortable and its right edge in Compact:
+        // open their menus towards the middle so they never spill outside the window.
+        var placement = compact ? PlacementMode.TopEdgeAlignedRight : PlacementMode.TopEdgeAlignedLeft;
+        foreach (var name in new[] { "NewSinkButton", "SettingsButton", "UpdatesButton" })
+            if (this.FindControl<Button>(name)?.Flyout is PopupFlyoutBase flyout)
+                flyout.Placement = placement;
     }
 
     private void OnSidebarResized(object? sender, VectorEventArgs e)

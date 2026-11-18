@@ -28,7 +28,7 @@
                                         <Border Classes="tile chip" Background="{Binding TileBrush}">
                                             <Panel>
                                                 <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
-                                                <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                                <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                                       Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                                             </Panel>
                                         </Border>
@@ -69,15 +69,15 @@
                             Background="{Binding TileBrush}">
                         <Panel>
                             <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
-                            <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                            <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                   Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                         </Panel>
                     </Border>
                     <Border Classes="badge">
                         <Border>
                             <Panel>
-                                <Path Data="{StaticResource BadgeIn}" IsVisible="{Binding IsInput}" />
-                                <Path Data="{StaticResource BadgeOut}" IsVisible="{Binding !IsInput}" />
+                                <controls:GlyphIcon FillData="{StaticResource BadgeInBody}" Data="{StaticResource BadgeInStand}" IsVisible="{Binding IsInput}" />
+                                <controls:GlyphIcon FillData="{StaticResource BadgeOutBody}" Data="{StaticResource BadgeOutWave}" IsVisible="{Binding !IsInput}" />
                             </Panel>
                         </Border>
                     </Border>
