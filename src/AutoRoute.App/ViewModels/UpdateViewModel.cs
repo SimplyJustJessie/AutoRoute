@@ -27,16 +27,16 @@ public partial class UpdateViewModel : ViewModelBase
         _onStateChanged = onStateChanged;
         CurrentVersion = service.CurrentVersion;
         CanSelfUpdate = service.CanSelfUpdate;
-        StatusMessage = CanSelfUpdate
-            ? string.Empty
-            : "Installed via a package manager — update through it.";
     }
 
     /// <summary>The running app's version, shown in the flyout header.</summary>
     public string CurrentVersion { get; }
 
-    /// <summary>False for package-manager installs — hides the install affordance.</summary>
+    /// <summary>False for package-manager installs: they learn a newer version exists, nothing more.</summary>
     public bool CanSelfUpdate { get; }
+
+    /// <summary>A newer version exists and this install can fetch it itself (AppImage).</summary>
+    public bool CanInstall => UpdateAvailable && CanSelfUpdate;
 
     /// <summary>True while a check or install is in flight — disables the buttons.</summary>
     [ObservableProperty]
@@ -52,6 +52,7 @@ public partial class UpdateViewModel : ViewModelBase
 
     /// <summary>Whether a newer release is available to install.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInstall))]
     private bool _updateAvailable;
 
     /// <summary>The available release tag (e.g. <c>v0.3.1</c>), when <see cref="UpdateAvailable"/>.</summary>
@@ -65,16 +66,27 @@ public partial class UpdateViewModel : ViewModelBase
     partial void OnUpdateAvailableChanged(bool value) => _onStateChanged?.Invoke();
     partial void OnNeedsRestartChanged(bool value) => _onStateChanged?.Invoke();
 
+    private DateTime _checkedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// Check unless a recent result is in hand — what opening the Updates menu calls. Package
+    /// installs only ever check this way: a startup check would load the whole TLS stack
+    /// (OpenSSL, ~20 MiB) into a tray app just to print "Up to date".
+    /// </summary>
+    public Task EnsureCheckedAsync() =>
+        DateTime.UtcNow - _checkedAt < TimeSpan.FromHours(1) ? Task.CompletedTask : CheckAsync();
+
     /// <summary>Query Gitea for a newer release and reflect the result. Never throws.</summary>
     [RelayCommand]
     public async Task CheckAsync()
     {
-        if (IsBusy || !CanSelfUpdate) return;
+        if (IsBusy) return;
         IsBusy = true;
-        StatusMessage = "Checking for updates…";
+        StatusMessage = "Checking…";
         try
         {
             var check = await _service.CheckAsync().ConfigureAwait(true);
+            _checkedAt = DateTime.UtcNow;
             _latest = check;
             UpdateAvailable = check.UpdateAvailable;
             LatestVersion = check.LatestTag ?? string.Empty;
@@ -90,7 +102,7 @@ public partial class UpdateViewModel : ViewModelBase
     [RelayCommand]
     public async Task InstallAsync()
     {
-        if (IsBusy || !_latest.UpdateAvailable) return;
+        if (IsBusy || !_latest.UpdateAvailable || !CanSelfUpdate) return;
         IsBusy = true;
         Progress = 0;
         StatusMessage = $"Downloading {_latest.LatestTag}…";

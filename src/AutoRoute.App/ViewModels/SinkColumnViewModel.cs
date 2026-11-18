@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -13,9 +14,23 @@ namespace AutoRoute.App.ViewModels;
 /// and a drop target. A drop raises <see cref="ConnectCommand"/> with the dropped Source's live node
 /// id; the column forwards it to the coordinator as "connect Source → this Target".
 /// </summary>
-public partial class SinkColumnViewModel : ViewModelBase
+public partial class SinkColumnViewModel : VolumeNodeViewModel
 {
     private readonly IBoardCoordinator _coordinator;
+    private readonly Func<IEnumerable<SourceItemViewModel>>? _addCandidates;
+
+    protected override IBoardCoordinator Coordinator => _coordinator;
+    protected override IReadOnlyList<int> VolumeNodeIds => new[] { TargetNodeId };
+
+    /// <summary>Sources offered by the row's "+ Add" picker (filled when it opens).</summary>
+    public ObservableCollection<AddOption> AddOptions { get; } = new();
+
+    [ObservableProperty]
+    private bool _hasAddOptions;
+
+    /// <summary>Compact layout (one-line row) — pushed from the shared <see cref="Services.UiSettings"/>.</summary>
+    [ObservableProperty]
+    private bool _isCompact;
 
     /// <summary>Diff-merge key (the Target's stable identity).</summary>
     public string Key { get; }
@@ -43,6 +58,11 @@ public partial class SinkColumnViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
     private bool _isProtected;
 
+    /// <summary>Saved routes to an output that isn't here (unplugged, not loaded): shown greyed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AcceptsDrop))]
+    private bool _isDisconnected;
+
     /// <summary>Set by the filter pass; false hides the whole column.</summary>
     [ObservableProperty]
     private bool _isVisible = true;
@@ -53,12 +73,22 @@ public partial class SinkColumnViewModel : ViewModelBase
 
     public ObservableCollection<SourceCardViewModel> Cards { get; } = new();
 
-    /// <summary>A Protected column is locked — drops are refused.</summary>
-    public bool AcceptsDrop => !IsProtected;
+    /// <summary>A Source is focused and feeds this output.</summary>
+    [ObservableProperty]
+    private bool _isFocusMatch;
 
-    public SinkColumnViewModel(IBoardCoordinator coordinator, ColumnModel model)
+    /// <summary>A Source is focused and doesn't feed this output.</summary>
+    [ObservableProperty]
+    private bool _isDimmed;
+
+    /// <summary>A Protected column is locked — drops are refused.</summary>
+    public bool AcceptsDrop => !IsProtected && !IsDisconnected;
+
+    public SinkColumnViewModel(IBoardCoordinator coordinator, ColumnModel model,
+        Func<IEnumerable<SourceItemViewModel>>? addCandidates = null)
     {
         _coordinator = coordinator;
+        _addCandidates = addCandidates;
         Key = model.Key;
         TargetNodeId = model.TargetNodeId;
         Apply(model);
@@ -72,8 +102,10 @@ public partial class SinkColumnViewModel : ViewModelBase
         Format = model.Format;
         IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
+        IsDisconnected = model.Disconnected;
         SinkName = model.SinkName;
         IsManagedSink = model.IsManagedSink;
+        ApplyLook(model.Look);
         MergeCards(model.Cards);
     }
 
@@ -113,6 +145,23 @@ public partial class SinkColumnViewModel : ViewModelBase
     /// <summary>"Also delete these" — default checked, per the delete-sink decision.</summary>
     [ObservableProperty]
     private bool _deleteAffectedPolicy = true;
+
+    /// <summary>Fill the "+ Add" picker with every visible source not already feeding this row.</summary>
+    [RelayCommand]
+    private void PrepareAdd()
+    {
+        AddOptions.Clear();
+        if (_addCandidates is null) return;
+        var present = new HashSet<string>(Cards.Select(c => c.Key));
+        foreach (var src in _addCandidates())
+        {
+            if (present.Contains(src.Key) || src.IsProtected) continue;
+            if (src.AllNodeIds.Contains(TargetNodeId)) continue; // never an output's own sound
+            var nodeId = src.RepresentativeNodeId;
+            AddOptions.Add(new AddOption(src, new AsyncRelayCommand(() => Connect(nodeId))));
+        }
+        HasAddOptions = AddOptions.Count > 0;
+    }
 
     /// <summary>Invoked by the drop behavior with the dropped Source's live node id.</summary>
     [RelayCommand]

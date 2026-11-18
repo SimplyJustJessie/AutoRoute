@@ -11,9 +11,12 @@ namespace AutoRoute.App.ViewModels;
 /// connects it and leaves the entry in the palette, so one Source can populate many columns (fan-out).
 /// The drag payload is <see cref="RepresentativeNodeId"/> (the Source node identity).
 /// </summary>
-public partial class SourceItemViewModel : ViewModelBase
+public partial class SourceItemViewModel : VolumeNodeViewModel
 {
     private readonly IBoardCoordinator _coordinator;
+
+    protected override IBoardCoordinator Coordinator => _coordinator;
+    protected override IReadOnlyList<int> VolumeNodeIds => AllNodeIds;
 
     /// <summary>Diff-merge key (Source identity).</summary>
     public string Key { get; }
@@ -52,6 +55,13 @@ public partial class SourceItemViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isVisible = true;
 
+    /// <summary>This Source is focused: the board highlights the outputs it feeds.</summary>
+    [ObservableProperty]
+    private bool _isFocused;
+
+    [RelayCommand]
+    private void ToggleFocus() => _coordinator.ToggleFocus(Key);
+
     public SourceItemViewModel(IBoardCoordinator coordinator, PaletteItemModel model)
     {
         _coordinator = coordinator;
@@ -71,6 +81,7 @@ public partial class SourceItemViewModel : ViewModelBase
         IsMonitor = model.IsMonitor;
         IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
+        ApplyLook(model.Look);
     }
 
     /// <summary>Kind flags for XAML style triggers (icon tile tinting).</summary>
@@ -81,7 +92,9 @@ public partial class SourceItemViewModel : ViewModelBase
     /// <summary>Glyph choice: on Video, one neutral camera icon replaces the App/Capture/Monitor
     /// audio trio entirely (soundwave/mic/headphones don't map cleanly onto a Spout2PW sender vs.
     /// an OBS capture) — the kind tile's tint still varies by <see cref="Kind"/>, only the glyph doesn't.</summary>
-    public bool ShowAppIcon => IsAppKind && !IsVideo;
+    // Anything unclassified (SourceKind.Other) falls back to the generic soundwave on the neutral
+    // tile — the tile must never render empty.
+    public bool ShowAppIcon => (IsAppKind || Kind == SourceKind.Other) && !IsVideo;
     public bool ShowCaptureIcon => IsCaptureKind && !IsVideo;
     public bool ShowMonitorIcon => IsMonitorKind && !IsVideo;
 

@@ -22,6 +22,14 @@ public interface IPwGraphService
     /// <summary>Raised (on a background thread) whenever <see cref="Current"/> has been replaced.</summary>
     event EventHandler<PwGraph>? GraphUpdated;
 
+    /// <summary>
+    /// Raised (on a background thread) when <see cref="Current"/> was replaced by a snapshot that
+    /// is structurally identical but differs in presentation only — volume, mute, run state or
+    /// format (<see cref="PwGraph.PresentationEquals"/>). The UI listens; the reconciler must not,
+    /// since nothing it reads changed. Default no-op for test doubles that never raise it.
+    /// </summary>
+    event EventHandler<PwGraph>? PresentationUpdated { add { } remove { } }
+
     /// <summary>Do an initial load, publish it, then start the monitor. Idempotent.</summary>
     Task StartAsync(CancellationToken ct = default);
 

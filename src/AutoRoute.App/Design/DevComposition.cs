@@ -33,16 +33,30 @@ public static class DevComposition
     /// <summary>Build a board over an explicit graph (used by the smoke test) and initialize it.
     /// Pass the same <paramref name="tabs"/> instance as a sibling Video board's for a working
     /// switcher (see <see cref="CreateInitializedVideoBoard"/>); omit it for a standalone preview.</summary>
-    public static BoardViewModel CreateInitializedBoard(PwGraph graph, TabSelectionState? tabs = null)
+    private static Engine.Model.Rule DesignRule(string id, string name, Engine.Model.Field field, string source, string targetNode) =>
+        new(id, name, true,
+            new Engine.Model.MatchCriteria(new[] { new Engine.Model.Predicate(field, Engine.Model.Op.Equals, source) }),
+            new Engine.Model.MatchCriteria(new[] { new Engine.Model.Predicate(Engine.Model.Field.NodeName, Engine.Model.Op.Equals, targetNode) }));
+
+    public static BoardViewModel CreateInitializedBoard(PwGraph graph, TabSelectionState? tabs = null,
+        Engine.Model.RulesDocument? rules = null)
     {
         // GameSink declared as an AutoRoute-managed virtual sink so previews/smoke exercise the
         // VIRTUAL chip + delete affordance (ADR-0011).
-        var seed = Engine.Model.RulesDocument.Empty with
+        var seed = rules ?? Engine.Model.RulesDocument.Empty with
         {
             VirtualSinks = new[]
             {
                 new Engine.Model.VirtualSinkSpec("design-gamesink", "GameSink", "Game Sink",
                     Engine.Model.SinkChannels.Stereo),
+            },
+            // Saved routes that aren't live: an app that isn't running (faded chip on Music) and
+            // headphones that aren't connected (a Disconnected row).
+            Rules = new[]
+            {
+                DesignRule("design-idle", "Discord → Music", Engine.Model.Field.ApplicationName, "Discord", "MusicSink"),
+                DesignRule("design-unplugged", "Spotify → WH-1000XM4", Engine.Model.Field.ApplicationName, "Spotify",
+                    "bluez_output.AC_80_0A_00_00_01.1"),
             },
         };
 

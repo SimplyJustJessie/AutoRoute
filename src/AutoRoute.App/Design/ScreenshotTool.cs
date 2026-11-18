@@ -43,22 +43,109 @@ public static class ScreenshotTool
         // Deterministic design graph (not the captured fixture) so shots are reproducible, then
         // exercise the board a little so every card/column state is on screen: keep Spotify → Music
         // as Manual, protect the Desktop sink and the capture device.
-        var tabs = new ViewModels.TabSelectionState();
-        var board = DevComposition.CreateInitializedBoard(DesignGraph.Build(), tabs);
-        var spotify = board.Columns.SelectMany(c => c.Cards)
-            .FirstOrDefault(c => c.IsUnsaved && string.Equals(c.Title, "Spotify", StringComparison.OrdinalIgnoreCase));
-        if (spotify is not null) board.KeepManual(spotify);
-        board.ToggleProtectAsync(90).GetAwaiter().GetResult(); // DesktopSink
-        board.ToggleProtectAsync(56).GetAwaiter().GetResult(); // PRO X 2 Mono capture
+        // --live: one read-only pw-dump of this machine's graph instead of the design graph (mock
+        // linker + rule store, so nothing is written to PipeWire) — for eyeballing real devices.
+        var live = Array.IndexOf(args, "--live") >= 0;
+        var graph = live
+            ? new AutoRoute.PipeWire.PwDumpReader(new AutoRoute.PipeWire.Process.ProcessRunner()).LoadAsync().GetAwaiter().GetResult()
+            : DesignGraph.Build();
 
-        var videoBoard = DevComposition.CreateInitializedVideoBoard(DesignGraph.Build(), tabs);
+        var tabs = new ViewModels.TabSelectionState();
+        // --live also reads the real rules file (read-only: the board gets an in-memory copy), so
+        // saved routes that aren't live right now show the way they would in the app.
+        Engine.Model.RulesDocument? rules = null;
+        if (live && File.Exists(Engine.RuleStore.DefaultPath()))
+        {
+            using var store = new Engine.RuleStore(); // only reads; the board below never saves to it
+            rules = store.LoadAsync().GetAwaiter().GetResult();
+        }
+        var board = DevComposition.CreateInitializedBoard(graph, tabs, rules);
+        if (!live)
+        {
+            var spotify = board.Columns.SelectMany(c => c.Cards)
+                .FirstOrDefault(c => c.IsUnsaved && string.Equals(c.Title, "Spotify", StringComparison.OrdinalIgnoreCase));
+            if (spotify is not null) board.KeepManual(spotify);
+            board.ToggleProtectAsync(90).GetAwaiter().GetResult(); // DesktopSink
+            board.ToggleProtectAsync(56).GetAwaiter().GetResult(); // PRO X 2 Mono capture
+        }
+
+        var videoBoard = DevComposition.CreateInitializedVideoBoard(graph, tabs);
         var mainVm = new ViewModels.MainWindowViewModel(board, videoBoard, tabs);
 
-        var window = new MainWindow { DataContext = mainVm, Width = 1400, Height = 800 };
+        // --size WxH: render at a specific window size (default 1400x800).
+        double width = 1400, height = 800;
+        var sizeIdx = Array.IndexOf(args, "--size");
+        if (sizeIdx >= 0 && sizeIdx + 1 < args.Length && args[sizeIdx + 1].Split('x') is [var w, var h]
+            && double.TryParse(w, out var pw) && double.TryParse(h, out var ph))
+            (width, height) = (pw, ph);
+
+        var window = new MainWindow { DataContext = mainVm, Width = width, Height = height };
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
+        // App icons load off-thread the first time a tile shows: give them a moment to land.
+        for (var i = 0; i < 30; i++)
+        {
+            System.Threading.Thread.Sleep(50);
+            Dispatcher.UIThread.RunJobs();
+        }
+        Dispatcher.UIThread.RunJobs();
+
         Capture(window, Path.Combine(dir, "board.png"));
+
+        board.Ui.IsCompact = true;
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-compact.png"));
+        board.Ui.IsCompact = false;
+        Dispatcher.UIThread.RunJobs();
+
+        // Live meters, staged: a few frames of made-up levels into every running entry, so the
+        // fader fills and the equaliser bars show their live shape.
+        var rng = new Random(7);
+        var metered = board.Columns.Cast<ViewModels.VolumeNodeViewModel>()
+            .Concat(board.Palette.Items).Where(v => v.IsRunning).ToList();
+        foreach (var v in metered) { v.IsMetered = true; v.IsSounding = true; }
+        for (var f = 0; f < 12; f++)
+        {
+            foreach (var v in metered) v.Level = 0.15 + rng.NextDouble() * 0.8;
+            for (var k = 0; k < 3; k++) // the bars glide on animation frames
+            {
+                System.Threading.Thread.Sleep(16);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+            }
+        }
+        Dispatcher.UIThread.RunJobs();
+        if (metered.Count > 0) // the design graph has nothing running; --live usually does
+            Capture(window, Path.Combine(dir, "board-meters.png"));
+        foreach (var v in metered) { v.Level = 0; v.IsSounding = false; v.IsMetered = false; }
+        Dispatcher.UIThread.RunJobs();
+
+        // The first-run "Start with" card (a real first run has no outputs saved yet).
+        board.ShowSetup = true;
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-setup.png"));
+        board.ShowSetup = false;
+        Dispatcher.UIThread.RunJobs();
+
+        // The undo toast after removing a route.
+        board.ToastText = "Spotify removed from Music";
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-undo.png"));
+        board.ToastText = string.Empty;
+        Dispatcher.UIThread.RunJobs();
+
+        // Focus a Source: pick one that feeds at least one output.
+        var focusKey = board.Palette.Items.Select(i => i.Key)
+            .FirstOrDefault(k => board.Columns.Any(c => c.Cards.Any(card => card.Key == k)));
+        if (focusKey is not null)
+        {
+            board.ToggleFocus(focusKey);
+            Dispatcher.UIThread.RunJobs();
+            Capture(window, Path.Combine(dir, "board-focus.png"));
+            board.ToggleFocus(focusKey);
+            Dispatcher.UIThread.RunJobs();
+        }
 
         // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
         var videoTab = window.GetVisualDescendants().OfType<Button>()
@@ -75,50 +162,18 @@ public static class ScreenshotTool
             Dispatcher.UIThread.RunJobs();
         }
 
-        // Scroll to the far right where the routed columns (Game / Music / PRO X 2) live. Match on
-        // the board scroller by name: the palette and every column carry a ScrollViewer too, and
-        // the palette's — first in visual-tree order — also overflows, so an overflow-only match
-        // silently scrolled *that* one sideways and left this shot identical to board.png.
-        var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()
-            .FirstOrDefault(s => s.Name == "BoardScroll" && s.Extent.Width > s.Viewport.Width);
-        if (scroller is not null)
-        {
-            scroller.Offset = new Vector(scroller.Extent.Width, 0); // coerced to the max offset
-            Dispatcher.UIThread.RunJobs();
-
-            // A scroll only moves the presenter's transform, which the headless compositor won't
-            // pick up without a render tick — RunJobs alone left this shot rendering at offset 0.
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Capture(window, Path.Combine(dir, "board-states.png"));
-        }
-
-        // Card-state legend: open the toolbar help flyout and capture it. Taken before the
-        // drag-over shot so that state's brush transitions can't linger into this frame.
-        var help = window.GetVisualDescendants().OfType<Button>()
-            .FirstOrDefault(b => b.Name == "HelpButton");
-        if (help?.Flyout is not null)
-        {
-            help.Flyout.ShowAt(help);
-            Dispatcher.UIThread.RunJobs();
-            Capture(window, Path.Combine(dir, "board-help.png"));
-            help.Flyout.Hide();
-            Dispatcher.UIThread.RunJobs();
-        }
-
-        // Simulated drag-over: light up the drop highlight on the last droppable column
-        // (visible at the scrolled-right position).
+        // Simulated drag-over: light up the drop highlight on the last droppable row.
         var column = window.GetVisualDescendants().OfType<SinkColumnView>()
-            .Select(v => v.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("column")))
+            .Select(v => v.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("rowHost")))
             .LastOrDefault(b => b is not null && Behaviors.DropTargetBehavior.GetAcceptsDrop(b));
         if (column is not null)
         {
             column.SetValue(Behaviors.DropTargetBehavior.IsDragOverProperty, true);
 
             // Stage the full mid-drag look: dim the grabbed palette entry and float its ghost
-            // over the highlighted drop column.
+            // over the highlighted drop row.
             var zenItem = window.GetVisualDescendants().OfType<Border>()
-                .FirstOrDefault(b => b.Classes.Contains("paletteItem") &&
+                .FirstOrDefault(b => b.Classes.Contains("srcEntry") &&
                     (b.DataContext as ViewModels.SourceItemViewModel)?.Title == "Zen");
             zenItem?.Classes.Add("dragging");
             if (zenItem is not null)
@@ -152,7 +207,7 @@ public static class ScreenshotTool
             Console.WriteLine("  FAIL  no frame captured for " + path);
             return;
         }
-        frame.Save(path);
+        frame.Save(path, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
         Console.WriteLine("  WROTE " + path);
     }
 }

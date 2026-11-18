@@ -11,59 +11,34 @@
              x:DataType="vm:BoardViewModel"
              d:DataContext="{x:Static design:DesignData.Board}">
 
-    <!-- AllowDrop on the root keeps DragOver events flowing over the whole board, so the
-         drag ghost can follow the pointer between columns (drops outside a column are no-ops). -->
-    <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}"
-          DragDrop.AllowDrop="True">
+    <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgBrush}">
 
-        <!-- ===================== Toolbar / title bar =====================
-             Doubles as the window's title bar (client-side decorations, see MainWindow.axaml):
-             drag it to move the window, double-click to maximise/restore. -->
-        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="14,10"
+        <!-- ===================== Top bar (doubles as the title bar) =====================
+             Drag it to move the window, double-click to maximise. No wordmark: the window
+             manager already names the app, and the space goes to search. -->
+        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="12,8,8,8"
                 Name="TitleBar"
                 PointerPressed="OnTitleBarPointerPressed"
                 DoubleTapped="OnTitleBarDoubleTapped">
             <Grid ColumnDefinitions="Auto,*,Auto">
 
-                <!-- Brand + status -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <Border Classes="logoMark">
-                        <Path Data="{StaticResource IconWave}" Fill="#F2F4FF"
-                              Width="14" Height="14" Stretch="Uniform"
-                              HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <TextBlock Classes="body" Text="AutoRoute" FontWeight="Bold" FontSize="15"
-                               VerticalAlignment="Center" />
-                    <Border Classes="statusPill">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Ellipse Width="6" Height="6" Fill="{DynamicResource OnlineBrush}"
-                                     VerticalAlignment="Center" />
-                            <TextBlock Classes="subtitle" Text="{Binding StatusText}" FontSize="11.5"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
+                <!-- Audio/Video switcher (the TabSelectionState is shared by both boards). -->
+                <Border Grid.Column="0" Classes="tabPillGroup" VerticalAlignment="Center"
+                        IsVisible="{Binding Tabs, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="tabPill" Content="Audio"
+                                Classes.active="{Binding Tabs.IsAudioSelected}"
+                                Command="{Binding Tabs.SelectAudioCommand}" />
+                        <Button Classes="tabPill" Content="Video"
+                                Classes.active="{Binding Tabs.IsVideoSelected}"
+                                Command="{Binding Tabs.SelectVideoCommand}" />
+                    </StackPanel>
+                </Border>
 
-                    <!-- Audio/Video switcher: Tabs is the same TabSelectionState instance on both
-                         boards (see BoardViewModel.Tabs), so this is a plain binding off this board's
-                         own DataContext — no reaching into a sibling view or the Window. Both boards
-                         render this identically; only the visible one is ever shown. -->
-                    <Border Classes="tabPillGroup" Margin="4,0,0,0" IsVisible="{Binding Tabs, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                            <Button Classes="tabPill" Content="Audio"
-                                    Classes.active="{Binding Tabs.IsAudioSelected}"
-                                    Command="{Binding Tabs.SelectAudioCommand}" />
-                            <Button Classes="tabPill" Content="Video"
-                                    Classes.active="{Binding Tabs.IsVideoSelected}"
-                                    Command="{Binding Tabs.SelectVideoCommand}"
-                                    ToolTip.Tip="Route Spout2PW / OBS video nodes — e.g. keep VTube Studio connected to OBS" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- Filter -->
                 <TextBox Grid.Column="1" Classes="search"
-                         Margin="20,0" MaxWidth="380" HorizontalAlignment="Stretch"
-                         Watermark="Filter Sources and Target Sinks…"
+                         Margin="12,0" MaxWidth="380" HorizontalAlignment="Left"
+                         Width="380"
+                         PlaceholderText="Search"
                          Text="{Binding Filter.Text}">
                     <TextBox.InnerLeftContent>
                         <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource FaintBrush}"
@@ -72,171 +47,19 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
 
-                <!-- New sink + monitors toggle + help -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Classes="chipAction" Name="NewSinkButton"
-                            IsVisible="{Binding CanManageSinks}"
-                            Content="+ New Sink"
-                            ToolTip.Tip="Create a virtual (null) sink — it persists across reboots via a generated PipeWire config">
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="300" Spacing="10" Margin="6">
-                                    <TextBlock Classes="sectionLabel" Text="NEW VIRTUAL SINK" />
-                                    <TextBox Watermark="Name (e.g. StreamSink)"
-                                             Text="{Binding NewSinkName}" />
-                                    <TextBox Watermark="Description (defaults to name)"
-                                             Text="{Binding NewSinkDescription}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="14">
-                                        <RadioButton GroupName="NewSinkChannels" Content="Stereo"
-                                                     IsChecked="{Binding !NewSinkMono}" />
-                                        <RadioButton GroupName="NewSinkChannels" Content="Mono"
-                                                     IsChecked="{Binding NewSinkMono}" />
-                                    </StackPanel>
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource UnsavedBrush}"
-                                               Text="{Binding NewSinkValidationMessage}"
-                                               IsVisible="{Binding NewSinkValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    <Button Classes="chipAction" HorizontalAlignment="Right"
-                                            Content="Create"
-                                            Command="{Binding SubmitNewSinkCommand}"
-                                            Click="OnCreateSinkClick" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
 
-                    <TextBlock Classes="subtitle" Text="Sink monitors" FontSize="12"
-                               VerticalAlignment="Center" />
-                    <ToggleSwitch Classes="compact" IsChecked="{Binding Filter.ShowMonitors}"
-                                  ToolTip.Tip="Show each sink's monitor as a draggable Source" />
-
-                    <!-- Autostart: set AutoRoute to start at login, self-detecting its own path. -->
-                    <Button Classes="icon" Name="AutostartButton"
-                            IsVisible="{Binding CanManageAutostart}"
-                            ToolTip.Tip="Start AutoRoute automatically at login">
-                        <Path Data="{StaticResource IconGear}" />
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="320" Spacing="10" Margin="6"
-                                            DataContext="{Binding Autostart}">
-                                    <TextBlock Classes="sectionLabel" Text="START AT LOGIN" />
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Classes="body" VerticalAlignment="Center"
-                                                   Text="Start AutoRoute when I log in" />
-                                        <ToggleSwitch Grid.Column="1" Classes="compact"
-                                                      IsChecked="{Binding IsEnabled}"
-                                                      IsEnabled="{Binding !IsBusy}" />
-                                    </Grid>
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource FaintBrush}"
-                                               Text="{Binding LaunchTarget, StringFormat='Launches: {0} --background'}" />
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource UnsavedBrush}"
-                                               Text="{Binding StatusMessage}"
-                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <!-- Updates: check the Gitea release for a newer AppImage and self-replace. -->
-                    <Button Classes="icon" Name="UpdatesButton"
-                            IsVisible="{Binding CanCheckUpdates}"
-                            ToolTip.Tip="Check for AutoRoute updates">
-                        <Path Data="{StaticResource IconDownload}" />
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="320" Spacing="10" Margin="6"
-                                            DataContext="{Binding Update}">
-                                    <TextBlock Classes="sectionLabel" Text="UPDATES" />
-                                    <TextBlock Classes="body"
-                                               Text="{Binding CurrentVersion, StringFormat='Current version: {0}'}" />
-
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="Check for updates"
-                                            Command="{Binding CheckCommand}"
-                                            IsEnabled="{Binding !IsBusy}"
-                                            IsVisible="{Binding CanSelfUpdate}" />
-
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="{Binding LatestVersion, StringFormat='Download and install {0}'}"
-                                            Command="{Binding InstallCommand}"
-                                            IsEnabled="{Binding !IsBusy}"
-                                            IsVisible="{Binding UpdateAvailable}" />
-
-                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
-                                                 IsVisible="{Binding IsBusy}" />
-
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="Restart now"
-                                            Command="{Binding RestartCommand}"
-                                            IsVisible="{Binding NeedsRestart}" />
-
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource FaintBrush}"
-                                               Text="{Binding StatusMessage}"
-                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <Button Classes="icon" Name="HelpButton" Margin="4,0,0,0"
-                            ToolTip.Tip="What do the card states mean?">
-                        <Border Classes="helpBadge">
-                            <TextBlock Text="?" />
-                        </Border>
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="330" Spacing="12" Margin="6">
-                                    <TextBlock Classes="sectionLabel" Text="CARD STATES" />
-
-                                    <Grid ColumnDefinitions="84,*">
-                                        <Border Classes="chip managed" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                            <TextBlock Text="MANAGED" />
-                                        </Border>
-                                        <TextBlock Grid.Column="1" Classes="legendText"
-                                                   Text="Saved as a Rule. AutoRoute re-creates this Link automatically whenever the matching apps come back — it survives relaunches." />
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="84,*">
-                                        <Border Classes="chip unsaved" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                            <TextBlock Text="UNSAVED" />
-                                        </Border>
-                                        <TextBlock Grid.Column="1" Classes="legendText"
-                                                   Text="A Link made outside AutoRoute. It works now, but it won't come back after a relaunch — Save it as a Rule, or Keep it as manual." />
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="84,*">
-                                        <Border Classes="chip manual" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                            <TextBlock Text="MANUAL" />
-                                        </Border>
-                                        <TextBlock Grid.Column="1" Classes="legendText"
-                                                   Text="Kept as-is. AutoRoute leaves this Link alone and won't restore it if it disappears." />
-                                    </Grid>
-
-                                    <Grid ColumnDefinitions="84,*">
-                                        <Border Classes="chip protected" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                            <TextBlock Text="PROTECTED" />
-                                        </Border>
-                                        <TextBlock Grid.Column="1" Classes="legendText"
-                                                   Text="Do not touch. AutoRoute never creates or removes Links on this node — for routing another tool owns (e.g. an EasyEffects chain)." />
-                                    </Grid>
-
-                                    <TextBlock Classes="legendText" Foreground="{DynamicResource FaintBrush}"
-                                               Text="Removing a card deletes its Rule (managed) or suppresses the Link so it stays disconnected (manual / unsaved)." />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
+                    <!-- Auto-route: off means AutoRoute leaves the graph alone (the tray has the same switch). -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Classes="barLabel" Text="Auto-route" VerticalAlignment="Center" />
+                        <ToggleSwitch Classes="compact" IsChecked="{Binding Automation.Enabled}"
+                                      AutomationProperties.Name="Auto-route" />
+                    </StackPanel>
 
                     <!-- Window caption controls (client-side chrome). -->
                     <Border Classes="captionSep" />
                     <Button Classes="icon caption" Name="MinimizeButton" Margin="2,0,0,0"
                             Click="OnMinimizeClick" ToolTip.Tip="Minimize">
-                        <!-- Fixed centered size (inline, so it beats the shared Button.icon Path
-                             style): the min glyph is a wide, ultra-thin bar and Uniform stretch would
-                             top-align it, leaving the dash high vs. the maximize/close glyphs. -->
                         <Path Data="{StaticResource IconWindowMin}" Stretch="Fill"
                               Width="11" Height="1.4"
                               HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -253,10 +76,8 @@
             </Grid>
         </Border>
 
-        <!-- Row 1 notice banners (each self-hides when empty). -->
+        <!-- Notice banners (each self-hides when empty). -->
         <StackPanel Grid.Row="1">
-
-            <!-- Update available: a newer release is out (in-app updater, AppImage self-replace). -->
             <Border Classes="panel" BorderThickness="0,0,0,1" Padding="14,8"
                     IsVisible="{Binding HasUpdateNotice}">
                 <Grid ColumnDefinitions="*,Auto">
@@ -264,14 +85,11 @@
                                Foreground="{DynamicResource UnsavedBrush}"
                                Text="{Binding UpdateNoticeText}" />
                     <Button Grid.Column="1" Classes="chipAction" Margin="12,0,0,0"
-                            VerticalAlignment="Center"
-                            Content="Update"
+                            VerticalAlignment="Center" Content="Update"
                             Command="{Binding InstallUpdateCommand}"
-                            ToolTip.Tip="Download, verify, and install the new version — then restart to finish" />
+                            IsVisible="{Binding CanInstallUpdate}" />
                 </Grid>
             </Border>
-
-            <!-- Legacy static-conf notice (ADR-0011, revised: detect + offer — import only on click) -->
             <Border Classes="panel" BorderThickness="0,0,0,1" Padding="14,8"
                     IsVisible="{Binding HasLegacyNotice}">
                 <Grid ColumnDefinitions="*,Auto">
@@ -281,46 +99,73 @@
                     <Button Grid.Column="1" Classes="chipAction" Margin="12,0,0,0"
                             VerticalAlignment="Center"
                             IsVisible="{Binding HasPendingLegacyImport}"
-                            Content="Import into AutoRoute"
-                            Command="{Binding ImportLegacySinksCommand}"
-                            ToolTip.Tip="Declare these sinks in AutoRoute so they get the VIRTUAL treatment — nothing is imported until you click" />
+                            Content="Import"
+                            Command="{Binding ImportLegacySinksCommand}" />
                 </Grid>
             </Border>
-
         </StackPanel>
 
-        <!-- ===================== Palette + Board ===================== -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
+        <!-- ===================== Sources + outputs =====================
+             Comfortable: sources sidebar | output rows.
+             Compact: output rows over a sources tray. Same view models either way. -->
+        <!-- Column 0 width is driven from code-behind: the remembered sidebar width, or 0 in
+             Compact. The splitter on its edge resizes it. -->
+        <Grid Grid.Row="2" Name="BodyGrid" RowDefinitions="*,Auto">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="0" MaxWidth="560" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <!-- ClipToBounds: whatever a future layout regression measures wrong, nothing from
-                 the palette may paint over the board. -->
-            <Border Grid.Column="0" Classes="panel" BorderThickness="0,0,1,0" Width="280"
-                    ClipToBounds="True">
+            <Border Grid.Column="0" Grid.Row="0" Classes="panel" BorderThickness="0,0,1,0"
+                    ClipToBounds="True" IsVisible="{Binding !Ui.IsCompact}">
                 <views:PaletteView DataContext="{Binding Palette}" />
             </Border>
 
-            <Panel Grid.Column="1">
-                <!-- AllowAutoHide=False: the board scrollbar is a primary control here, not a
-                     transient indicator — always full-size instead of the hover-to-expand rail. -->
-                <ScrollViewer Classes="boardScroll" Name="BoardScroll"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled"
-                              AllowAutoHide="False"
-                              ScrollChanged="OnBoardScrollChanged">
-                    <!-- Margin on the content (not ScrollViewer.Padding) so the scroll extent
-                         includes it and the last column is fully reachable. -->
-                    <ItemsControl ItemsSource="{Binding Columns}" Margin="16,16,16,10">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:SinkColumnViewModel">
-                                <views:SinkColumnView IsVisible="{Binding IsVisible}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+            <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Name="SidebarSplitter" Width="5"
+                          Background="Transparent" ResizeDirection="Columns"
+                          IsVisible="{Binding !Ui.IsCompact}"
+                          DragCompleted="OnSidebarResized" />
+
+            <Panel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Name="MainArea">
+                <ScrollViewer Name="BoardScroll" behaviors:SmoothScroll.IsEnabled="True"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <!-- First run only: a few ready-made sets of virtual outputs. -->
+                        <Border Classes="setupCard" IsVisible="{Binding ShowSetup}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Classes="setupTitle" Text="Start with" />
+                                <ItemsControl ItemsSource="{x:Static vm:BoardViewModel.SetupPresets}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:BoardViewModel+SetupPreset">
+                                            <Button Classes="setupOption"
+                                                    Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).ChooseSetupCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Classes="nm" Text="{Binding Title}" />
+                                                    <TextBlock Classes="typeLine" Text="{Binding Outputs}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding Columns}" Margin="0,6,0,20">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SinkColumnViewModel">
+                                    <views:SinkColumnView IsVisible="{Binding IsVisible}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <StackPanel Spacing="10" MaxWidth="380"
@@ -331,31 +176,139 @@
                     <TextBlock Classes="hint" Text="{Binding EmptyStateHint}" />
                 </StackPanel>
 
-                <!-- Declared last so they sit over the columns. With more columns than fit, the
-                     strip used to just stop at the window frame mid-card, which reads as a
-                     clipping bug rather than "there's more this way" — these give it an edge to
-                     run under. Bottom margin clears the horizontal scrollbar's row (its Height in
-                     CardStyles.axaml), so a scrim dims columns and never the scroll thumb. -->
-                <Border Name="BoardEdgeLeft" Classes="boardEdge" HorizontalAlignment="Left"
-                        Margin="0,0,0,14" Background="{DynamicResource BoardEdgeLeftBrush}" />
-                <Border Name="BoardEdgeRight" Classes="boardEdge" HorizontalAlignment="Right"
-                        Margin="0,0,0,14" Background="{DynamicResource BoardEdgeRightBrush}" />
+                <!-- Soft bottom edge: rows scroll away under a fade instead of being sliced off
+                     at the window edge. Stops short of the scrollbar. -->
+                <Border Height="36" VerticalAlignment="Bottom" Margin="0,0,14,0" IsHitTestVisible="False"
+                        Background="{DynamicResource ListFadeBottomBrush}" />
 
-                <!-- The closing rule, mirroring the palette's right border on the other side of
-                     the board: full height and always on, so the strip is a bounded panel that
-                     columns pass behind rather than an open area they run off. Declared after the
-                     scrims — the right one ends fully opaque, and would paint over this. -->
-                <Border Width="1" HorizontalAlignment="Right" IsHitTestVisible="False"
-                        Background="{DynamicResource CardBorderBrush}" />
+                <!-- Undo toast: the last removal can be taken back for a few seconds. -->
+                <Border Classes="toast" IsVisible="{Binding HasToast}"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="toastText" Text="{Binding ToastText}" />
+                        <Button Classes="toastUndo" Content="Undo" Command="{Binding UndoCommand}" />
+                        <Button Classes="mini" Command="{Binding DismissToastCommand}" ToolTip.Tip="Dismiss">
+                            <Path Data="{StaticResource StrokeX}" />
+                        </Button>
+                    </StackPanel>
+                </Border>
             </Panel>
+
+            <!-- Bottom bar: under the sidebar in Comfortable (like a chat app's user panel), full
+                 width in Compact where it also carries the sources tray. Placement is set from
+                 code-behind (ApplyLayout). -->
+            <Border Grid.Column="0" Grid.Row="1" Name="BottomBar" Classes="panel" BorderThickness="0,1,1,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Panel Grid.Column="0" IsVisible="{Binding Ui.IsCompact}">
+                        <views:SourceTrayView DataContext="{Binding Palette}" />
+                    </Panel>
+                    <Grid Grid.Column="1" Name="Actions" ColumnDefinitions="*,Auto,Auto"
+                          Margin="12,10" VerticalAlignment="Center">
+                            <Button Grid.Column="0" Classes="primary" Name="NewSinkButton"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    IsVisible="{Binding CanManageSinks}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Virtual sink" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="10" Margin="6">
+                                            <TextBox PlaceholderText="Name (e.g. Game)" Text="{Binding NewSinkName}" />
+                                            <TextBox PlaceholderText="Label (optional)" Text="{Binding NewSinkDescription}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                                <RadioButton GroupName="NewSinkChannels" Content="Stereo"
+                                                             IsChecked="{Binding !NewSinkMono}" />
+                                                <RadioButton GroupName="NewSinkChannels" Content="Mono"
+                                                             IsChecked="{Binding NewSinkMono}" />
+                                            </StackPanel>
+                                            <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource UnsavedBrush}"
+                                                       Text="{Binding NewSinkValidationMessage}"
+                                                       IsVisible="{Binding NewSinkValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Right"
+                                                    Content="Create"
+                                                    Command="{Binding SubmitNewSinkCommand}"
+                                                    Click="OnCreateSinkClick" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- Settings: layout density, sink monitors, start at login. -->
+                            <Button Grid.Column="1" Classes="icon" Name="SettingsButton" Margin="6,0,0,0" ToolTip.Tip="Settings">
+                                <Path Data="{StaticResource IconGear}" />
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="12" Margin="6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Classes="body" VerticalAlignment="Center" Text="Compact layout" />
+                                                <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Ui.IsCompact}" />
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Classes="body" VerticalAlignment="Center" Text="Show sink monitors as sources"
+                                                           TextWrapping="Wrap" />
+                                                <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Filter.ShowMonitors}" />
+                                            </Grid>
+                                            <Panel IsVisible="{Binding CanManageAutostart}">
+                                                <StackPanel Spacing="8" DataContext="{Binding Autostart}">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Classes="body" VerticalAlignment="Center" Text="Start at login" />
+                                                        <ToggleSwitch Grid.Column="1" Classes="compact"
+                                                                      IsChecked="{Binding IsEnabled}"
+                                                                      IsEnabled="{Binding !IsBusy}" />
+                                                    </Grid>
+                                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource UnsavedBrush}"
+                                                               Text="{Binding StatusMessage}"
+                                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </StackPanel>
+                                            </Panel>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- Updates (AppImage self-replace). -->
+                            <Button Grid.Column="2" Classes="icon" Name="UpdatesButton" Margin="2,0,0,0"
+                                    IsVisible="{Binding CanCheckUpdates}"
+                                    ToolTip.Tip="Updates">
+                                <Path Data="{StaticResource IconDownload}" />
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="10" Margin="6"
+                                                    DataContext="{Binding Update}">
+                                            <TextBlock Classes="body"
+                                                       Text="{Binding CurrentVersion, StringFormat='Version {0}'}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="Check for updates"
+                                                    Command="{Binding CheckCommand}"
+                                                    IsEnabled="{Binding !IsBusy}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="{Binding LatestVersion, StringFormat='Install {0}'}"
+                                                    Command="{Binding InstallCommand}"
+                                                    IsEnabled="{Binding !IsBusy}"
+                                                    IsVisible="{Binding CanInstall}" />
+                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
+                                                         IsVisible="{Binding IsBusy}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="Restart now"
+                                                    Command="{Binding RestartCommand}"
+                                                    IsVisible="{Binding NeedsRestart}" />
+                                            <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource FaintBrush}"
+                                                       Text="{Binding StatusMessage}"
+                                                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- ===================== Resize grips (client-side chrome) =====================
-             SystemDecorations="None" removes the native resize border along with the title bar, so
-             these thin transparent strips over the window edges + corners restore drag-to-resize
-             via BeginResizeDrag. They sit on top (declared last, spanning every row) but only cover
-             the outermost few pixels, so they don't block the UI. Corners come after edges so the
-             diagonal grip wins in the overlap. -->
+        <!-- ===================== Resize grips (client-side chrome) ===================== -->
         <Border Grid.RowSpan="3" Name="ResizeN" Tag="North" Background="Transparent"
                 Height="4" VerticalAlignment="Top" HorizontalAlignment="Stretch"
                 Cursor="TopSide" PointerPressed="OnResizePointerPressed" />

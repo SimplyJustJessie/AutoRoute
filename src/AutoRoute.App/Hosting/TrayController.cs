@@ -2,14 +2,15 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
+using AutoRoute.App.Services;
 
 namespace AutoRoute.App.Hosting;
 
 /// <summary>
 /// The native tray icon and its menu (PLAN "Process, tray, autostart"). Uses Avalonia's
 /// <see cref="TrayIcon"/> + <see cref="NativeMenu"/> (StatusNotifierItem/DBus on Plasma/Wayland).
-/// Menu items: <b>Open</b> (reveal the window), <b>Automation Enabled</b> (checkbox bound to the
-/// <see cref="RoutingWorker"/> flag), and <b>Quit</b> (the only real shutdown).
+/// Menu items: <b>Open</b> (reveal the window), <b>Auto-route</b> (checkbox bound to the
+/// <see cref="AutomationState"/>, which the routing worker follows), and <b>Quit</b> (the only real shutdown).
 /// </summary>
 public sealed class TrayController : IDisposable
 {
@@ -17,24 +18,21 @@ public sealed class TrayController : IDisposable
     private readonly NativeMenuItem _automationItem;
     private readonly Application _app;
 
-    public TrayController(Application app, RoutingWorker worker, Action onOpen, Action onQuit)
+    public TrayController(Application app, AutomationState automation, Action onOpen, Action onQuit)
     {
         _app = app;
 
         var openItem = new NativeMenuItem("Open");
         openItem.Click += (_, _) => onOpen();
 
-        _automationItem = new NativeMenuItem("Automation Enabled")
+        _automationItem = new NativeMenuItem("Auto-route")
         {
-            ToggleType = NativeMenuItemToggleType.CheckBox,
-            IsChecked = worker.AutomationEnabled,
+            ToggleType = MenuItemToggleType.CheckBox,
+            IsChecked = automation.Enabled,
         };
-        _automationItem.Click += (_, _) =>
-        {
-            var next = !worker.AutomationEnabled;
-            worker.AutomationEnabled = next;
-            _automationItem.IsChecked = next;
-        };
+        _automationItem.Click += (_, _) => automation.Enabled = !automation.Enabled;
+        // The top-bar switch flips the same state: keep the tick in step.
+        automation.PropertyChanged += (_, _) => _automationItem.IsChecked = automation.Enabled;
 
         var quitItem = new NativeMenuItem("Quit");
         quitItem.Click += (_, _) => onQuit();

@@ -108,6 +108,24 @@ public sealed class PwLinker : IPwLinker
         return LinkOpResult.Fail(result.StdErr.Trim());
     }
 
+    public async Task<LinkOpResult> ConnectUnmanagedAsync(int outPortId, int inPortId, CancellationToken ct = default)
+    {
+        var args = new[]
+        {
+            "-w",
+            outPortId.ToString(CultureInfo.InvariantCulture),
+            inPortId.ToString(CultureInfo.InvariantCulture),
+        };
+        var result = await _runner.RunAsync(Tool, args, throwOnNonZero: false, ct).ConfigureAwait(false);
+        if (result.Succeeded || AlreadyExists(result.StdErr))
+        {
+            _log.LogInformation("relinked {Out}->{In} (untagged)", outPortId, inPortId);
+            return LinkOpResult.Ok;
+        }
+        _log.LogWarning("relink {Out}->{In} failed: {Err}", outPortId, inPortId, result.StdErr.Trim());
+        return LinkOpResult.Fail(result.StdErr.Trim());
+    }
+
     // pw-link reports errno strings: EEXIST for an already-present link, ENOENT for a missing one.
     private static bool AlreadyExists(string stderr) =>
         stderr.Contains("File exists", StringComparison.OrdinalIgnoreCase);

@@ -24,6 +24,15 @@ public sealed class RecordingPwLinker : IPwLinker
         return Task.FromResult(LinkOpResult.Ok);
     }
 
+    /// <summary>Untagged relinks (undo) are recorded with this rule id.</summary>
+    public const string Unmanaged = "(unmanaged)";
+
+    public Task<LinkOpResult> ConnectUnmanagedAsync(int outPortId, int inPortId, CancellationToken ct = default)
+    {
+        Connects.Add(new ConnectOp(outPortId, inPortId, Unmanaged));
+        return Task.FromResult(LinkOpResult.Ok);
+    }
+
     public Task<LinkOpResult> DisconnectAsync(int linkId, CancellationToken ct = default)
     {
         Disconnects.Add(new DisconnectOp(linkId, null, null));

@@ -10,11 +10,9 @@ using Avalonia.Media;
 namespace AutoRoute.App.Behaviors;
 
 /// <summary>
-/// The floating card that follows the pointer during a Source drag. Avalonia's DragDrop renders no
-/// native drag image, so without this the user gets zero feedback that they are holding anything.
-/// The ghost lives in the TopLevel's <see cref="OverlayLayer"/> and is repositioned from DragOver
-/// events (listened on the TopLevel with handledEventsToo, since columns handle their own DragOver);
-/// the board root sets AllowDrop so those events keep firing between columns too.
+/// The floating card that follows the pointer during a Source drag, so the user can see what they
+/// are holding. It lives in the TopLevel's <see cref="OverlayLayer"/>; <see cref="DragSourceBehavior"/>
+/// moves it on every pointer move of the drag.
 /// </summary>
 internal static class DragGhost
 {
@@ -23,7 +21,6 @@ internal static class DragGhost
 
     private static Border? _ghost;
     private static OverlayLayer? _layer;
-    private static TopLevel? _top;
 
     /// <summary>Show the ghost for a drag started on <paramref name="source"/>.</summary>
     public static void Show(Control source, string label, Point positionInLayer)
@@ -34,39 +31,21 @@ internal static class DragGhost
         var layer = OverlayLayer.GetOverlayLayer(source);
         if (top is null || layer is null) return;
 
-        _top = top;
         _layer = layer;
         _ghost = Build(source, label);
         layer.Children.Add(_ghost);
-        MoveTo(positionInLayer);
-
-        // Columns mark their DragOver handled, so listen with handledEventsToo to keep tracking.
-        top.AddHandler(DragDrop.DragOverEvent, OnTopLevelDragOver,
-            RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        Move(positionInLayer);
     }
 
     public static void Hide()
     {
-        _top?.RemoveHandler(DragDrop.DragOverEvent, OnTopLevelDragOver);
         if (_layer is not null && _ghost is not null) _layer.Children.Remove(_ghost);
-        _top = null;
         _layer = null;
         _ghost = null;
     }
 
-    private static void OnTopLevelDragOver(object? sender, DragEventArgs e)
-    {
-        if (_layer is not null) MoveTo(e.GetPosition(_layer));
-        // Not over a Target Sink column (nothing claimed the event): show a no-drop cursor
-        // instead of the misleading default copy/link one.
-        if (!e.Handled)
-        {
-            e.DragEffects = DragDropEffects.None;
-            e.Handled = true;
-        }
-    }
-
-    private static void MoveTo(Point p)
+    /// <summary>Put the ghost by the pointer (position in the overlay layer).</summary>
+    public static void Move(Point p)
     {
         if (_ghost is null) return;
         Canvas.SetLeft(_ghost, p.X + OffsetX);

@@ -52,6 +52,19 @@
             </LinearGradientBrush>
 
             <!-- ==================== Text ==================== -->
+            <!-- Bottom of the output list: rows dissolve into the background (BgColor → alpha 0). -->
+            <LinearGradientBrush x:Key="ListFadeBottomBrush" StartPoint="0%,100%" EndPoint="0%,0%">
+                <GradientStop Offset="0" Color="{StaticResource BgColor}" />
+                <GradientStop Offset="0.5" Color="#990F1014" />
+                <GradientStop Offset="1" Color="#000F1014" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="PanelFadeBottomBrush" StartPoint="0%,100%" EndPoint="0%,0%">
+                <GradientStop Offset="0" Color="{StaticResource PanelColor}" />
+                <GradientStop Offset="0.5" Color="#9914151B" />
+                <GradientStop Offset="1" Color="#0014151B" />
+            </LinearGradientBrush>
+
             <SolidColorBrush x:Key="TextBrush" Color="#E7E9F1" />
             <SolidColorBrush x:Key="MutedBrush" Color="#9CA1B3" />
             <SolidColorBrush x:Key="FaintBrush" Color="#6C7186" />
@@ -101,6 +114,86 @@
             <StreamGeometry x:Key="IconDownload">F1 M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5 M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z</StreamGeometry>
             <StreamGeometry x:Key="IconCameraVideo">F1 M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z</StreamGeometry>
 
+            <!-- ==================== Board glyphs (outline, 24×24, drawn with Stroke) ====================
+                 Own drawings, not Bootstrap: the device tiles and in/out badges read better as
+                 thin outlines at 16–22 px. Keys are "Glyph" + NodeGlyph name (GlyphConverter). -->
+            <StreamGeometry x:Key="GlyphHeadset">M4 15V12A8 8 0 0 1 20 12V15 M3 14H7V21H3Z M17 14H21V21H17Z</StreamGeometry>
+            <StreamGeometry x:Key="GlyphMic">M9 6A3 3 0 0 1 15 6V10A3 3 0 0 1 9 10Z M5.5 10A6.5 6.5 0 0 0 18.5 10 M12 16.5V21 M8.5 21H15.5</StreamGeometry>
+            <StreamGeometry x:Key="GlyphSpeaker">M11 5L6 9H3V15H6L11 19Z M15.5 8.5A5 5 0 0 1 15.5 15.5 M18.5 5.5A9 9 0 0 1 18.5 18.5</StreamGeometry>
+            <StreamGeometry x:Key="GlyphMonitor">M3 4H21V16H3Z M8 20H16 M12 16V20</StreamGeometry>
+            <StreamGeometry x:Key="GlyphInterface">M9 3V8 M15 3V8 M6 8H18V11A6 6 0 0 1 6 11Z M12 17V21</StreamGeometry>
+            <!-- Virtual sink: inputs merging into one output (a mix bus). -->
+            <StreamGeometry x:Key="GlyphVirtual">M3.5 6H8.5L14.5 12 M3.5 18H8.5L14.5 12 M3.5 12H20.5 M17 8.5L20.5 12L17 15.5</StreamGeometry>
+            <StreamGeometry x:Key="GlyphWave">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
+            <StreamGeometry x:Key="GlyphCamera">M3 7H15V17H3Z M15 11L21 8V16L15 13</StreamGeometry>
+            <StreamGeometry x:Key="GlyphApp">M4 10V14 M8 7V17 M12 4V20 M16 7V17 M20 10V14</StreamGeometry>
+            <!-- In/out badges: a solid body (filled) plus a stroke, drawn by GlyphIcon at ~11 px. -->
+            <StreamGeometry x:Key="BadgeOutBody">M5.5 9.5H9L13.5 5.5V18.5L9 14.5H5.5Z</StreamGeometry>
+            <StreamGeometry x:Key="BadgeOutWave">M17 8.5A5 5 0 0 1 17 15.5</StreamGeometry>
+            <StreamGeometry x:Key="BadgeInBody">M9 6A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11Z</StreamGeometry>
+            <StreamGeometry x:Key="BadgeInStand">M5.5 11A6.5 6.5 0 0 0 18.5 11 M12 17.5V21</StreamGeometry>
+            <StreamGeometry x:Key="BadgeIn">M9 6A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11Z M5.5 11A6.5 6.5 0 0 0 18.5 11 M12 17.5V21</StreamGeometry>
+            <StreamGeometry x:Key="StrokePlus">M12 5V19 M5 12H19</StreamGeometry>
+            <StreamGeometry x:Key="StrokeX">M6 6L18 18 M18 6L6 18</StreamGeometry>
+            <StreamGeometry x:Key="StrokeVolume">M10 5L6 9H3V15H6L10 19Z M15 9.5A3.5 3.5 0 0 1 15 14.5</StreamGeometry>
+            <StreamGeometry x:Key="StrokeMuted">M10 5L6 9H3V15H6L10 19Z M15 9.5L20 14.5 M20 9.5L15 14.5</StreamGeometry>
+            <StreamGeometry x:Key="StrokeMore">M5 12H5.01 M12 12H12.01 M19 12H19.01</StreamGeometry>
+            <StreamGeometry x:Key="StrokeLock">M5 11H19V21H5Z M8 11V8A4 4 0 0 1 16 8V11</StreamGeometry>
+
+            <!-- ==================== Slim scrollbar (replaces Fluent's everywhere) ====================
+                 Fluent's bar expands on hover into a wide grey track with arrow buttons. This one is
+                 just a rounded 5 px thumb that only brightens on hover/drag — it never changes size,
+                 which read as a pop. No arrows. -->
+            <ControlTheme x:Key="SlimScrollThumb" TargetType="Thumb">
+                <Setter Property="Background" Value="#3A3D48" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:pointerover">
+                    <Setter Property="Background" Value="#5A5E6E" />
+                </Style>
+                <Style Selector="^:pressed">
+                    <Setter Property="Background" Value="#6C7186" />
+                </Style>
+            </ControlTheme>
+
+            <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+                <Setter Property="Cursor" Value="Arrow" />
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <Border Background="Transparent">
+                            <Track Name="PART_Track"
+                                   Minimum="{TemplateBinding Minimum}"
+                                   Maximum="{TemplateBinding Maximum}"
+                                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                                   ViewportSize="{TemplateBinding ViewportSize}"
+                                   Orientation="{TemplateBinding Orientation}">
+                                <Thumb Name="thumb" Theme="{StaticResource SlimScrollThumb}" />
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:vertical">
+                    <Setter Property="Width" Value="11" />
+                </Style>
+                <Style Selector="^:vertical /template/ Track#PART_Track">
+                    <Setter Property="IsDirectionReversed" Value="True" />
+                </Style>
+                <Style Selector="^:horizontal">
+                    <Setter Property="Height" Value="11" />
+                </Style>
+                <Style Selector="^:vertical /template/ Thumb#thumb">
+                    <Setter Property="Width" Value="5" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
+                </Style>
+                <Style Selector="^:horizontal /template/ Thumb#thumb">
+                    <Setter Property="Height" Value="5" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+            </ControlTheme>
+
             <!-- ==================== Fluent control overrides (dark chrome) ==================== -->
             <SolidColorBrush x:Key="TextControlBackground" Color="#1B1C24" />
             <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#1F2029" />
@@ -122,5 +215,6 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://AutoRoute.App/Styles/CardStyles.axaml" />
+        <StyleInclude Source="avares://AutoRoute.App/Styles/BoardStyles.axaml" />
     </Application.Styles>
 </Application>

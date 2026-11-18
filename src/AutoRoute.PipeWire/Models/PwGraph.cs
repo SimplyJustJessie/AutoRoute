@@ -87,6 +87,20 @@ public sealed class PwGraph
         return true;
     }
 
+    /// <summary>
+    /// For two structurally equal snapshots: true when no node's presentation changed either —
+    /// volume, mute, run state (the playing indicator) and negotiated format.
+    /// </summary>
+    public bool PresentationEquals(PwGraph other)
+    {
+        foreach (var (id, node) in NodesById)
+        {
+            if (!other.NodesById.TryGetValue(id, out var o)) return false;
+            if (node.Info != o.Info || node.Format != o.Format) return false;
+        }
+        return true;
+    }
+
     private static bool PropsEqual(
         IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b)
     {

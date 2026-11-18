@@ -4,6 +4,7 @@ using AutoRoute.App.Services;
 using AutoRoute.App.ViewModels;
 using AutoRoute.Engine;
 using AutoRoute.PipeWire;
+using AutoRoute.PipeWire.Meters;
 using AutoRoute.PipeWire.Process;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +23,18 @@ public static class HostFactory
 {
     public static IHost Build(AppOptions options)
     {
-        var builder = Host.CreateApplicationBuilder();
+        // DisableDefaults: the default builder sets the content root to the current directory and
+        // loads appsettings.json with reloadOnChange, which starts a RECURSIVE FileSystemWatcher on
+        // that directory. Autostart launches us from $HOME, so it put an inotify watch on every
+        // directory under it (~270k on a dev box: ~10 MB+ of managed bookkeeping, a big slice of
+        // unswappable kernel memory, half of fs.inotify.max_user_watches, and a wakeup for every
+        // file write anywhere in $HOME). Nothing here reads IConfiguration, so drop the defaults;
+        // logging is set up explicitly below and AddLogging's Information minimum still applies.
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            DisableDefaults = true,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
 
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole(o =>
@@ -128,7 +140,15 @@ public static class HostFactory
             sp.GetRequiredService<AppVersion>(),
             sp.GetService<ILogger<UpdateService>>()));
 
+        services.AddSingleton<IVolumeController>(sp => new WpctlVolumeController(
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetService<ILogger<WpctlVolumeController>>()));
+        services.AddSingleton(_ => new UiSettings(UiSettings.DefaultPath()));
+        // Live level meters; idle (no server connection at all) unless the window is showing.
+        services.AddSingleton<ILevelMeter>(sp => new PulseLevelMeter(sp.GetService<ILogger<PulseLevelMeter>>()));
+
         services.AddSingleton<TabSelectionState>();
+        services.AddSingleton<AutomationState>();
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<VideoBoardViewModel>();
         services.AddSingleton<RoutingWorker>();

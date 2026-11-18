@@ -11,9 +11,17 @@ namespace AutoRoute.App.ViewModels;
 /// with the per-card actions (remove, save, keep-manual, protect). State-derived booleans drive
 /// XAML style triggers; the actual work is delegated to the <see cref="IBoardCoordinator"/>.
 /// </summary>
-public partial class SourceCardViewModel : ViewModelBase
+public partial class SourceCardViewModel : NodeTileViewModel
 {
     private readonly IBoardCoordinator _coordinator;
+
+    /// <summary>A saved route whose app isn't running: shown faded.</summary>
+    [ObservableProperty]
+    private bool _isNotRunning;
+
+    /// <summary>This chip is the focused Source.</summary>
+    [ObservableProperty]
+    private bool _isFocused;
 
     /// <summary>Diff-merge key within a column (the Source's app-granularity identity).</summary>
     public string Key { get; }
@@ -79,6 +87,8 @@ public partial class SourceCardViewModel : ViewModelBase
         RuleId = model.RuleId;
         LinkId = model.LinkId;
         State = model.State;
+        IsNotRunning = model.NotRunning;
+        ApplyLook(model.Look);
     }
 
     public bool IsManaged => State == CardState.Managed;

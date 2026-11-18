@@ -2,96 +2,90 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AutoRoute.App.ViewModels"
              xmlns:views="using:AutoRoute.App.Views"
+             xmlns:controls="using:AutoRoute.App.Controls"
              xmlns:behaviors="using:AutoRoute.App.Behaviors"
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="280" d:DesignHeight="560"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="560"
              x:Class="AutoRoute.App.Views.PaletteView"
              x:DataType="vm:SourcesPaletteViewModel"
              d:DataContext="{x:Static design:DesignData.Palette}">
 
-    <Grid RowDefinitions="Auto,*">
-
-        <StackPanel Grid.Row="0" Margin="14,14,14,10" Spacing="4">
-            <TextBlock Classes="sectionLabel" Text="SOURCES" />
-            <TextBlock Classes="subtitle" TextWrapping="Wrap" LineHeight="16"
-                       Text="Drag onto a Target Sink to route. Cards stay here — one Source can feed many sinks." />
-        </StackPanel>
-
-        <!-- Margin on the content, NOT ScrollViewer.Padding: padding is applied outside the
-             scroll-content measure, so long item text got a wider constraint than the panel and
-             spilled past its edge (same reasoning as the board scroller in BoardView). -->
-        <ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Items}" Margin="14,0,14,14">
+    <!-- Comfortable layout's sources sidebar: apps and inputs, each draggable onto an output row,
+         each with its own volume. Margin on the content, not ScrollViewer.Padding (padding sits
+         outside the content measure, so long names spilled past the edge). -->
+    <Panel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      behaviors:SmoothScroll.IsEnabled="True">
+            <ItemsControl ItemsSource="{Binding Items}" Margin="10,10,10,14">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:SourceItemViewModel">
-                        <Border Classes="paletteItem"
-                                Classes.protected="{Binding IsProtected}"
-                                IsVisible="{Binding IsVisible}"
-                                behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
-                                behaviors:DragSourceBehavior.DragLabel="{Binding Title}"
-                                ToolTip.Tip="Drag onto a Target Sink to route this Source">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-
-                                <!-- Kind tile: tinted icon (app / capture / monitor) -->
-                                <Border Grid.Column="0" Classes="kindTile"
-                                        Classes.app="{Binding IsAppKind}"
-                                        Classes.capture="{Binding IsCaptureKind}"
-                                        Classes.monitor="{Binding IsMonitorKind}"
-                                        Margin="0,0,10,0"
-                                        ToolTip.Tip="{Binding KindLabel}">
-                                    <!-- Viewbox, not bare Paths: Shape.Stretch=Uniform anchors a
-                                         non-square geometry top-left in a square box; the Viewbox
-                                         scales the tight glyph and centers the short axis. -->
-                                    <Viewbox Width="14" Height="14"
-                                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Panel>
-                                            <!-- Video overrides App/Capture/Monitor entirely with one
-                                                 neutral camera glyph — the audio soundwave/mic/headphones
-                                                 trio doesn't map cleanly onto a Spout2PW sender vs. an
-                                                 OBS capture, and the kind tile's tint (bound above,
-                                                 unchanged) already carries that distinction. -->
-                                            <Path Data="{StaticResource IconWave}" IsVisible="{Binding ShowAppIcon}" />
-                                            <Path Data="{StaticResource IconMic}" IsVisible="{Binding ShowCaptureIcon}" />
-                                            <Path Data="{StaticResource IconHeadphones}" IsVisible="{Binding ShowMonitorIcon}" />
-                                            <Path Data="{StaticResource IconCameraVideo}" IsVisible="{Binding IsVideo}" />
-                                        </Panel>
-                                    </Viewbox>
-                                </Border>
-
-                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                                    <TextBlock Classes="cardTitle" Text="{Binding Title}"
-                                               ToolTip.Tip="{Binding Title}" />
-                                    <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
-                                               ToolTip.Tip="{Binding Subtitle}"
-                                               IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    <Border Classes="formatBadge" Margin="0,3,0,0"
-                                            IsVisible="{Binding Format, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                            ToolTip.Tip="Sample rate and bit depth this Source runs at">
-                                        <TextBlock Text="{Binding Format}" />
-                                    </Border>
-                                </StackPanel>
-
-                                <Button Grid.Column="2" Classes="icon" Margin="6,0,0,0"
-                                        Classes.locked="{Binding IsProtected}"
-                                        Command="{Binding ToggleProtectCommand}"
-                                        ToolTip.Tip="Protect / unprotect this Source (do not touch)">
-                                    <Panel>
-                                        <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
-                                        <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
+                        <StackPanel IsVisible="{Binding IsVisible}">
+                            <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
+                                       IsVisible="{Binding ShowGroupHeader}" Margin="8,10,0,4" />
+                            <Border Classes="srcEntry" Classes.focused="{Binding IsFocused}"
+                                    behaviors:DragSourceBehavior.ClickCommand="{Binding ToggleFocusCommand}"
+                                    behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
+                                    behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                    <Panel VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <Border Classes="tile" Background="{Binding TileFill}">
+                                            <Panel>
+                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                                <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
+                                                <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                                      Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                                            </Panel>
+                                        </Border>
+                                        <Border Classes="badge">
+                                            <Border>
+                                                <Panel>
+                                                    <controls:GlyphIcon FillData="{StaticResource BadgeInBody}" Data="{StaticResource BadgeInStand}" IsVisible="{Binding IsInput}" />
+                                                    <controls:GlyphIcon FillData="{StaticResource BadgeOutBody}" Data="{StaticResource BadgeOutWave}" IsVisible="{Binding !IsInput}" />
+                                                </Panel>
+                                            </Border>
+                                        </Border>
                                     </Panel>
-                                </Button>
-                            </Grid>
-                        </Border>
+                                    <StackPanel Grid.Column="1" Spacing="5">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="nm" Text="{Binding Title}" />
+                                            <controls:LevelBars Grid.Column="1" Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" Margin="8,0,2,0"
+                                                     IsVisible="{Binding ShowPlaying}" />
+                                        </Grid>
+                                        <WrapPanel>
+                                            <TextBlock Classes="typeLine" Text="{Binding TypeLine}" MaxWidth="200" Margin="0,0,8,2"
+                                                       IsVisible="{Binding TypeLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <Border Classes="fmt" Margin="0,0,0,2" IsVisible="{Binding Format, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <TextBlock Text="{Binding Format}" />
+                                            </Border>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasVolume}" Margin="-4,6,0,0">
+                                        <Button Classes="mute" Classes.on="{Binding IsMuted}"
+                                                Command="{Binding ToggleMuteCommand}" ToolTip.Tip="Mute">
+                                            <Panel>
+                                                <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsMuted}" />
+                                                <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
+                                            </Panel>
+                                        </Button>
+                                        <controls:Fader Grid.Column="1" Value="{Binding Volume}" Level="{Binding Level}" IsMuted="{Binding IsMuted}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
+                                        <TextBlock Grid.Column="2" Classes="pct" Text="{Binding VolumePercent}" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
 
-        <TextBlock Grid.Row="1" Classes="hint" VerticalAlignment="Center"
-                   IsVisible="{Binding IsEmpty}" Text="No Sources in the graph." />
-    </Grid>
+        <TextBlock Classes="hint" VerticalAlignment="Center" HorizontalAlignment="Center"
+                   IsVisible="{Binding IsEmpty}" Text="Nothing playing" />
+
+        <!-- Entries scroll away under a fade above the footer bar, not into a hard edge. -->
+        <Border Height="28" VerticalAlignment="Bottom" Margin="0,0,12,0" IsHitTestVisible="False"
+                Background="{DynamicResource PanelFadeBottomBrush}" />
+    </Panel>
 </UserControl>

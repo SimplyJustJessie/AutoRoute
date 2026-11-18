@@ -24,6 +24,14 @@ public interface IPwLinker
     /// <summary>Create a managed link from output port to input port, tagged with <paramref name="ruleId"/>.</summary>
     Task<LinkOpResult> ConnectAsync(int outPortId, int inPortId, string ruleId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Create a plain, untagged link — what WirePlumber or the user would have made. Only for
+    /// putting back a link AutoRoute itself removed (undo): tagging it would make it a managed
+    /// link with no rule, which the reconciler cleans up.
+    /// </summary>
+    Task<LinkOpResult> ConnectUnmanagedAsync(int outPortId, int inPortId, CancellationToken ct = default) =>
+        Task.FromResult(LinkOpResult.Fail("not supported"));
+
     /// <summary>Destroy a link by its numeric link id.</summary>
     Task<LinkOpResult> DisconnectAsync(int linkId, CancellationToken ct = default);
 

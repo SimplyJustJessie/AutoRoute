@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -14,7 +15,91 @@ public partial class BoardView : UserControl
 {
     private Window? _trackedWindow;
 
-    public BoardView() => InitializeComponent();
+    private ViewModels.BoardViewModel? _boundVm;
+
+    public BoardView()
+    {
+        InitializeComponent();
+        DataContextChanged += (_, _) => BindLayout();
+
+        // Esc clears a focused Source (a drag in flight takes Esc first; it handles the key).
+        AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.Key == Key.Escape && _boundVm is { FocusedSourceKey: not null } vm)
+            {
+                vm.ClearFocusCommand.Execute(null);
+                e.Handled = true;
+            }
+        });
+
+        // Opening the Updates menu is when a package install checks (see UpdateViewModel).
+        if (this.FindControl<Button>("UpdatesButton")?.Flyout is { } updates)
+            updates.Opened += (_, _) => _ = _boundVm?.Update?.EnsureCheckedAsync();
+    }
+
+    // === Sidebar width (Comfortable) / collapsed (Compact) ==============================
+    // ColumnDefinition.Width isn't bindable in a useful way here, so it's set from the shared
+    // UiSettings: the remembered width in Comfortable, 0 in Compact. The splitter writes back.
+    private void BindLayout()
+    {
+        if (_boundVm is not null) _boundVm.Ui.PropertyChanged -= OnUiChanged;
+        _boundVm = DataContext as ViewModels.BoardViewModel;
+        if (_boundVm is not null) _boundVm.Ui.PropertyChanged += OnUiChanged;
+        ApplySidebarWidth();
+    }
+
+    private void OnUiChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Services.UiSettings.IsCompact) or nameof(Services.UiSettings.SidebarWidth))
+            ApplySidebarWidth();
+    }
+
+    private void ApplySidebarWidth()
+    {
+        if (_boundVm is null || this.FindControl<Grid>("BodyGrid") is not { } grid) return;
+        var compact = _boundVm.Ui.IsCompact;
+        var col = grid.ColumnDefinitions[0];
+        if (compact)
+        {
+            col.MinWidth = 0;
+            col.Width = new GridLength(0);
+        }
+        else
+        {
+            col.MinWidth = Services.UiSettings.MinSidebarWidth;
+            col.Width = new GridLength(_boundVm.Ui.SidebarWidth);
+        }
+
+        // Comfortable: the bottom bar sits under the sidebar only and the output list runs to the
+        // window's bottom edge. Compact: the bar spans the window (tray left, actions right).
+        if (this.FindControl<Panel>("MainArea") is { } main)
+            Grid.SetRowSpan(main, compact ? 1 : 2);
+        if (this.FindControl<Border>("BottomBar") is { } bar)
+        {
+            Grid.SetColumnSpan(bar, compact ? 3 : 1);
+            bar.BorderThickness = compact ? new Thickness(0, 1, 0, 0) : new Thickness(0, 1, 1, 0);
+        }
+        if (this.FindControl<Grid>("Actions") is { } actions)
+        {
+            Grid.SetColumn(actions, compact ? 1 : 0);
+            Grid.SetColumnSpan(actions, compact ? 1 : 2);
+        }
+
+        // The actions sit at the window's left edge in Comfortable and its right edge in Compact:
+        // open their menus towards the middle so they never spill outside the window.
+        var placement = compact ? PlacementMode.TopEdgeAlignedRight : PlacementMode.TopEdgeAlignedLeft;
+        foreach (var name in new[] { "NewSinkButton", "SettingsButton", "UpdatesButton" })
+            if (this.FindControl<Button>(name)?.Flyout is PopupFlyoutBase flyout)
+                flyout.Placement = placement;
+    }
+
+    private void OnSidebarResized(object? sender, VectorEventArgs e)
+    {
+        if (_boundVm is null || this.FindControl<Grid>("BodyGrid") is not { } grid) return;
+        var width = Math.Clamp(grid.ColumnDefinitions[0].ActualWidth,
+            Services.UiSettings.MinSidebarWidth, Services.UiSettings.MaxSidebarWidth);
+        _boundVm.Ui.SidebarWidth = Math.Round(width);
+    }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
@@ -28,25 +113,6 @@ public partial class BoardView : UserControl
         Dispatcher.UIThread.Post(() => flyout?.Hide());
     }
 
-    // === Board overflow scrims =========================================================
-    // The columns strip scrolls sideways, so light the scrim on whichever side still has columns
-    // hidden behind it. Toggling a class (rather than IsVisible) rides the style's opacity
-    // transition, so an edge fades away as you scroll into it instead of blinking out.
-    private void OnBoardScrollChanged(object? sender, ScrollChangedEventArgs e)
-    {
-        if (sender is not ScrollViewer scroll) return;
-
-        // Half a pixel of slack: a smooth/kinetic scroll settles on fractional offsets, and an
-        // exact comparison would leave a scrim lit at a hard end of the strip.
-        const double epsilon = 0.5;
-        var maxOffset = scroll.Extent.Width - scroll.Viewport.Width;
-        SetEdgeLit("BoardEdgeLeft", scroll.Offset.X > epsilon);
-        SetEdgeLit("BoardEdgeRight", scroll.Offset.X < maxOffset - epsilon);
-    }
-
-    private void SetEdgeLit(string name, bool lit) =>
-        this.FindControl<Border>(name)?.Classes.Set("on", lit);
-
     // === Client-side window chrome (single-row title bar) ==============================
     // The toolbar is the window's title bar, so its caption buttons and drag/maximise gestures
     // reach the hosting Window through the visual tree. Guarded everywhere for the headless
@@ -55,7 +121,7 @@ public partial class BoardView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (this.GetVisualRoot() is Window window)
+        if (TopLevel.GetTopLevel(this) is Window window)
         {
             _trackedWindow = window;
             window.PropertyChanged += OnWindowPropertyChanged;
@@ -77,7 +143,7 @@ public partial class BoardView : UserControl
             UpdateMaximizeGlyph(window);
     }
 
-    private Window? HostWindow => this.GetVisualRoot() as Window;
+    private Window? HostWindow => TopLevel.GetTopLevel(this) as Window;
 
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {

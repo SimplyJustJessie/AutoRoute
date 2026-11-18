@@ -2,137 +2,208 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AutoRoute.App.ViewModels"
              xmlns:views="using:AutoRoute.App.Views"
+             xmlns:controls="using:AutoRoute.App.Controls"
              xmlns:behaviors="using:AutoRoute.App.Behaviors"
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="280" d:DesignHeight="520"
+             mc:Ignorable="d" d:DesignWidth="900"
              x:Class="AutoRoute.App.Views.SinkColumnView"
              x:DataType="vm:SinkColumnViewModel"
              d:DataContext="{x:Static design:DesignData.Column}">
 
-    <Border Classes="column" ClipToBounds="True"
-            Classes.protected="{Binding IsProtected}"
+    <!-- One output (Target Sink) row: what it is, its volume, and the sources feeding it.
+         Comfortable = card with a two-line label; Compact (IsCompact) = dense one-line row. -->
+    <UserControl.Resources>
+            <Flyout x:Key="AddFlyout" Placement="BottomEdgeAlignedLeft">
+                <StackPanel Width="260" Spacing="2" Margin="2">
+                    <TextBlock Classes="groupHeader" Text="Nothing else to add" Margin="8,6"
+                               IsVisible="{Binding !HasAddOptions}" />
+                    <ItemsControl ItemsSource="{Binding AddOptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AddOption">
+                                <Button Classes="pickRow" Command="{Binding ConnectCommand}"
+                                        Click="OnPickClick">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Border Classes="tile chip" Background="{Binding TileFill}">
+                                            <Panel>
+                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                                <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
+                                                <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                                      Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Classes="nm" Text="{Binding Title}" FontSize="13"
+                                                   VerticalAlignment="Center" MaxWidth="150" />
+                                        <TextBlock Classes="typeLine" Text="{Binding TypeLine}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Flyout>
+    </UserControl.Resources>
+
+    <!-- The drop target is the whole host: the gap below the row and the list's side margins
+         included (the padding lives here, not on the list), so dragging over the list never
+         crosses a no-target strip — Breeze's no-target drag cursor is a closed hand, which
+         flickered in between rows and at their edges. Transparent background so it hit-tests. -->
+    <Border Classes="rowHost" Background="Transparent" Padding="20,0"
             behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
-            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
-        <Panel>
-            <Grid RowDefinitions="Auto,*">
+            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}"
+            behaviors:DropTargetBehavior.RejectNodeId="{Binding TargetNodeId}">
+    <StackPanel>
+        <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
+                   IsVisible="{Binding ShowGroupHeader}" Margin="2,14,0,8" />
 
-                <!-- Header = the Target Sink -->
-                <Border Grid.Row="0" Classes="columnHeader">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
-                        <Path Grid.Column="0" Data="{StaticResource IconSpeaker}"
-                              IsVisible="{Binding !IsVideo}"
-                              Fill="{DynamicResource MutedBrush}"
-                              Width="13" Height="13" Stretch="Uniform"
-                              VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <Path Grid.Column="0" Data="{StaticResource IconCameraVideo}"
-                              IsVisible="{Binding IsVideo}"
-                              Fill="{DynamicResource MutedBrush}"
-                              Width="13" Height="13" Stretch="Uniform"
-                              VerticalAlignment="Center" Margin="0,0,8,0" />
+        <Border Classes="row"
+                Classes.compact="{Binding IsCompact}"
+                Classes.dimmed="{Binding IsDimmed}"
+                Classes.disconnected="{Binding IsDisconnected}"
+                Classes.focusMatch="{Binding IsFocusMatch}"
+                Classes.protected="{Binding IsProtected}">
+            <!-- Tile | identity + volume | row menu, then the chips on their own line below,
+                 aligned with the name. -->
+            <Grid Classes="rowContent" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
 
-                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                            <!-- Left-aligned Grid (NOT a horizontal StackPanel): the star column
-                                 caps the title at the available width so CharacterEllipsis can
-                                 engage, while the chip hugs the (possibly trimmed) title. -->
-                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
-                                <TextBlock Classes="columnTitle body" Text="{Binding Title}"
-                                           ToolTip.Tip="{Binding Title}" />
-                                <Border Grid.Column="1" Classes="chip managed" Margin="6,0,0,0"
-                                        VerticalAlignment="Center"
-                                        IsVisible="{Binding IsManagedSink}"
-                                        ToolTip.Tip="A virtual sink AutoRoute owns — created at boot by the generated config and kept alive by the watcher">
-                                    <TextBlock Text="VIRTUAL" />
-                                </Border>
-                            </Grid>
-                            <TextBlock Classes="subtitle" Text="{Binding Subtitle}"
-                                       ToolTip.Tip="{Binding Subtitle}"
-                                       IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <Border Classes="formatBadge" Margin="0,3,0,0"
-                                    IsVisible="{Binding Format, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                    ToolTip.Tip="Sample rate and bit depth this Target Sink runs at">
-                                <TextBlock Text="{Binding Format}" />
-                            </Border>
-                        </StackPanel>
-
-                        <Border Grid.Column="2" Classes="countChip" Margin="8,0,4,0"
-                                ToolTip.Tip="Sources currently routed into this Target Sink">
-                            <TextBlock Text="{Binding Cards.Count}" />
-                        </Border>
-
-                        <Button Grid.Column="3" Classes="icon"
-                                Classes.locked="{Binding IsProtected}"
-                                Command="{Binding ToggleProtectCommand}"
-                                ToolTip.Tip="Protect / unprotect this Target Sink (do not touch)">
+                <!-- Tile + in/out badge -->
+                <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <Border Classes="tile" Classes.lg="{Binding !IsCompact}" Classes.sm="{Binding IsCompact}"
+                            Background="{Binding TileFill}">
+                        <Panel>
+                            <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                            <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
+                            <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                  Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                        </Panel>
+                    </Border>
+                    <Border Classes="badge">
+                        <Border>
                             <Panel>
-                                <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
-                                <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
+                                <controls:GlyphIcon FillData="{StaticResource BadgeInBody}" Data="{StaticResource BadgeInStand}" IsVisible="{Binding IsInput}" />
+                                <controls:GlyphIcon FillData="{StaticResource BadgeOutBody}" Data="{StaticResource BadgeOutWave}" IsVisible="{Binding !IsInput}" />
+                            </Panel>
+                        </Border>
+                    </Border>
+                </Panel>
+
+                <!-- Line 1: identity, volume, and (when nothing feeds it yet) the Add button -->
+                <StackPanel Grid.Column="1" Classes="head" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
+                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding ShowPlaying}" />
+                    </StackPanel>
+                    <WrapPanel IsVisible="{Binding !IsCompact}">
+                        <TextBlock Classes="typeLine" Text="{Binding TypeLine}" Margin="0,0,8,2" MaxWidth="200"
+                                   IsVisible="{Binding TypeLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Border Classes="fmt" Margin="0,0,8,2" IsVisible="{Binding Format, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding Format}" />
+                        </Border>
+                        <Border Classes="tag hands" Margin="0,0,0,2" IsVisible="{Binding IsProtected}">
+                            <TextBlock Text="Hands off" />
+                        </Border>
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- Volume: mute + fader + percent (keeps its width when absent so rows align) -->
+                <Panel Width="214" VerticalAlignment="Center" Margin="0,0,20,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasVolume}">
+                        <Button Classes="mute" Classes.on="{Binding IsMuted}"
+                                Command="{Binding ToggleMuteCommand}"
+                                ToolTip.Tip="Mute">
+                            <Panel>
+                                <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsMuted}" />
+                                <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
                             </Panel>
                         </Button>
+                        <controls:Fader Width="144" Value="{Binding Volume}" Level="{Binding Level}" IsMuted="{Binding IsMuted}"
+                                        AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
+                        <TextBlock Classes="pct" Text="{Binding VolumePercent}" />
+                    </StackPanel>
+                </Panel>
 
-                        <!-- Delete (managed virtual sinks only): confirm flyout with the deletion impact -->
-                        <Button Grid.Column="4" Classes="icon" Name="DeleteSinkButton"
-                                IsVisible="{Binding IsManagedSink}"
-                                Command="{Binding PrepareDeleteSinkCommand}"
-                                ToolTip.Tip="Delete this virtual sink">
-                            <Path Data="{StaticResource IconClose}" />
-                            <Button.Flyout>
-                                <Flyout Placement="BottomEdgeAlignedRight">
-                                    <StackPanel Width="300" Spacing="10" Margin="6">
-                                        <TextBlock Classes="sectionLabel" Text="DELETE VIRTUAL SINK" />
-                                        <TextBlock Classes="legendText" TextWrapping="Wrap">
-                                            <Run Text="Removes " /><Run Text="{Binding Title}" FontWeight="Bold" /><Run Text=" from the graph, the generated config, and rules.json. Links into it disappear with it." />
-                                        </TextBlock>
-                                        <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                                   Text="{Binding DeleteImpactText}" />
-                                        <CheckBox IsChecked="{Binding DeleteAffectedPolicy}"
-                                                  IsVisible="{Binding HasDeleteImpact}"
-                                                  Content="Also delete these rules/suppressions" />
-                                        <Button Classes="chipAction" HorizontalAlignment="Right"
-                                                Content="Delete sink"
-                                                Command="{Binding ConfirmDeleteSinkCommand}"
-                                                Click="OnConfirmDeleteSinkClick" />
-                                    </StackPanel>
-                                </Flyout>
-                            </Button.Flyout>
-                        </Button>
-                    </Grid>
-                </Border>
+                <Panel VerticalAlignment="Center" IsVisible="{Binding IsEmpty}">
+                    <Button Classes="addChip" Name="AddButtonInline" IsVisible="{Binding AcceptsDrop}"
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
+                            <TextBlock Text="Add" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Panel>
+                </StackPanel>
 
-                <!-- Body = Source cards feeding this Target Sink.
-                     Margin on the content, NOT ScrollViewer.Padding: padding sits outside the
-                     scroll-content measure, so long card text was measured wider than the column
-                     and painted past it (same fix as the palette / board scrollers). -->
-                <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <Panel Margin="10,10,10,4">
-                        <ItemsControl ItemsSource="{Binding Cards}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="vm:SourceCardViewModel">
-                                    <views:SourceCardView IsVisible="{Binding IsVisible}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                <!-- Line 2: the sources feeding this output, with room to breathe -->
+                <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="feeds"
+                           Margin="0,10,0,0" IsVisible="{Binding !IsEmpty}">
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:SourceCardViewModel">
+                                <views:SourceCardView IsVisible="{Binding IsVisible}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Classes="addChip" Name="AddButton" IsVisible="{Binding AcceptsDrop}"
+                            Command="{Binding PrepareAddCommand}" Flyout="{StaticResource AddFlyout}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
+                            <TextBlock Text="Add" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
 
-                        <!-- Empty state: dashed drop zone -->
-                        <Panel IsVisible="{Binding IsEmpty}" Margin="2,2,2,8" Height="112"
-                               VerticalAlignment="Top">
-                            <Rectangle Classes="dropZone" />
-                            <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconDrop}" Stroke="{DynamicResource FaintBrush}"
-                                      StrokeThickness="1.5" StrokeLineCap="Round" StrokeJoin="Round"
-                                      Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" />
-                                <TextBlock Classes="hint" Text="Drop a Source here" />
+                <!-- Row menu: details, hands off, delete (virtual sinks we own) -->
+                <Button Grid.Column="2" Classes="icon" Name="RowMenuButton" VerticalAlignment="Center"
+                        IsVisible="{Binding !IsDisconnected}"
+                        Margin="8,0,0,0" ToolTip.Tip="More"
+                        Command="{Binding PrepareDeleteSinkCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                        <Ellipse Width="4" Height="4" Fill="{DynamicResource MutedBrush}" />
+                        <Ellipse Width="4" Height="4" Fill="{DynamicResource MutedBrush}" />
+                        <Ellipse Width="4" Height="4" Fill="{DynamicResource MutedBrush}" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <StackPanel Width="300" Spacing="10" Margin="6">
+                                <TextBlock Classes="nm" Text="{Binding Title}" />
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                    <TextBlock Classes="typeLine" Text="Node" Margin="0,0,12,4" />
+                                    <SelectableTextBlock Grid.Column="1" Classes="typeLine" Text="{Binding SinkName}"
+                                                         TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="1" Classes="typeLine" Text="Format" Margin="0,0,12,0" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="typeLine" Text="{Binding Format}" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="body" Text="Hands off" VerticalAlignment="Center" />
+                                    <ToggleSwitch Grid.Column="1" Classes="compact"
+                                                  IsChecked="{Binding IsProtected, Mode=OneWay}"
+                                                  Command="{Binding ToggleProtectCommand}" />
+                                </Grid>
+                                <StackPanel Spacing="8" IsVisible="{Binding IsManagedSink}">
+                                    <Border Height="1" Background="{DynamicResource CardBorderBrush}" />
+                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                               Text="{Binding DeleteImpactText}" />
+                                    <CheckBox IsChecked="{Binding DeleteAffectedPolicy}"
+                                              IsVisible="{Binding HasDeleteImpact}"
+                                              Content="Also delete these rules" />
+                                    <Button Classes="chipAction" HorizontalAlignment="Right"
+                                            Content="Delete virtual sink"
+                                            Command="{Binding ConfirmDeleteSinkCommand}"
+                                            Click="OnConfirmDeleteSinkClick" />
+                                </StackPanel>
                             </StackPanel>
-                        </Panel>
-                    </Panel>
-                </ScrollViewer>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
             </Grid>
-
-            <!-- Drag-over glow (pulses via CardStyles while a drag hovers) -->
-            <Border Classes="dropOverlay" />
-        </Panel>
+        </Border>
+    </StackPanel>
     </Border>
 </UserControl>

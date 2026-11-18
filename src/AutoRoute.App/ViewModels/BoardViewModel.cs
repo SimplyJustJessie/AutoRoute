@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoRoute.App.Services;
 using AutoRoute.Engine;
@@ -38,8 +39,22 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
 
+    // Chips the user just removed, hidden at once while PipeWire catches up (unlinking and the
+    // next graph snapshot take a moment). Each entry clears when a snapshot no longer has that
+    // chip, or after PendingRemovalMs so a failed unlink shows the chip again.
+    private readonly Dictionary<string, long> _pendingRemovals = new();
+    private const long PendingRemovalMs = 5000;
+
     public ObservableCollection<SinkColumnViewModel> Columns { get; } = new();
     public SourcesPaletteViewModel Palette { get; }
+
+    /// <summary>Shared UI preferences (Compact layout) — the same instance on both boards.</summary>
+    public UiSettings Ui { get; }
+
+    /// <summary>The shared Auto-route switch (top bar; the tray shows the same one).</summary>
+    public AutomationState Automation { get; }
+
+    private readonly VolumeSender? _volume;
     public FilterViewModel Filter { get; } = new();
 
     /// <summary>The "Start at login" toggle VM, or null when no autostart service is wired (mocks/design).</summary>
@@ -107,8 +122,14 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         AutostartService? autostart = null,
         UpdateService? update = null,
         MediaKind kind = MediaKind.Audio,
-        TabSelectionState? tabs = null)
+        TabSelectionState? tabs = null,
+        IVolumeController? volume = null,
+        UiSettings? ui = null,
+        AutomationState? automation = null)
     {
+        _volume = volume is null ? null : new VolumeSender(volume);
+        Ui = ui ?? new UiSettings();
+        Automation = automation ?? new AutomationState();
         _graph = graph;
         _linker = linker;
         _ruleStore = ruleStore;
@@ -126,6 +147,11 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             Update = new UpdateViewModel(update, RefreshUpdateNotice);
         Palette = new SourcesPaletteViewModel(this);
 
+        Ui.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(UiSettings.IsCompact)) return;
+            foreach (var c in Columns) c.IsCompact = Ui.IsCompact;
+        };
         Filter.Changed += (_, _) => ApplyFilter();
         Filter.MonitorsToggled += (_, _) => RebuildFromCurrent();
         if (_notices is not null)
@@ -139,6 +165,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         await _graph.StartAsync().ConfigureAwait(true);
 
         _graph.GraphUpdated += OnGraphUpdated;
+        // Volume / mute / playing-state changes: same routing, new presentation.
+        _graph.PresentationUpdated += OnGraphUpdated;
         _ruleStore.Changed += OnRulesChanged;
 
         RefreshLegacyNotice();
@@ -149,15 +177,21 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
         // Fire-and-forget: a background update check that never blocks startup. It resumes on the UI
         // thread (ConfigureAwait(true) inside), catches its own failures, and lights the banner via
-        // RefreshUpdateNotice if a newer release is out.
-        if (Update is not null)
+        // RefreshUpdateNotice if a newer release is out. Only an AppImage checks at startup (it can
+        // install the update); a package install checks when the Updates menu opens, so a plain
+        // tray start never loads the HTTPS stack.
+        if (Update is { CanSelfUpdate: true })
             _ = Update.CheckAsync();
     }
 
+    /// <summary>The banner's Update button: only an AppImage can install from here.</summary>
+    public bool CanInstallUpdate => Update?.CanInstall == true;
+
     private void RefreshUpdateNotice()
     {
+        OnPropertyChanged(nameof(CanInstallUpdate));
         UpdateNoticeText = Update is { UpdateAvailable: true }
-            ? $"AutoRoute {Update.LatestVersion} is available — you're on {Update.CurrentVersion}."
+            ? $"AutoRoute {AppVersion.Normalize(Update.LatestVersion)} is available"
             : string.Empty;
     }
 
@@ -214,6 +248,74 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     /// <summary>Rebuild the board from the latest snapshot (synchronous; safe for headless/VM tests).</summary>
     public void RebuildFromCurrent() => Rebuild(_graph.Current);
 
+    // ===== First run: "Start with" presets ================================================
+
+    /// <summary>One first-run starting point: the virtual outputs it creates.</summary>
+    public sealed record SetupPreset(string Key, string Title, string Outputs, IReadOnlyList<string> Sinks);
+
+    public static IReadOnlyList<SetupPreset> SetupPresets { get; } = new[]
+    {
+        new SetupPreset("streaming", "Streaming", "Game · Music · Chat", new[] { "Game", "Music", "Chat" }),
+        new SetupPreset("voice", "Voice chat", "Chat · Media", new[] { "Chat", "Media" }),
+        new SetupPreset("empty", "Empty", "No outputs yet", Array.Empty<string>()),
+    };
+
+    /// <summary>
+    /// A brand-new setup (no saved routes, no virtual outputs, never chosen before) gets the
+    /// "Start with" card. Existing setups never see it.
+    /// </summary>
+    [ObservableProperty]
+    private bool _showSetup;
+
+    private void RefreshSetup() =>
+        ShowSetup = CanManageSinks && !Ui.SetupDone
+                    && _ruleStore.Current.Rules.Count == 0 && _ruleStore.Current.VirtualSinks.Count == 0;
+
+    [RelayCommand]
+    private async Task ChooseSetup(SetupPreset preset)
+    {
+        Ui.SetupDone = true;
+        ShowSetup = false;
+        foreach (var name in preset.Sinks)
+            await CreateSinkAsync(name, name, mono: false).ConfigureAwait(true);
+    }
+
+    // ===== Focus a Source =================================================================
+
+    /// <summary>The focused Source's key, or null: its outputs light up, the rest dim.</summary>
+    [ObservableProperty]
+    private string? _focusedSourceKey;
+
+    public void ToggleFocus(string sourceKey) =>
+        FocusedSourceKey = FocusedSourceKey == sourceKey ? null : sourceKey;
+
+    [RelayCommand]
+    private void ClearFocus() => FocusedSourceKey = null;
+
+    partial void OnFocusedSourceKeyChanged(string? value) => ApplyFocus();
+
+    private void ApplyFocus()
+    {
+        var key = FocusedSourceKey;
+        if (key is not null && Palette.Items.All(i => i.Key != key))
+        {
+            FocusedSourceKey = null; // the Source went away
+            return;
+        }
+        foreach (var item in Palette.Items) item.IsFocused = item.Key == key;
+        foreach (var column in Columns)
+        {
+            var feeds = false;
+            foreach (var card in column.Cards)
+            {
+                card.IsFocused = card.Key == key;
+                feeds |= card.IsFocused;
+            }
+            column.IsFocusMatch = key is not null && feeds;
+            column.IsDimmed = key is not null && !feeds;
+        }
+    }
+
     private void Rebuild(PwGraph graph)
     {
         // A rebuild runs inside a Dispatcher callback — an escaped exception there aborts the
@@ -221,11 +323,13 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         // keep the previous board and recover on the next snapshot.
         try
         {
-            var snapshot = BoardModelBuilder.Build(
-                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors, _kind);
+            var snapshot = HidePendingRemovals(BoardModelBuilder.Build(
+                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors, _kind));
 
             MergeColumns(snapshot.Columns);
             Palette.Merge(snapshot.Palette);
+            ApplyFocus();
+            RefreshSetup();
             HasColumns = Columns.Count > 0;
             StatusText = Columns.Count == 0
                 ? "No Target Sinks in the graph"
@@ -237,6 +341,28 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             _log?.LogError(ex, "board rebuild failed; keeping the previous board");
             StatusText = "Board update failed — will retry on the next change";
         }
+    }
+
+    private BoardSnapshot HidePendingRemovals(BoardSnapshot snapshot)
+    {
+        if (_pendingRemovals.Count == 0) return snapshot;
+        var now = Environment.TickCount64;
+        var present = new HashSet<string>();
+        var columns = snapshot.Columns.Select(col =>
+        {
+            var kept = col.Cards.Where(card =>
+            {
+                var key = BoardModelBuilder.CardKey(col.TargetNodeId, card.Key);
+                if (!_pendingRemovals.ContainsKey(key)) return true;
+                present.Add(key);
+                return false;
+            }).ToList();
+            return kept.Count == col.Cards.Count ? col : col with { Cards = kept };
+        }).ToList();
+
+        foreach (var (key, expires) in _pendingRemovals.ToArray())
+            if (!present.Contains(key) || now > expires) _pendingRemovals.Remove(key);
+        return snapshot with { Columns = columns };
     }
 
     private void MergeColumns(IReadOnlyList<ColumnModel> models)
@@ -259,7 +385,10 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             }
             else
             {
-                var vm = new SinkColumnViewModel(this, m);
+                var vm = new SinkColumnViewModel(this, m, () => Palette.Items.Where(p => p.IsVisible))
+                {
+                    IsCompact = Ui.IsCompact,
+                };
                 if (i <= Columns.Count) Columns.Insert(Math.Min(i, Columns.Count), vm);
                 else Columns.Add(vm);
             }
@@ -290,12 +419,28 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             }
             column.IsVisible = columnMatches || anyCardVisible;
         }
+
+        MarkGroupHeaders(Columns, c => c.IsVisible);
+        MarkGroupHeaders(Palette.Items, i => i.IsVisible);
     }
+
+    /// <summary>The first visible entry of each group draws that group's header.</summary>
+    private static void MarkGroupHeaders<T>(IEnumerable<T> items, Func<T, bool> visible) where T : NodeTileViewModel
+    {
+        var seen = new HashSet<int>();
+        foreach (var item in items)
+            item.ShowGroupHeader = visible(item) && seen.Add(item.Group);
+    }
+
+    public void SetVolume(IReadOnlyList<int> nodeIds, double volume) => _volume?.SetVolume(nodeIds, volume);
+
+    public void SetMute(IReadOnlyList<int> nodeIds, bool muted) => _volume?.SetMute(nodeIds, muted);
 
     // ===== IBoardCoordinator ============================================================
 
     public async Task ConnectAsync(int sourceNodeId, int targetNodeId)
     {
+        if (sourceNodeId == targetNodeId) return; // an output's own sound fed back into it loops
         var g = _graph.Current;
         var source = g.Node(sourceNodeId);
         var target = g.Node(targetNodeId);
@@ -336,6 +481,15 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         var target = g.Node(card.TargetNodeId);
         var source = g.Node(card.RepresentativeNodeId);
 
+        // Gone from the board now; the rule write and unlink follow.
+        var cardKey = BoardModelBuilder.CardKey(card.TargetNodeId, card.Key);
+        _pendingRemovals[cardKey] = Environment.TickCount64 + PendingRemovalMs;
+        RebuildFromCurrent();
+
+        var before = _ruleStore.Current;
+        var targetTitle = Columns.FirstOrDefault(c => c.TargetNodeId == card.TargetNodeId)?.Title ?? "output";
+        List<(int Out, int In)> unlinked = new();
+
         if (card.State == CardState.Managed)
         {
             // Managed → delete the Rule and tear down its Links.
@@ -369,11 +523,87 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
                 return doc with { Rules = rules, Suppressions = suppressions };
             }).ConfigureAwait(true);
 
-            await DisconnectLinksAsync(g, card).ConfigureAwait(true);
+            // Only the links someone else made come back on undo; managed ones return with their rule.
+            unlinked = await DisconnectLinksAsync(g, card).ConfigureAwait(true);
         }
 
-        _keptManual.Remove(BoardModelBuilder.CardKey(card.TargetNodeId, card.Key));
+        var wasKeptManual = _keptManual.Remove(cardKey);
         RebuildFromCurrent();
+
+        var after = _ruleStore.Current;
+        var removedRules = before.Rules.Where(r => after.Rules.All(x => x.Id != r.Id)).ToList();
+        var addedSuppressions = after.Suppressions.Where(x => before.Suppressions.All(b => b.Id != x.Id))
+            .Select(x => x.Id).ToHashSet();
+
+        ShowUndo($"{card.Title} removed from {targetTitle}", async () =>
+        {
+            _pendingRemovals.Remove(cardKey);
+            await SaveDocAsync(doc => doc with
+            {
+                Rules = doc.Rules.Concat(removedRules.Where(r => doc.Rules.All(x => x.Id != r.Id))).ToList(),
+                Suppressions = doc.Suppressions.Where(x => !addedSuppressions.Contains(x.Id)).ToList(),
+            }).ConfigureAwait(true);
+            if (wasKeptManual) _keptManual.Add(cardKey);
+
+            if (removedRules.Count > 0)
+            {
+                await SafeReconcile().ConfigureAwait(true);
+                foreach (var rule in removedRules)
+                    await ConnectLinksAsync(_graph.Current, rule.Source, rule.Target, rule.Id).ConfigureAwait(true);
+            }
+            foreach (var (o, i) in unlinked)
+            {
+                try { await _linker.ConnectUnmanagedAsync(o, i).ConfigureAwait(true); }
+                catch { /* port gone: nothing to put back */ }
+            }
+            RebuildFromCurrent();
+        });
+    }
+
+    // ===== Undo toast =====================================================================
+
+    private static readonly TimeSpan ToastLife = TimeSpan.FromSeconds(6);
+    private Func<Task>? _undo;
+    private CancellationTokenSource? _toastTimer;
+
+    /// <summary>The toast's message ("mpv removed from Music"); empty when no toast shows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasToast))]
+    private string _toastText = string.Empty;
+
+    public bool HasToast => ToastText.Length > 0;
+
+    /// <summary>Show a toast that can take the last change back for a few seconds.</summary>
+    private void ShowUndo(string text, Func<Task> undo)
+    {
+        _undo = undo;
+        ToastText = text;
+        _toastTimer?.Cancel();
+        var cts = _toastTimer = new CancellationTokenSource();
+        _ = HideToastLaterAsync(cts.Token);
+    }
+
+    private async Task HideToastLaterAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(ToastLife, ct).ConfigureAwait(true); }
+        catch (OperationCanceledException) { return; }
+        PostToUi(DismissToast);
+    }
+
+    [RelayCommand]
+    private void DismissToast()
+    {
+        _toastTimer?.Cancel();
+        _undo = null;
+        ToastText = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task Undo()
+    {
+        var undo = _undo;
+        DismissToast();
+        if (undo is not null) await undo().ConfigureAwait(true);
     }
 
     public async Task SaveCardAsync(SourceCardViewModel card)
@@ -569,10 +799,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         }
     }
 
-    private async Task DisconnectLinksAsync(PwGraph g, SourceCardViewModel card)
+    /// <summary>Unlink a card's channel pairs; returns the pairs that were live links not made by AutoRoute.</summary>
+    private async Task<List<(int Out, int In)>> DisconnectLinksAsync(PwGraph g, SourceCardViewModel card)
     {
+        var foreign = new List<(int Out, int In)>();
         var target = g.Node(card.TargetNodeId);
-        if (target is null) return;
+        if (target is null) return foreign;
 
         foreach (var nodeId in card.AllSourceNodeIds)
         {
@@ -580,10 +812,13 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             if (s is null) continue;
             foreach (var pair in ChannelMapper.Map(s, target).Pairs)
             {
+                if (g.Links.Any(l => l.OutPortId == pair.OutPortId && l.InPortId == pair.InPortId && !l.IsManaged))
+                    foreign.Add((pair.OutPortId, pair.InPortId));
                 try { await _linker.DisconnectAsync(pair.OutPortId, pair.InPortId).ConfigureAwait(true); }
                 catch { /* already gone → fine */ }
             }
         }
+        return foreign;
     }
 
     private async Task SafeReconcile()
@@ -594,8 +829,14 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     private static void PostToUi(Action action)
     {
-        // Marshal onto the UI thread. In a headless/VM context (no Avalonia dispatcher running)
-        // fall back to running inline so the smoke check and design-time init still work.
+        // Marshal onto the UI thread. With no Avalonia app running (unit tests, tools) run inline:
+        // in Avalonia 12 merely reading Dispatcher.UIThread binds it to the calling thread, so
+        // view models used from several test threads would otherwise post into a loop nobody runs.
+        if (Avalonia.Application.Current is null)
+        {
+            action();
+            return;
+        }
         try
         {
             var dispatcher = Dispatcher.UIThread;

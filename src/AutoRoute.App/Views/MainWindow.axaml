@@ -11,14 +11,15 @@
         d:DataContext="{x:Static design:DesignData.MainWindow}"
         Width="1100" Height="640"
         MinWidth="720" MinHeight="420"
-        Background="{DynamicResource BgBrush}"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
         Icon="/Assets/tray-icon.png"
         Title="AutoRoute"
-        SystemDecorations="None">
+        WindowDecorations="None">
 
     <!-- Client-side decorations: each BoardView draws its own title bar + caption buttons and its
          own resize grips (BoardView.axaml.cs) — that keeps working unchanged no matter how deep it
-         sits in the visual tree (GetVisualRoot() always finds this Window). SystemDecorations="None"
+         sits in the visual tree (TopLevel.GetTopLevel always finds this Window). WindowDecorations="None"
          is used instead of ExtendClientAreaToDecorationsHint because several Linux compositors (KWin
          among them) ignore the extend-client-area hint and keep drawing their own caption — leaving
          a double title bar. "None" is honoured everywhere; we supply move/maximise/resize ourselves.
@@ -27,7 +28,16 @@
          palette, columns); only one is visible at a time. The Audio/Video switcher itself lives
          inside BoardView's own toolbar (next to the brand) via a $parent[Window] binding back to
          this VM — so there's exactly one toolbar on screen, not a second bar stacked above it. -->
-    <Grid Background="{DynamicResource BgBrush}">
+    <!-- The frame: rounded corners + a hairline border, so the window reads as a window and not
+         as content sliced off at the screen edge. Needs the transparent window above (a compositor
+         draws the corners; without one they render as plain square corners). Squared off when
+         maximized (BoardStyles). -->
+    <Border Name="Frame" Classes="windowFrame" Background="{DynamicResource BgBrush}"
+            BorderBrush="#060709" BorderThickness="1" CornerRadius="10">
+    <!-- Border.ClipToBounds clips to a plain rectangle, so the title bar and panel backgrounds
+         painted over the rounded corners. The content gets a rounded clip of its own instead
+         (MainWindow.axaml.cs). -->
+    <Grid Name="FrameContent">
         <!-- IsVisible="False" also stops a board from hit-testing, so drag/drop and clicks on the
              hidden one never fire. -->
         <Panel IsVisible="{Binding Tabs.IsAudioSelected}">
@@ -37,4 +47,5 @@
             <views:BoardView DataContext="{Binding Video}" />
         </Panel>
     </Grid>
+    </Border>
 </Window>

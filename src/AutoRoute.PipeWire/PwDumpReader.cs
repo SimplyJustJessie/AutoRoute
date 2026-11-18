@@ -87,6 +87,7 @@ public sealed class PwDumpReader
         var nodeShells = new Dictionary<int, PwNode>();
         var ports = new Dictionary<int, PwPort>();
         var links = new Dictionary<int, PwLink>();
+        var hidden = new HashSet<int>(); // level-meter streams, ours and other mixers' (IsMeterStream)
 
         if (root.ValueKind != JsonValueKind.Array)
             throw new JsonException("pw-dump root is not a JSON array");
@@ -101,7 +102,8 @@ public sealed class PwDumpReader
             switch (typeEl.GetString())
             {
                 case NodeType:
-                    nodeShells[id] = ParseNode(id, obj);
+                    if (IsMeterStream(obj)) hidden.Add(id);
+                    else nodeShells[id] = ParseNode(id, obj);
                     break;
                 case PortType:
                     var port = ParsePort(id, obj);
@@ -112,6 +114,16 @@ public sealed class PwDumpReader
                     if (link is not null) links[id] = link;
                     break;
             }
+        }
+
+        // Meter streams stay invisible: no node, no ports, no links, so the board never shows them
+        // and the reconciler never sees their links as something to clean up.
+        if (hidden.Count > 0)
+        {
+            foreach (var (pid, p) in ports.ToArray())
+                if (hidden.Contains(p.NodeId)) ports.Remove(pid);
+            foreach (var (lid, l) in links.ToArray())
+                if (hidden.Contains(l.OutNodeId) || hidden.Contains(l.InNodeId)) links.Remove(lid);
         }
 
         // Attach ports to their owning node.
@@ -135,12 +147,33 @@ public sealed class PwDumpReader
         return new PwGraph(nodes, ports, links);
     }
 
+    /// <summary>
+    /// A level meter, not real audio: ours (tagged), any pulse peak-detect stream (pipewire-pulse
+    /// marks those <c>resample.peaks</c> — KDE's and pavucontrol's meters while their windows are
+    /// open), or a stream from a known mixer app. Shown on the board they'd be bogus "app inputs".
+    /// </summary>
+    private static bool IsMeterStream(JsonElement obj)
+    {
+        if (GetProps(obj) is not { } props) return false;
+        if (props.TryGetProperty(Meters.PulseLevelMeter.MeterProperty, out _)) return true;
+        if (props.TryGetProperty("resample.peaks", out var peaks)
+            && (peaks.ValueKind == JsonValueKind.True || (peaks.ValueKind == JsonValueKind.String && peaks.GetString() == "true")))
+            return true;
+        return PropString(props, "media.class") is { } mc && mc.StartsWith("Stream/Input", StringComparison.Ordinal)
+               && PropString(props, "application.id") is "org.kde.plasma-pa" or "org.PulseAudio.pavucontrol"
+                   or "org.gnome.VolumeControl" or "org.kde.kmixd";
+    }
+
     private static PwNode ParseNode(int id, JsonElement obj)
     {
         var props = GetProps(obj);
         AudioFormat? format = null;
+        NodeMeta? meta = null;
         if (obj.TryGetProperty("info", out var info) && info.ValueKind == JsonValueKind.Object)
+        {
             format = ParseAudioFormat(info);
+            meta = ParseMeta(props, info);
+        }
         return new PwNode(
             Id: id,
             NodeName: PropString(props, "node.name"),
@@ -150,7 +183,60 @@ public sealed class PwDumpReader
             ProcessBinary: PropString(props, "application.process.binary"),
             MediaName: PropString(props, "media.name"),
             Ports: Array.Empty<PwPort>(),
-            Format: format);
+            Format: format,
+            Meta: meta);
+    }
+
+    /// <summary>Presentation/control metadata: device bus + nick, run state, volume and mute.</summary>
+    private static NodeMeta ParseMeta(JsonElement? props, JsonElement info)
+    {
+        var state = info.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.String
+            ? st.GetString()
+            : null;
+
+        double? volume = null;
+        bool? muted = null;
+        if (info.TryGetProperty("params", out var prms) && prms.ValueKind == JsonValueKind.Object
+            && prms.TryGetProperty("Props", out var propsArr) && propsArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entry in propsArr.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object) continue;
+                if (volume is null && entry.TryGetProperty("channelVolumes", out var cv)
+                    && cv.ValueKind == JsonValueKind.Array)
+                {
+                    double max = -1;
+                    foreach (var v in cv.EnumerateArray())
+                        if (v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var d) && d > max)
+                            max = d;
+                    // Props hold linear gain; users (wpctl, pavucontrol) see the cube root.
+                    if (max >= 0) volume = Math.Cbrt(max);
+                }
+                if (muted is null && entry.TryGetProperty("mute", out var mu)
+                    && mu.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                    muted = mu.GetBoolean();
+            }
+        }
+
+        uint? serial = props is { } pr && TryGetInt(pr, "object.serial", out var ser) && ser >= 0 ? (uint)ser : null;
+
+        var monitorVolume = props is { } pv && pv.TryGetProperty("monitor.channel-volumes", out var mcv)
+            && (mcv.ValueKind == JsonValueKind.True
+                || (mcv.ValueKind == JsonValueKind.String && mcv.GetString() == "true"));
+
+        return new NodeMeta(
+            IconName: PropString(props, "application.icon_name"),
+            FlatpakId: PropString(props, "pipewire.access.portal.app_id"),
+            MonitorHasVolume: monitorVolume,
+            Serial: serial,
+            Nick: PropString(props, "node.nick"),
+            DeviceBus: PropString(props, "device.bus"),
+            DeviceId: int.TryParse(PropString(props, "device.id"), out var did) ? did : null,
+            IsVirtual: PropString(props, "node.virtual") == "true",
+            ApplicationId: PropString(props, "application.id"),
+            State: state,
+            Volume: volume,
+            Muted: muted);
     }
 
     /// <summary>

@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AutoRoute.App.ViewModels"
+             xmlns:views="using:AutoRoute.App.Views"
+             xmlns:controls="using:AutoRoute.App.Controls"
+             xmlns:behaviors="using:AutoRoute.App.Behaviors"
+             xmlns:design="using:AutoRoute.App.Design"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900"
+             x:Class="AutoRoute.App.Views.SourceTrayView"
+             x:DataType="vm:SourcesPaletteViewModel"
+             d:DataContext="{x:Static design:DesignData.Palette}">
+
+    <!-- Compact layout's sources: a wrapping tray of draggable chips along the bottom. Each chip's
+         speaker button opens that source's volume. -->
+    <ItemsControl ItemsSource="{Binding Items}" Margin="16,10,16,4">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <WrapPanel />
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:SourceItemViewModel">
+                <Border Classes="trayChip" IsVisible="{Binding IsVisible}" Classes.focused="{Binding IsFocused}"
+                        behaviors:DragSourceBehavior.ClickCommand="{Binding ToggleFocusCommand}"
+                        behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
+                        behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Panel>
+                            <Border Classes="tile chip" Background="{Binding TileFill}">
+                                <Panel>
+                                    <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                    <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
+                                    <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                                          Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                                </Panel>
+                            </Border>
+                        </Panel>
+                        <TextBlock Classes="nm" FontSize="13" Text="{Binding Title}" MaxWidth="160" VerticalAlignment="Center" />
+                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding ShowPlaying}" />
+                        <Button Classes="mute" Width="24" Height="24" Classes.on="{Binding IsMuted}"
+                                IsVisible="{Binding HasVolume}" ToolTip.Tip="Volume">
+                            <Panel>
+                                <Path Data="{StaticResource BadgeIn}" IsVisible="{Binding IsInput}" Fill="{x:Null}" />
+                                <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsInput}" />
+                            </Panel>
+                            <Button.Flyout>
+                                <Flyout Placement="TopEdgeAlignedLeft">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="4">
+                                        <TextBlock Classes="nm" FontSize="13" Text="{Binding Title}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <Button Classes="mute" Classes.on="{Binding IsMuted}" Command="{Binding ToggleMuteCommand}" ToolTip.Tip="Mute">
+                                            <Panel>
+                                                <Path Data="{StaticResource StrokeVolume}" IsVisible="{Binding !IsMuted}" />
+                                                <Path Data="{StaticResource StrokeMuted}" IsVisible="{Binding IsMuted}" />
+                                            </Panel>
+                                        </Button>
+                                        <controls:Fader Width="160" Value="{Binding Volume}" Level="{Binding Level}" IsMuted="{Binding IsMuted}"
+                                                        AutomationProperties.Name="{Binding Title, StringFormat='{}{0} volume'}" />
+                                        <TextBlock Classes="pct" Text="{Binding VolumePercent}" />
+                                    </StackPanel>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>
