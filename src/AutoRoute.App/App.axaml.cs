@@ -92,6 +92,7 @@ public partial class App : Application
             // SIGTERM/SIGINT (systemctl stop / Ctrl-C) — are the real stops (ADR-0005 / PLAN
             // "Process, tray, autostart").
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            ShutdownExceptionFilter.InstallOnDispatcher(Dispatcher.UIThread);
 
             // One teardown path shared by tray Quit and the POSIX signal handler; runs at most once.
             _shutdown = new GracefulShutdown(RunTeardown);
