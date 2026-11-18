@@ -22,7 +22,18 @@ public static class HostFactory
 {
     public static IHost Build(AppOptions options)
     {
-        var builder = Host.CreateApplicationBuilder();
+        // DisableDefaults: the default builder sets the content root to the current directory and
+        // loads appsettings.json with reloadOnChange, which starts a RECURSIVE FileSystemWatcher on
+        // that directory. Autostart launches us from $HOME, so it put an inotify watch on every
+        // directory under it (~270k on a dev box: ~10 MB+ of managed bookkeeping, a big slice of
+        // unswappable kernel memory, half of fs.inotify.max_user_watches, and a wakeup for every
+        // file write anywhere in $HOME). Nothing here reads IConfiguration, so drop the defaults;
+        // logging is set up explicitly below and AddLogging's Information minimum still applies.
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            DisableDefaults = true,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
 
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole(o =>
