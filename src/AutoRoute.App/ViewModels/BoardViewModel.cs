@@ -40,6 +40,11 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     public ObservableCollection<SinkColumnViewModel> Columns { get; } = new();
     public SourcesPaletteViewModel Palette { get; }
+
+    /// <summary>Shared UI preferences (Compact layout) — the same instance on both boards.</summary>
+    public UiSettings Ui { get; }
+
+    private readonly VolumeSender? _volume;
     public FilterViewModel Filter { get; } = new();
 
     /// <summary>The "Start at login" toggle VM, or null when no autostart service is wired (mocks/design).</summary>
@@ -107,8 +112,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         AutostartService? autostart = null,
         UpdateService? update = null,
         MediaKind kind = MediaKind.Audio,
-        TabSelectionState? tabs = null)
+        TabSelectionState? tabs = null,
+        IVolumeController? volume = null,
+        UiSettings? ui = null)
     {
+        _volume = volume is null ? null : new VolumeSender(volume);
+        Ui = ui ?? new UiSettings();
         _graph = graph;
         _linker = linker;
         _ruleStore = ruleStore;
@@ -126,6 +135,11 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             Update = new UpdateViewModel(update, RefreshUpdateNotice);
         Palette = new SourcesPaletteViewModel(this);
 
+        Ui.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(UiSettings.IsCompact)) return;
+            foreach (var c in Columns) c.IsCompact = Ui.IsCompact;
+        };
         Filter.Changed += (_, _) => ApplyFilter();
         Filter.MonitorsToggled += (_, _) => RebuildFromCurrent();
         if (_notices is not null)
@@ -139,6 +153,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         await _graph.StartAsync().ConfigureAwait(true);
 
         _graph.GraphUpdated += OnGraphUpdated;
+        // Volume / mute / playing-state changes: same routing, new presentation.
+        _graph.PresentationUpdated += OnGraphUpdated;
         _ruleStore.Changed += OnRulesChanged;
 
         RefreshLegacyNotice();
@@ -259,7 +275,10 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             }
             else
             {
-                var vm = new SinkColumnViewModel(this, m);
+                var vm = new SinkColumnViewModel(this, m, () => Palette.Items.Where(p => p.IsVisible))
+                {
+                    IsCompact = Ui.IsCompact,
+                };
                 if (i <= Columns.Count) Columns.Insert(Math.Min(i, Columns.Count), vm);
                 else Columns.Add(vm);
             }
@@ -290,7 +309,22 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             }
             column.IsVisible = columnMatches || anyCardVisible;
         }
+
+        MarkGroupHeaders(Columns, c => c.IsVisible);
+        MarkGroupHeaders(Palette.Items, i => i.IsVisible);
     }
+
+    /// <summary>The first visible entry of each group draws that group's header.</summary>
+    private static void MarkGroupHeaders<T>(IEnumerable<T> items, Func<T, bool> visible) where T : NodeTileViewModel
+    {
+        var seen = new HashSet<int>();
+        foreach (var item in items)
+            item.ShowGroupHeader = visible(item) && seen.Add(item.Group);
+    }
+
+    public void SetVolume(IReadOnlyList<int> nodeIds, double volume) => _volume?.SetVolume(nodeIds, volume);
+
+    public void SetMute(IReadOnlyList<int> nodeIds, bool muted) => _volume?.SetMute(nodeIds, muted);
 
     // ===== IBoardCoordinator ============================================================
 

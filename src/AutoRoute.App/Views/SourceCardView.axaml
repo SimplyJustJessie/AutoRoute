@@ -5,73 +5,48 @@
              xmlns:design="using:AutoRoute.App.Design"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="256"
+             mc:Ignorable="d"
              x:Class="AutoRoute.App.Views.SourceCardView"
              x:DataType="vm:SourceCardViewModel"
              d:DataContext="{x:Static design:DesignData.Card}">
 
-    <Border Classes="card"
-            Classes.managed="{Binding IsManaged}"
+    <!-- A source feeding an output, as a chip. Saved = plain; not saved = amber with Keep;
+         manual = muted; hands off = lock, no remove. Right-click for the rest. -->
+    <Border Classes="chip2"
             Classes.unsaved="{Binding IsUnsaved}"
             Classes.manual="{Binding IsManual}"
             Classes.protected="{Binding IsProtected}"
             ToolTip.Tip="{Binding Tooltip}">
-        <Grid ColumnDefinitions="Auto,*">
-
-            <Border Grid.Column="0" Classes="stateBar" />
-
-            <Grid Grid.Column="1" Margin="10,8,10,8" RowDefinitions="Auto,Auto,Auto">
-
-                <!-- Row 0: title · state chip (title trims, never overlaps) -->
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Classes="cardTitle" Text="{Binding Title}"
-                               ToolTip.Tip="{Binding Title}"
-                               VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <Border Grid.Column="1" Classes="chip managed" IsVisible="{Binding IsManaged}">
-                        <TextBlock Text="MANAGED" />
-                    </Border>
-                    <Border Grid.Column="1" Classes="chip unsaved" IsVisible="{Binding IsUnsaved}">
-                        <TextBlock Text="UNSAVED" />
-                    </Border>
-                    <Border Grid.Column="1" Classes="chip manual" IsVisible="{Binding IsManual}">
-                        <TextBlock Text="MANUAL" />
-                    </Border>
-                    <Border Grid.Column="1" Classes="chip protected" IsVisible="{Binding IsProtected}">
-                        <TextBlock Text="PROTECTED" />
-                    </Border>
-                </Grid>
-
-                <!-- Row 1: subtitle -->
-                <TextBlock Grid.Row="1" Classes="subtitle" Margin="0,2,0,0"
-                           Text="{Binding Subtitle}"
-                           ToolTip.Tip="{Binding Subtitle}"
-                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-
-                <!-- Row 2: actions -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
-                            Margin="0,7,0,0" HorizontalAlignment="Right">
-                    <Button Classes="chipAction" Content="Save"
-                            Command="{Binding SaveCommand}" IsVisible="{Binding CanSave}"
-                            ToolTip.Tip="Save as a Rule — persist this Link so it returns after relaunch" />
-                    <Button Classes="chipAction quiet" Content="Keep"
-                            Command="{Binding KeepManualCommand}" IsVisible="{Binding CanKeepManual}"
-                            ToolTip.Tip="Keep as a Manual Link — stop offering to save it" />
-                    <Button Classes="icon"
-                            Classes.locked="{Binding IsProtected}"
-                            Command="{Binding ToggleProtectCommand}"
-                            ToolTip.Tip="Protect / unprotect this Source (do not touch)">
-                        <Panel>
-                            <Path Data="{StaticResource IconUnlock}" IsVisible="{Binding !IsProtected}" />
-                            <Path Data="{StaticResource IconLock}" IsVisible="{Binding IsProtected}" />
-                        </Panel>
-                    </Button>
-                    <Button Classes="icon danger"
-                            Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
-                            ToolTip.Tip="Remove — delete the Rule (managed) or add a Suppression (manual/external)">
-                        <Path Data="{StaticResource IconClose}" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Grid>
+        <Border.ContextFlyout>
+            <MenuFlyout>
+                <MenuItem Header="Keep (restore after restart)" Command="{Binding SaveCommand}"
+                          IsVisible="{Binding CanSave}" />
+                <MenuItem Header="Leave as is (don't restore)" Command="{Binding KeepManualCommand}"
+                          IsVisible="{Binding CanKeepManual}" />
+                <MenuItem Header="Hands off" Command="{Binding ToggleProtectCommand}"
+                          ToggleType="CheckBox" IsChecked="{Binding IsProtected, Mode=OneWay}" />
+                <MenuItem Header="Remove" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}" />
+            </MenuFlyout>
+        </Border.ContextFlyout>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Classes="tile chip" Background="{Binding TileBrush}">
+                <Panel>
+                    <TextBlock Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                    <Path Classes="glyph" IsVisible="{Binding !IsLetterTile}"
+                          Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
+                </Panel>
+            </Border>
+            <Path Data="{StaticResource StrokeLock}" IsVisible="{Binding IsProtected}"
+                  Stroke="{DynamicResource MutedBrush}" StrokeThickness="2" Stretch="Uniform"
+                  Width="11" Height="11" VerticalAlignment="Center" />
+            <TextBlock Classes="chipText" Text="{Binding Title}" />
+            <Button Classes="keep" Content="Keep" Command="{Binding SaveCommand}"
+                    IsVisible="{Binding CanSave}"
+                    ToolTip.Tip="Keep this route — it comes back after a restart" />
+            <Button Classes="mini" Command="{Binding RemoveCommand}" IsVisible="{Binding CanRemove}"
+                    ToolTip.Tip="Remove">
+                <Path Data="{StaticResource StrokeX}" />
+            </Button>
+        </StackPanel>
     </Border>
 </UserControl>

@@ -139,8 +139,12 @@ public sealed class PwDumpReader
     {
         var props = GetProps(obj);
         AudioFormat? format = null;
+        NodeMeta? meta = null;
         if (obj.TryGetProperty("info", out var info) && info.ValueKind == JsonValueKind.Object)
+        {
             format = ParseAudioFormat(info);
+            meta = ParseMeta(props, info);
+        }
         return new PwNode(
             Id: id,
             NodeName: PropString(props, "node.name"),
@@ -150,7 +154,50 @@ public sealed class PwDumpReader
             ProcessBinary: PropString(props, "application.process.binary"),
             MediaName: PropString(props, "media.name"),
             Ports: Array.Empty<PwPort>(),
-            Format: format);
+            Format: format,
+            Meta: meta);
+    }
+
+    /// <summary>Presentation/control metadata: device bus + nick, run state, volume and mute.</summary>
+    private static NodeMeta ParseMeta(JsonElement? props, JsonElement info)
+    {
+        var state = info.TryGetProperty("state", out var st) && st.ValueKind == JsonValueKind.String
+            ? st.GetString()
+            : null;
+
+        double? volume = null;
+        bool? muted = null;
+        if (info.TryGetProperty("params", out var prms) && prms.ValueKind == JsonValueKind.Object
+            && prms.TryGetProperty("Props", out var propsArr) && propsArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entry in propsArr.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object) continue;
+                if (volume is null && entry.TryGetProperty("channelVolumes", out var cv)
+                    && cv.ValueKind == JsonValueKind.Array)
+                {
+                    double max = -1;
+                    foreach (var v in cv.EnumerateArray())
+                        if (v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var d) && d > max)
+                            max = d;
+                    // Props hold linear gain; users (wpctl, pavucontrol) see the cube root.
+                    if (max >= 0) volume = Math.Cbrt(max);
+                }
+                if (muted is null && entry.TryGetProperty("mute", out var mu)
+                    && mu.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                    muted = mu.GetBoolean();
+            }
+        }
+
+        return new NodeMeta(
+            Nick: PropString(props, "node.nick"),
+            DeviceBus: PropString(props, "device.bus"),
+            DeviceId: int.TryParse(PropString(props, "device.id"), out var did) ? did : null,
+            IsVirtual: PropString(props, "node.virtual") == "true",
+            ApplicationId: PropString(props, "application.id"),
+            State: state,
+            Volume: volume,
+            Muted: muted);
     }
 
     /// <summary>

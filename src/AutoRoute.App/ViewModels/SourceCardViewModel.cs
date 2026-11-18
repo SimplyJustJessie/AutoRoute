@@ -11,7 +11,7 @@ namespace AutoRoute.App.ViewModels;
 /// with the per-card actions (remove, save, keep-manual, protect). State-derived booleans drive
 /// XAML style triggers; the actual work is delegated to the <see cref="IBoardCoordinator"/>.
 /// </summary>
-public partial class SourceCardViewModel : ViewModelBase
+public partial class SourceCardViewModel : NodeTileViewModel
 {
     private readonly IBoardCoordinator _coordinator;
 
@@ -79,6 +79,7 @@ public partial class SourceCardViewModel : ViewModelBase
         RuleId = model.RuleId;
         LinkId = model.LinkId;
         State = model.State;
+        ApplyLook(model.Look);
     }
 
     public bool IsManaged => State == CardState.Managed;

@@ -34,6 +34,8 @@ public sealed class PwGraphService : IPwGraphService, IAsyncDisposable
 
     public event EventHandler<PwGraph>? GraphUpdated;
 
+    public event EventHandler<PwGraph>? PresentationUpdated;
+
     public async Task StartAsync(CancellationToken ct = default)
     {
         if (Interlocked.Exchange(ref _started, 1) == 1) return;
@@ -90,7 +92,16 @@ public sealed class PwGraphService : IPwGraphService, IAsyncDisposable
             // here spares every subscriber a reconcile pass and a full board rebuild; the
             // dump itself already happened, but the expensive fan-out did not.
             if (graph.StructurallyEquals(_current))
-                return _current;
+            {
+                if (graph.PresentationEquals(_current))
+                    return _current;
+
+                // Only volume/mute/state/format moved: same ids and routing, so swapping the
+                // snapshot is safe for the reconciler, which isn't told (nothing it reads changed).
+                _current = graph;
+                PresentationUpdated?.Invoke(this, graph);
+                return graph;
+            }
 
             _current = graph;
             GraphUpdated?.Invoke(this, graph);

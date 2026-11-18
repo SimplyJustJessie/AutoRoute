@@ -102,13 +102,15 @@ public static class NodeRoles
     // Identity (matching, diff-merge keys) is untouched: these are presentation-only.
 
     public static string SourceTitle(PwNode n) =>
-        Norm(n.ApplicationName) ?? Norm(n.Description) ?? Norm(n.NodeName) ?? Norm(n.MediaName) ?? ("Node " + n.Id);
+        Norm(n.ApplicationName) ?? Norm(NodePresentation.DeviceName(n)) ?? Norm(n.Description)
+        ?? Norm(n.NodeName) ?? Norm(n.MediaName) ?? ("Node " + n.Id);
 
     public static string SourceSubtitle(PwNode n) =>
         FirstOtherThan(SourceTitle(n), n.MediaName, n.NodeName, n.Description, n.MediaClass, n.ProcessBinary);
 
     public static string TargetTitle(PwNode n) =>
-        Norm(n.Description) ?? Norm(n.ApplicationName) ?? Norm(n.NodeName) ?? ("Node " + n.Id);
+        Norm(NodePresentation.DeviceName(n)) ?? Norm(n.Description) ?? Norm(n.ApplicationName)
+        ?? Norm(n.NodeName) ?? ("Node " + n.Id);
 
     public static string TargetSubtitle(PwNode n) =>
         FirstOtherThan(TargetTitle(n), n.NodeName, n.ApplicationName, n.MediaClass);

@@ -23,10 +23,13 @@ public sealed class VideoBoardViewModel : BoardViewModel
         IReconciler reconciler,
         IRuleMatcher matcher,
         ILogger<BoardViewModel>? log = null,
-        TabSelectionState? tabs = null)
+        TabSelectionState? tabs = null,
+        IVolumeController? volume = null,
+        UiSettings? ui = null)
         : base(graph, linker, ruleStore, reconciler, matcher,
             sinkController: null, notices: null, log: log, importer: null,
-            autostart: null, update: null, kind: MediaKind.Video, tabs: tabs)
+            autostart: null, update: null, kind: MediaKind.Video, tabs: tabs,
+            volume: volume, ui: ui)
     {
     }
 }

@@ -11,9 +11,12 @@ namespace AutoRoute.App.ViewModels;
 /// connects it and leaves the entry in the palette, so one Source can populate many columns (fan-out).
 /// The drag payload is <see cref="RepresentativeNodeId"/> (the Source node identity).
 /// </summary>
-public partial class SourceItemViewModel : ViewModelBase
+public partial class SourceItemViewModel : VolumeNodeViewModel
 {
     private readonly IBoardCoordinator _coordinator;
+
+    protected override IBoardCoordinator Coordinator => _coordinator;
+    protected override IReadOnlyList<int> VolumeNodeIds => AllNodeIds;
 
     /// <summary>Diff-merge key (Source identity).</summary>
     public string Key { get; }
@@ -71,6 +74,7 @@ public partial class SourceItemViewModel : ViewModelBase
         IsMonitor = model.IsMonitor;
         IsVideo = model.MediaKind == MediaKind.Video;
         IsProtected = model.Protected;
+        ApplyLook(model.Look);
     }
 
     /// <summary>Kind flags for XAML style triggers (icon tile tinting).</summary>

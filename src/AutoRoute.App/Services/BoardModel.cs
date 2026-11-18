@@ -19,7 +19,8 @@ public sealed record CardModel(
     string? RuleId,
     string? RuleName,
     int? LinkId,
-    string Tooltip);
+    string Tooltip,
+    NodeLook? Look = null);
 
 /// <summary>Immutable description of one Target Sink column.</summary>
 /// <param name="SinkName">The node's <c>node.name</c> — the identity a declared virtual sink is keyed by.</param>
@@ -34,7 +35,8 @@ public sealed record ColumnModel(
     bool IsManagedSink,
     IReadOnlyList<CardModel> Cards,
     string Format = "",
-    MediaKind MediaKind = MediaKind.Audio);
+    MediaKind MediaKind = MediaKind.Audio,
+    NodeLook? Look = null);
 
 /// <summary>Immutable description of one palette Source entry (app-granularity).</summary>
 public sealed record PaletteItemModel(
@@ -47,7 +49,8 @@ public sealed record PaletteItemModel(
     bool IsMonitor,
     bool Protected,
     string Format = "",
-    MediaKind MediaKind = MediaKind.Audio);
+    MediaKind MediaKind = MediaKind.Audio,
+    NodeLook? Look = null);
 
 /// <summary>The whole board in one immutable snapshot: columns + palette.</summary>
 public sealed record BoardSnapshot(

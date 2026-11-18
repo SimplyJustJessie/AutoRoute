@@ -43,15 +43,25 @@ public static class ScreenshotTool
         // Deterministic design graph (not the captured fixture) so shots are reproducible, then
         // exercise the board a little so every card/column state is on screen: keep Spotify → Music
         // as Manual, protect the Desktop sink and the capture device.
-        var tabs = new ViewModels.TabSelectionState();
-        var board = DevComposition.CreateInitializedBoard(DesignGraph.Build(), tabs);
-        var spotify = board.Columns.SelectMany(c => c.Cards)
-            .FirstOrDefault(c => c.IsUnsaved && string.Equals(c.Title, "Spotify", StringComparison.OrdinalIgnoreCase));
-        if (spotify is not null) board.KeepManual(spotify);
-        board.ToggleProtectAsync(90).GetAwaiter().GetResult(); // DesktopSink
-        board.ToggleProtectAsync(56).GetAwaiter().GetResult(); // PRO X 2 Mono capture
+        // --live: one read-only pw-dump of this machine's graph instead of the design graph (mock
+        // linker + rule store, so nothing is written to PipeWire) — for eyeballing real devices.
+        var live = Array.IndexOf(args, "--live") >= 0;
+        var graph = live
+            ? new AutoRoute.PipeWire.PwDumpReader(new AutoRoute.PipeWire.Process.ProcessRunner()).LoadAsync().GetAwaiter().GetResult()
+            : DesignGraph.Build();
 
-        var videoBoard = DevComposition.CreateInitializedVideoBoard(DesignGraph.Build(), tabs);
+        var tabs = new ViewModels.TabSelectionState();
+        var board = DevComposition.CreateInitializedBoard(graph, tabs);
+        if (!live)
+        {
+            var spotify = board.Columns.SelectMany(c => c.Cards)
+                .FirstOrDefault(c => c.IsUnsaved && string.Equals(c.Title, "Spotify", StringComparison.OrdinalIgnoreCase));
+            if (spotify is not null) board.KeepManual(spotify);
+            board.ToggleProtectAsync(90).GetAwaiter().GetResult(); // DesktopSink
+            board.ToggleProtectAsync(56).GetAwaiter().GetResult(); // PRO X 2 Mono capture
+        }
+
+        var videoBoard = DevComposition.CreateInitializedVideoBoard(graph, tabs);
         var mainVm = new ViewModels.MainWindowViewModel(board, videoBoard, tabs);
 
         var window = new MainWindow { DataContext = mainVm, Width = 1400, Height = 800 };
@@ -59,6 +69,12 @@ public static class ScreenshotTool
         Dispatcher.UIThread.RunJobs();
 
         Capture(window, Path.Combine(dir, "board.png"));
+
+        board.Ui.IsCompact = true;
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-compact.png"));
+        board.Ui.IsCompact = false;
+        Dispatcher.UIThread.RunJobs();
 
         // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
         var videoTab = window.GetVisualDescendants().OfType<Button>()
@@ -75,50 +91,18 @@ public static class ScreenshotTool
             Dispatcher.UIThread.RunJobs();
         }
 
-        // Scroll to the far right where the routed columns (Game / Music / PRO X 2) live. Match on
-        // the board scroller by name: the palette and every column carry a ScrollViewer too, and
-        // the palette's — first in visual-tree order — also overflows, so an overflow-only match
-        // silently scrolled *that* one sideways and left this shot identical to board.png.
-        var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()
-            .FirstOrDefault(s => s.Name == "BoardScroll" && s.Extent.Width > s.Viewport.Width);
-        if (scroller is not null)
-        {
-            scroller.Offset = new Vector(scroller.Extent.Width, 0); // coerced to the max offset
-            Dispatcher.UIThread.RunJobs();
-
-            // A scroll only moves the presenter's transform, which the headless compositor won't
-            // pick up without a render tick — RunJobs alone left this shot rendering at offset 0.
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Dispatcher.UIThread.RunJobs();
-            Capture(window, Path.Combine(dir, "board-states.png"));
-        }
-
-        // Card-state legend: open the toolbar help flyout and capture it. Taken before the
-        // drag-over shot so that state's brush transitions can't linger into this frame.
-        var help = window.GetVisualDescendants().OfType<Button>()
-            .FirstOrDefault(b => b.Name == "HelpButton");
-        if (help?.Flyout is not null)
-        {
-            help.Flyout.ShowAt(help);
-            Dispatcher.UIThread.RunJobs();
-            Capture(window, Path.Combine(dir, "board-help.png"));
-            help.Flyout.Hide();
-            Dispatcher.UIThread.RunJobs();
-        }
-
-        // Simulated drag-over: light up the drop highlight on the last droppable column
-        // (visible at the scrolled-right position).
+        // Simulated drag-over: light up the drop highlight on the last droppable row.
         var column = window.GetVisualDescendants().OfType<SinkColumnView>()
-            .Select(v => v.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("column")))
+            .Select(v => v.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row")))
             .LastOrDefault(b => b is not null && Behaviors.DropTargetBehavior.GetAcceptsDrop(b));
         if (column is not null)
         {
             column.SetValue(Behaviors.DropTargetBehavior.IsDragOverProperty, true);
 
             // Stage the full mid-drag look: dim the grabbed palette entry and float its ghost
-            // over the highlighted drop column.
+            // over the highlighted drop row.
             var zenItem = window.GetVisualDescendants().OfType<Border>()
-                .FirstOrDefault(b => b.Classes.Contains("paletteItem") &&
+                .FirstOrDefault(b => b.Classes.Contains("srcEntry") &&
                     (b.DataContext as ViewModels.SourceItemViewModel)?.Title == "Zen");
             zenItem?.Classes.Add("dragging");
             if (zenItem is not null)

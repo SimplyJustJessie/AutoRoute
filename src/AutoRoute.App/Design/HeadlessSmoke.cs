@@ -151,7 +151,7 @@ public static class HeadlessSmoke
             {
                 var topRight = item.TranslatePoint(new Point(item.Bounds.Width, 0), container);
                 if (topRight is { } p && p.X > container.Bounds.Width + 0.5)
-                    offenders.Add($"{label} {item.GetType().Name}: right edge {p.X:0.#} > panel width {container.Bounds.Width:0.#}");
+                    offenders.Add($"{label} {item.GetType().Name} '{(item as TextBlock)?.Text}' (visible={item.IsEffectivelyVisible}): right edge {p.X:0.#} > panel width {container.Bounds.Width:0.#}");
             }
         }
 
@@ -159,11 +159,11 @@ public static class HeadlessSmoke
         // card (the ScrollViewer.Padding bug) and paint past the panel while the card itself fits.
         foreach (var palette in window.GetVisualDescendants().OfType<PaletteView>())
             Contained(palette, "palette", palette.GetVisualDescendants()
-                .Where(v => v is TextBlock || (v is Border b && b.Classes.Contains("paletteItem"))));
+                .Where(v => v is TextBlock || (v is Border b && b.Classes.Contains("srcEntry"))));
 
         foreach (var column in window.GetVisualDescendants().OfType<SinkColumnView>())
             Contained(column, "column", column.GetVisualDescendants()
-                .Where(v => v is TextBlock || (v is Border b && b.Classes.Contains("card"))));
+                .Where(v => v is TextBlock || (v is Border b && (b.Classes.Contains("row") || b.Classes.Contains("chip2")))));
 
         check(offenders.Count == 0, "long names stay inside their panels (palette + columns)");
         foreach (var o in offenders.Take(4)) Console.WriteLine("        · " + o);

@@ -1,0 +1,383 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:behaviors="using:AutoRoute.App.Behaviors">
+
+    <!-- Destinations-first board (Comfortable + Compact). Tokens come from App.axaml; the few
+         literal colours here are the row/chip greys from the approved design. -->
+
+    <!-- ============================ Tiles + badges ============================ -->
+    <Style Selector="Border.tile">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Background" Value="#22242B" />
+    </Style>
+    <Style Selector="Border.tile.lg">
+        <Setter Property="Width" Value="42" />
+        <Setter Property="Height" Value="42" />
+        <Setter Property="CornerRadius" Value="11" />
+    </Style>
+    <Style Selector="Border.tile.sm">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Border.tile.chip">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="CornerRadius" Value="7" />
+    </Style>
+    <Style Selector="TextBlock.tileLetter">
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tile.chip TextBlock.tileLetter">
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Border.tile.sm TextBlock.tileLetter">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="0,0,2,2" />
+    </Style>
+    <Style Selector="Path.glyph">
+        <Setter Property="Stroke" Value="#C9CCD4" />
+        <Setter Property="StrokeThickness" Value="1.8" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeJoin" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="19" />
+        <Setter Property="Height" Value="19" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tile.chip Path.glyph">
+        <Setter Property="Width" Value="13" />
+        <Setter Property="Height" Value="13" />
+    </Style>
+    <Style Selector="Border.tile.sm Path.glyph">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+    </Style>
+
+    <!-- In/out badge: a neutral grey dot cut out of the surface (the ring = the surface colour). -->
+    <Style Selector="Border.badge">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource BgBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Bottom" />
+        <Setter Property="Margin" Value="0,0,-4,-4" />
+    </Style>
+    <Style Selector="Border.row Border.badge">
+        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
+    </Style>
+    <Style Selector="Border.badge > Border">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="#3A3D47" />
+    </Style>
+    <Style Selector="Border.badge Path">
+        <Setter Property="Stroke" Value="#ECEDEF" />
+        <Setter Property="StrokeThickness" Value="2.6" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeJoin" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ============================ Text ============================ -->
+    <Style Selector="TextBlock.nm">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.typeLine">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.groupHeader">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
+    <Style Selector="TextBlock.pct">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.fmt">
+        <Setter Property="BorderBrush" Value="#30333C" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="5,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.fmt > TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
+    <Style Selector="Border.tag">
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="Background" Value="#2C2F38" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.tag > TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#C9CCD4" />
+    </Style>
+    <Style Selector="Border.tag.hands">
+        <Setter Property="Background" Value="{DynamicResource ProtectedDimBrush}" />
+    </Style>
+    <Style Selector="Border.tag.hands > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource ProtectedBrush}" />
+    </Style>
+
+    <!-- Playing dot: green while audio flows, hidden otherwise. -->
+    <Style Selector="Ellipse.playing">
+        <Setter Property="Width" Value="7" />
+        <Setter Property="Height" Value="7" />
+        <Setter Property="Fill" Value="{DynamicResource OnlineBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ============================ Output rows ============================ -->
+    <Style Selector="Border.row">
+        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="Border.row[(behaviors|DropTargetBehavior.IsDragOver)=True]">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="#1A1C26" />
+    </Style>
+    <Style Selector="Border.row.protected">
+        <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <!-- Compact: a dense one-line row, no card chrome — rows sit flush in their group. -->
+    <Style Selector="Border.row.compact">
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="Border.feedsDivider">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Background" Value="#2A2C33" />
+        <Setter Property="Margin" Value="4,6" />
+    </Style>
+
+    <!-- ============================ Chips ============================ -->
+    <Style Selector="Border.chip2">
+        <Setter Property="Background" Value="#22242B" />
+        <Setter Property="BorderBrush" Value="#30333C" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="4,4,10,4" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+    </Style>
+    <Style Selector="Border.chip2.unsaved">
+        <Setter Property="Background" Value="#231E15" />
+        <Setter Property="BorderBrush" Value="{DynamicResource UnsavedBrush}" />
+    </Style>
+    <Style Selector="Border.chip2.manual">
+        <Setter Property="Background" Value="#1C1D22" />
+    </Style>
+    <Style Selector="Border.chip2.protected">
+        <Setter Property="Background" Value="#1B1C21" />
+    </Style>
+    <Style Selector="Border.chip2 TextBlock.chipText">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="MaxWidth" Value="200" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.chip2.protected TextBlock.chipText">
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    </Style>
+
+    <!-- Small round icon button inside chips / rows. -->
+    <Style Selector="Button.mini">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mini Path">
+        <Setter Property="Stroke" Value="{DynamicResource FaintBrush}" />
+        <Setter Property="StrokeThickness" Value="2.2" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+    </Style>
+    <Style Selector="Button.mini:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#30333C" />
+    </Style>
+    <Style Selector="Button.mini:pointerover Path">
+        <Setter Property="Stroke" Value="{DynamicResource TextBrush}" />
+    </Style>
+
+    <Style Selector="Button.keep">
+        <Setter Property="Background" Value="{DynamicResource UnsavedBrush}" />
+        <Setter Property="Foreground" Value="#111215" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="10,2" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.keep:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F0C066" />
+        <Setter Property="Foreground" Value="#111215" />
+    </Style>
+
+    <!-- "+ Add" pill at the end of a row's chips. -->
+    <Style Selector="Button.addChip">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="#3A3D47" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.addChip Path">
+        <Setter Property="Stroke" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="StrokeThickness" Value="2.4" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+    </Style>
+    <Style Selector="Button.addChip:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#22242B" />
+        <Setter Property="BorderBrush" Value="#4A4D57" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+
+    <!-- Picker entries in the "+ Add" flyout. -->
+    <Style Selector="Button.pickRow">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.pickRow:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#272A33" />
+    </Style>
+
+    <!-- Mute toggle beside a fader. -->
+    <Style Selector="Button.mute">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mute Path">
+        <Setter Property="Stroke" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="StrokeJoin" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="15" />
+        <Setter Property="Height" Value="15" />
+    </Style>
+    <Style Selector="Button.mute.on Path">
+        <Setter Property="Stroke" Value="{DynamicResource DangerBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+    </Style>
+    <Style Selector="Button.mute:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#24262D" />
+    </Style>
+
+    <!-- Primary action (+ Virtual sink). -->
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Foreground" Value="#111215" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#9AB2FF" />
+        <Setter Property="Foreground" Value="#111215" />
+    </Style>
+    <Style Selector="Button.primary Path">
+        <Setter Property="Stroke" Value="#111215" />
+        <Setter Property="StrokeThickness" Value="2.6" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="11" />
+        <Setter Property="Height" Value="11" />
+    </Style>
+
+    <!-- ============================ Sources: sidebar + tray ============================ -->
+    <Style Selector="Border.srcEntry">
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="SizeAll" />
+    </Style>
+    <Style Selector="Border.srcEntry:pointerover">
+        <Setter Property="Background" Value="#1B1C21" />
+    </Style>
+    <Style Selector="Border.srcEntry.dragging">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <Style Selector="Border.trayChip">
+        <Setter Property="Background" Value="#1E2026" />
+        <Setter Property="BorderBrush" Value="#30333C" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="5,5,10,5" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Cursor" Value="SizeAll" />
+    </Style>
+    <Style Selector="Border.trayChip:pointerover">
+        <Setter Property="BorderBrush" Value="#4A4D57" />
+    </Style>
+    <Style Selector="Border.trayChip.dragging">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+</Styles>

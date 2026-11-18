@@ -139,6 +139,11 @@ public static class HostFactory
             sp.GetRequiredService<AppVersion>(),
             sp.GetService<ILogger<UpdateService>>()));
 
+        services.AddSingleton<IVolumeController>(sp => new WpctlVolumeController(
+            sp.GetRequiredService<IProcessRunner>(),
+            sp.GetService<ILogger<WpctlVolumeController>>()));
+        services.AddSingleton(_ => new UiSettings(UiSettings.DefaultPath()));
+
         services.AddSingleton<TabSelectionState>();
         services.AddSingleton<BoardViewModel>();
         services.AddSingleton<VideoBoardViewModel>();

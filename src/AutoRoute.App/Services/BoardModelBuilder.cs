@@ -26,8 +26,14 @@ public static class BoardModelBuilder
         bool showMonitors,
         MediaKind kind = MediaKind.Audio)
     {
-        var targets = graph.Nodes.Where(n => NodeRoles.IsTargetSink(n, kind))
-            .OrderBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
+        // Rows are grouped (Virtual, Devices, App inputs), then alphabetical within a group.
+        var targetNodes = graph.Nodes.Where(n => NodeRoles.IsTargetSink(n, kind)).ToList();
+        var targetLooks = new Dictionary<int, NodeLook>(targetNodes.Count);
+        foreach (var n in targetNodes)
+            targetLooks[n.Id] = NodePresentation.ForTarget(n, graph, NodeRoles.TargetTitle(n), kind);
+        var targets = targetNodes
+            .OrderBy(n => targetLooks[n.Id].Group)
+            .ThenBy(NodeRoles.TargetTitle, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         // Declared virtual sinks (ADR-0011): ownership is name membership in the declared set.
@@ -131,7 +137,7 @@ public static class BoardModelBuilder
             }
 
             var cardModels = cards.Values
-                .Select(b => b.ToModel(columnProtected || protectedIds.Contains(b.Representative.Id)))
+                .Select(b => b.ToModel(columnProtected || protectedIds.Contains(b.Representative.Id), graph, kind))
                 .OrderBy(c => c.Title, System.StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -152,7 +158,8 @@ public static class BoardModelBuilder
                 IsManagedSink: target.NodeName is { } nn && declaredSinkNames.Contains(nn),
                 Cards: cardModels,
                 Format: NodeRoles.FormatLabel(target),
-                MediaKind: kind));
+                MediaKind: kind,
+                Look: targetLooks[target.Id]));
         }
 
         // --- Palette: every Source of this board's kind, app-granularity, monitors optional ---
@@ -172,10 +179,12 @@ public static class BoardModelBuilder
                     IsMonitor: monitor,
                     Protected: protectedIds.Contains(rep.Id),
                     Format: NodeRoles.FormatLabel(rep),
+                    Look: NodePresentation.ForSource(rep, graph, NodeRoles.SourceTitle(rep),
+                        NodeRoles.KindOf(rep, kind), kind),
                     MediaKind: kind);
             })
             .Where(p => showMonitors || !p.IsMonitor)
-            .OrderBy(p => p.IsMonitor)
+            .OrderBy(p => p.Look?.Group ?? 0)
             .ThenBy(p => p.Title, System.StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -201,16 +210,16 @@ public static class BoardModelBuilder
             if (!_nodeIds.Contains(n.Id)) _nodeIds.Add(n.Id);
         }
 
-        public CardModel ToModel(bool isProtected)
+        public CardModel ToModel(bool isProtected, PwGraph graph, MediaKind kind)
         {
             var state = isProtected ? CardState.Protected : State;
             var identity = NodeRoles.SourceIdentity(Representative);
             var tooltip = state switch
             {
-                CardState.Managed => RuleName is { Length: > 0 } ? $"Managed Link — rule: {RuleName}" : "Managed Link",
-                CardState.Unsaved => "Unsaved external Link — Save to keep it after relaunch",
-                CardState.Manual => "Manual Link — not reproduced automatically",
-                CardState.Protected => "Protected — AutoRoute will not touch this node",
+                CardState.Managed => "Saved — comes back on its own after a restart",
+                CardState.Unsaved => "Not saved — Keep it to restore it after a restart",
+                CardState.Manual => "Left as is — not restored after a restart",
+                CardState.Protected => "Hands off — AutoRoute won't touch this",
                 _ => string.Empty,
             };
             return new CardModel(
@@ -224,7 +233,9 @@ public static class BoardModelBuilder
                 RuleId: RuleId,
                 RuleName: RuleName,
                 LinkId: LinkId,
-                Tooltip: tooltip);
+                Tooltip: tooltip,
+                Look: NodePresentation.ForSource(Representative, graph, NodeRoles.SourceTitle(Representative),
+                    NodeRoles.KindOf(Representative, kind), kind));
         }
     }
 }

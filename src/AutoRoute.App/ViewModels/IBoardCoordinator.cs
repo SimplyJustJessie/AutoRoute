@@ -50,4 +50,9 @@ public interface IBoardCoordinator
     /// the same atomic save), then unload its module for instant effect.
     /// </summary>
     Task DeleteSinkAsync(string sinkName, bool deleteAffectedPolicy);
+
+    /// <summary>Set volume (cubic scale, 1.0 = 100%) on every listed node — an app's streams, or one sink.</summary>
+    void SetVolume(IReadOnlyList<int> nodeIds, double volume);
+
+    void SetMute(IReadOnlyList<int> nodeIds, bool muted);
 }

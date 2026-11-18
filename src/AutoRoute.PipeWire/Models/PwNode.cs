@@ -28,8 +28,12 @@ public sealed record PwNode(
     string? ProcessBinary,
     string? MediaName,
     IReadOnlyList<PwPort> Ports,
-    AudioFormat? Format = null)
+    AudioFormat? Format = null,
+    NodeMeta? Meta = null)
 {
+    /// <summary>Presentation and control metadata; never null (empty when the dump had none).</summary>
+    public NodeMeta Info => Meta ?? NodeMeta.Empty;
+
     public IEnumerable<PwPort> OutputPorts => Ports.Where(p => p.IsOutput);
     public IEnumerable<PwPort> InputPorts => Ports.Where(p => p.IsInput);
 
