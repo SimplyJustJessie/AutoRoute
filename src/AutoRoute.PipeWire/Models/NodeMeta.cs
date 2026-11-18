@@ -12,6 +12,8 @@ namespace AutoRoute.PipeWire.Models;
 /// <param name="State"><c>info.state</c>: <c>running</c>, <c>idle</c>, <c>suspended</c>…</param>
 /// <param name="Volume">Volume on the user-facing cubic scale (what <c>wpctl</c> and pavucontrol show, 1.0 = 100%): the cube root of the loudest <c>channelVolumes</c> entry. Null when the node has no volume.</param>
 /// <param name="Muted"><c>Props.mute</c>, null when not reported.</param>
+/// <param name="IconName"><c>application.icon_name</c>, when the app names its own icon.</param>
+/// <param name="FlatpakId"><c>pipewire.access.portal.app_id</c>: the Flatpak app id of a sandboxed app.</param>
 /// <param name="MonitorHasVolume"><c>monitor.channel-volumes</c>: the sink's monitor carries its volume (AutoRoute's own virtual sinks set it).</param>
 /// <param name="Serial"><c>object.serial</c>: never reused, and what pipewire-pulse calls the object's index.</param>
 public sealed record NodeMeta(
@@ -24,7 +26,9 @@ public sealed record NodeMeta(
     double? Volume = null,
     bool? Muted = null,
     uint? Serial = null,
-    bool MonitorHasVolume = false)
+    bool MonitorHasVolume = false,
+    string? IconName = null,
+    string? FlatpakId = null)
 {
     public static readonly NodeMeta Empty = new();
 

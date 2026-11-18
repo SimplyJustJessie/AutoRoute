@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="AutoRoute.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
@@ -26,6 +30,9 @@
     <PackageReference Include="Avalonia.Headless" Version="12.1.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+    <!-- SVG app icons (icon themes are mostly SVG). 5.1.x: the last line built on SkiaSharp 3.x,
+         which Avalonia 12 ships; 5.2+ needs SkiaSharp 4. -->
+    <PackageReference Include="Svg.Skia" Version="5.1.1" />
   </ItemGroup>
 
   <ItemGroup>

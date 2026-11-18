@@ -75,6 +75,14 @@ public static class ScreenshotTool
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
+        // App icons load off-thread the first time a tile shows: give them a moment to land.
+        for (var i = 0; i < 30; i++)
+        {
+            System.Threading.Thread.Sleep(50);
+            Dispatcher.UIThread.RunJobs();
+        }
+        Dispatcher.UIThread.RunJobs();
+
         Capture(window, Path.Combine(dir, "board.png"));
 
         board.Ui.IsCompact = true;

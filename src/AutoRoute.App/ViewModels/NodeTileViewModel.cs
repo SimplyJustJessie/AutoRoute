@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using AutoRoute.App.Services;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,10 +25,11 @@ public abstract partial class NodeTileViewModel : ViewModelBase
     private string _initials = "?";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TileFill))]
     private IBrush _tileBrush = BrushFor(NodePresentation.NeutralTile);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLetterTile))]
+    [NotifyPropertyChangedFor(nameof(IsLetterTile), nameof(ShowLetter))]
     private NodeGlyph _glyph = NodeGlyph.Wave;
 
     /// <summary>Mic badge (sound goes in) vs speaker badge (sound comes out).</summary>
@@ -46,6 +48,49 @@ public abstract partial class NodeTileViewModel : ViewModelBase
 
     public bool IsLetterTile => Glyph == NodeGlyph.App;
 
+    // ---- Real app icon (from the icon theme), loaded the first time a tile asks for it ----
+
+    private static readonly IBrush IconTileBrush = BrushFor(NodePresentation.NeutralTile);
+    private IconHints? _iconHints;
+    private Bitmap? _appIcon;
+    private bool _iconRequested;
+
+    /// <summary>
+    /// The app's icon, or null while loading / when it has none. Reading it starts the lookup, so
+    /// only tiles that are actually shown ever touch the icon theme.
+    /// </summary>
+    public Bitmap? AppIcon
+    {
+        get
+        {
+            if (!_iconRequested && _iconHints is { } hints)
+            {
+                _iconRequested = true;
+                _ = LoadIconAsync(hints);
+            }
+            return _appIcon;
+        }
+    }
+
+    public bool HasAppIcon => AppIcon is not null;
+
+    /// <summary>An app tile still waiting for (or without) a real icon shows its initials.</summary>
+    public bool ShowLetter => IsLetterTile && !HasAppIcon;
+
+    /// <summary>A real icon sits on the neutral tile; initials on their own colour.</summary>
+    public IBrush TileFill => HasAppIcon ? IconTileBrush : TileBrush;
+
+    private async System.Threading.Tasks.Task LoadIconAsync(IconHints hints)
+    {
+        var bmp = await AppIcons.GetAsync(hints).ConfigureAwait(true);
+        if (!Equals(hints, _iconHints)) return; // the tile was reused for another app meanwhile
+        _appIcon = bmp;
+        OnPropertyChanged(nameof(AppIcon));
+        OnPropertyChanged(nameof(HasAppIcon));
+        OnPropertyChanged(nameof(ShowLetter));
+        OnPropertyChanged(nameof(TileFill));
+    }
+
     protected void ApplyLook(NodeLook? look)
     {
         look ??= NodeLook.Empty;
@@ -56,6 +101,16 @@ public abstract partial class NodeTileViewModel : ViewModelBase
         IsInput = look.IsInput;
         Group = look.Group;
         GroupLabel = look.GroupLabel;
+        if (!Equals(look.Icon, _iconHints))
+        {
+            _iconHints = look.Icon;
+            _iconRequested = false;
+            _appIcon = null;
+            OnPropertyChanged(nameof(AppIcon));
+            OnPropertyChanged(nameof(HasAppIcon));
+            OnPropertyChanged(nameof(ShowLetter));
+            OnPropertyChanged(nameof(TileFill));
+        }
         OnLookApplied(look);
     }
 

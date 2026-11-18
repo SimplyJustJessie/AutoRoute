@@ -27,9 +27,10 @@
                         behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <Panel>
-                            <Border Classes="tile chip" Background="{Binding TileBrush}">
+                            <Border Classes="tile chip" Background="{Binding TileFill}">
                                 <Panel>
-                                    <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                                    <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                    <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
                                     <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                           Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                                 </Panel>

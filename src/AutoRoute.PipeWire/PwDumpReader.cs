@@ -211,6 +211,8 @@ public sealed class PwDumpReader
                 || (mcv.ValueKind == JsonValueKind.String && mcv.GetString() == "true"));
 
         return new NodeMeta(
+            IconName: PropString(props, "application.icon_name"),
+            FlatpakId: PropString(props, "pipewire.access.portal.app_id"),
             MonitorHasVolume: monitorVolume,
             Serial: serial,
             Nick: PropString(props, "node.nick"),

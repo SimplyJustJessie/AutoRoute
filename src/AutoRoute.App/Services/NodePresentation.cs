@@ -39,7 +39,8 @@ public sealed record NodeLook(
     string GroupLabel,
     double? Volume,
     bool Muted,
-    bool IsRunning)
+    bool IsRunning,
+    IconHints? Icon = null)
 {
     public static readonly NodeLook Empty =
         new(string.Empty, NodeGlyph.Wave, false, "?", NodePresentation.NeutralTile, 0, string.Empty, null, false, false);
@@ -187,7 +188,9 @@ public static class NodePresentation
             GroupLabel: groupLabel,
             Volume: n.Info.Volume,
             Muted: n.Info.Muted ?? false,
-            IsRunning: n.Info.IsRunning);
+            IsRunning: n.Info.IsRunning,
+            // Only app tiles look for a real icon; devices keep their glyphs.
+            Icon: glyph == NodeGlyph.App ? IconHints.For(n) : null);
     }
 
     private static TargetGroup TargetGroupOf(PwNode n)

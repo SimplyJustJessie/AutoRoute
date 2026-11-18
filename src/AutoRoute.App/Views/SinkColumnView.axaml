@@ -25,9 +25,10 @@
                                 <Button Classes="pickRow" Command="{Binding ConnectCommand}"
                                         Click="OnPickClick">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <Border Classes="tile chip" Background="{Binding TileBrush}">
+                                        <Border Classes="tile chip" Background="{Binding TileFill}">
                                             <Panel>
-                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                                <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
                                                 <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                                       Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                                             </Panel>
@@ -66,9 +67,10 @@
                 <!-- Tile + in/out badge -->
                 <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
                     <Border Classes="tile" Classes.lg="{Binding !IsCompact}" Classes.sm="{Binding IsCompact}"
-                            Background="{Binding TileBrush}">
+                            Background="{Binding TileFill}">
                         <Panel>
-                            <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                            <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                            <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
                             <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                   Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                         </Panel>

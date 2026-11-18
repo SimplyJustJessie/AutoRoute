@@ -29,9 +29,10 @@
                                     behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
                                 <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                                     <Panel VerticalAlignment="Center" Margin="0,0,12,0">
-                                        <Border Classes="tile" Background="{Binding TileBrush}">
+                                        <Border Classes="tile" Background="{Binding TileFill}">
                                             <Panel>
-                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding IsLetterTile}" />
+                                                <controls:TileLetter Classes="tileLetter" Text="{Binding Initials}" IsVisible="{Binding ShowLetter}" />
+                                                <Image Classes="appIcon" Source="{Binding AppIcon}" IsVisible="{Binding HasAppIcon}" />
                                                 <controls:GlyphIcon Classes="glyph" IsVisible="{Binding !IsLetterTile}"
                                                       Data="{Binding Glyph, Converter={x:Static views:GlyphConverter.Instance}}" />
                                             </Panel>

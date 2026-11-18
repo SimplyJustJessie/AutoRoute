@@ -16,6 +16,10 @@ public sealed class AddOption
         Glyph = source.Glyph;
         IsLetterTile = source.IsLetterTile;
         IsInput = source.IsInput;
+        AppIcon = source.AppIcon;
+        HasAppIcon = source.HasAppIcon;
+        ShowLetter = source.ShowLetter;
+        TileFill = source.TileFill;
         ConnectCommand = connect;
     }
 
@@ -26,5 +30,9 @@ public sealed class AddOption
     public NodeGlyph Glyph { get; }
     public bool IsLetterTile { get; }
     public bool IsInput { get; }
+    public Avalonia.Media.Imaging.Bitmap? AppIcon { get; }
+    public bool HasAppIcon { get; }
+    public bool ShowLetter { get; }
+    public IBrush TileFill { get; }
     public IAsyncRelayCommand ConnectCommand { get; }
 }
