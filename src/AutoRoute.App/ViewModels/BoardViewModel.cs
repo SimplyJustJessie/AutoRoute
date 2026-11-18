@@ -176,8 +176,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             _ = Update.CheckAsync();
     }
 
+    /// <summary>The banner's Update button: only an AppImage can install from here.</summary>
+    public bool CanInstallUpdate => Update?.CanInstall == true;
+
     private void RefreshUpdateNotice()
     {
+        OnPropertyChanged(nameof(CanInstallUpdate));
         UpdateNoticeText = Update is { UpdateAvailable: true }
             ? $"AutoRoute {AppVersion.Normalize(Update.LatestVersion)} is available"
             : string.Empty;
