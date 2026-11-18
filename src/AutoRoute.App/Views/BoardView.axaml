@@ -145,6 +145,18 @@
                      at the window edge. Stops short of the scrollbar. -->
                 <Border Height="36" VerticalAlignment="Bottom" Margin="0,0,14,0" IsHitTestVisible="False"
                         Background="{DynamicResource ListFadeBottomBrush}" />
+
+                <!-- Undo toast: the last removal can be taken back for a few seconds. -->
+                <Border Classes="toast" IsVisible="{Binding HasToast}"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="toastText" Text="{Binding ToastText}" />
+                        <Button Classes="toastUndo" Content="Undo" Command="{Binding UndoCommand}" />
+                        <Button Classes="mini" Command="{Binding DismissToastCommand}" ToolTip.Tip="Dismiss">
+                            <Path Data="{StaticResource StrokeX}" />
+                        </Button>
+                    </StackPanel>
+                </Border>
             </Panel>
 
             <!-- Bottom bar: under the sidebar in Comfortable (like a chat app's user panel), full

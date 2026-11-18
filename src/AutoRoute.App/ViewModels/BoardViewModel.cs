@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoRoute.App.Services;
 using AutoRoute.Engine;
@@ -443,9 +444,13 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         var source = g.Node(card.RepresentativeNodeId);
 
         // Gone from the board now; the rule write and unlink follow.
-        _pendingRemovals[BoardModelBuilder.CardKey(card.TargetNodeId, card.Key)] =
-            Environment.TickCount64 + PendingRemovalMs;
+        var cardKey = BoardModelBuilder.CardKey(card.TargetNodeId, card.Key);
+        _pendingRemovals[cardKey] = Environment.TickCount64 + PendingRemovalMs;
         RebuildFromCurrent();
+
+        var before = _ruleStore.Current;
+        var targetTitle = Columns.FirstOrDefault(c => c.TargetNodeId == card.TargetNodeId)?.Title ?? "output";
+        List<(int Out, int In)> unlinked = new();
 
         if (card.State == CardState.Managed)
         {
@@ -480,11 +485,87 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
                 return doc with { Rules = rules, Suppressions = suppressions };
             }).ConfigureAwait(true);
 
-            await DisconnectLinksAsync(g, card).ConfigureAwait(true);
+            // Only the links someone else made come back on undo; managed ones return with their rule.
+            unlinked = await DisconnectLinksAsync(g, card).ConfigureAwait(true);
         }
 
-        _keptManual.Remove(BoardModelBuilder.CardKey(card.TargetNodeId, card.Key));
+        var wasKeptManual = _keptManual.Remove(cardKey);
         RebuildFromCurrent();
+
+        var after = _ruleStore.Current;
+        var removedRules = before.Rules.Where(r => after.Rules.All(x => x.Id != r.Id)).ToList();
+        var addedSuppressions = after.Suppressions.Where(x => before.Suppressions.All(b => b.Id != x.Id))
+            .Select(x => x.Id).ToHashSet();
+
+        ShowUndo($"{card.Title} removed from {targetTitle}", async () =>
+        {
+            _pendingRemovals.Remove(cardKey);
+            await SaveDocAsync(doc => doc with
+            {
+                Rules = doc.Rules.Concat(removedRules.Where(r => doc.Rules.All(x => x.Id != r.Id))).ToList(),
+                Suppressions = doc.Suppressions.Where(x => !addedSuppressions.Contains(x.Id)).ToList(),
+            }).ConfigureAwait(true);
+            if (wasKeptManual) _keptManual.Add(cardKey);
+
+            if (removedRules.Count > 0)
+            {
+                await SafeReconcile().ConfigureAwait(true);
+                foreach (var rule in removedRules)
+                    await ConnectLinksAsync(_graph.Current, rule.Source, rule.Target, rule.Id).ConfigureAwait(true);
+            }
+            foreach (var (o, i) in unlinked)
+            {
+                try { await _linker.ConnectUnmanagedAsync(o, i).ConfigureAwait(true); }
+                catch { /* port gone: nothing to put back */ }
+            }
+            RebuildFromCurrent();
+        });
+    }
+
+    // ===== Undo toast =====================================================================
+
+    private static readonly TimeSpan ToastLife = TimeSpan.FromSeconds(6);
+    private Func<Task>? _undo;
+    private CancellationTokenSource? _toastTimer;
+
+    /// <summary>The toast's message ("mpv removed from Music"); empty when no toast shows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasToast))]
+    private string _toastText = string.Empty;
+
+    public bool HasToast => ToastText.Length > 0;
+
+    /// <summary>Show a toast that can take the last change back for a few seconds.</summary>
+    private void ShowUndo(string text, Func<Task> undo)
+    {
+        _undo = undo;
+        ToastText = text;
+        _toastTimer?.Cancel();
+        var cts = _toastTimer = new CancellationTokenSource();
+        _ = HideToastLaterAsync(cts.Token);
+    }
+
+    private async Task HideToastLaterAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(ToastLife, ct).ConfigureAwait(true); }
+        catch (OperationCanceledException) { return; }
+        PostToUi(DismissToast);
+    }
+
+    [RelayCommand]
+    private void DismissToast()
+    {
+        _toastTimer?.Cancel();
+        _undo = null;
+        ToastText = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task Undo()
+    {
+        var undo = _undo;
+        DismissToast();
+        if (undo is not null) await undo().ConfigureAwait(true);
     }
 
     public async Task SaveCardAsync(SourceCardViewModel card)
@@ -680,10 +761,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         }
     }
 
-    private async Task DisconnectLinksAsync(PwGraph g, SourceCardViewModel card)
+    /// <summary>Unlink a card's channel pairs; returns the pairs that were live links not made by AutoRoute.</summary>
+    private async Task<List<(int Out, int In)>> DisconnectLinksAsync(PwGraph g, SourceCardViewModel card)
     {
+        var foreign = new List<(int Out, int In)>();
         var target = g.Node(card.TargetNodeId);
-        if (target is null) return;
+        if (target is null) return foreign;
 
         foreach (var nodeId in card.AllSourceNodeIds)
         {
@@ -691,10 +774,13 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             if (s is null) continue;
             foreach (var pair in ChannelMapper.Map(s, target).Pairs)
             {
+                if (g.Links.Any(l => l.OutPortId == pair.OutPortId && l.InPortId == pair.InPortId && !l.IsManaged))
+                    foreign.Add((pair.OutPortId, pair.InPortId));
                 try { await _linker.DisconnectAsync(pair.OutPortId, pair.InPortId).ConfigureAwait(true); }
                 catch { /* already gone → fine */ }
             }
         }
+        return foreign;
     }
 
     private async Task SafeReconcile()

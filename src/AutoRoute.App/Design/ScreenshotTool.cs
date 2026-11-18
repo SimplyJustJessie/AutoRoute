@@ -113,6 +113,13 @@ public static class ScreenshotTool
         foreach (var v in metered) { v.Level = 0; v.IsSounding = false; v.IsMetered = false; }
         Dispatcher.UIThread.RunJobs();
 
+        // The undo toast after removing a route.
+        board.ToastText = "Spotify removed from Music";
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-undo.png"));
+        board.ToastText = string.Empty;
+        Dispatcher.UIThread.RunJobs();
+
         // Focus a Source: pick one that feeds at least one output.
         var focusKey = board.Palette.Items.Select(i => i.Key)
             .FirstOrDefault(k => board.Columns.Any(c => c.Cards.Any(card => card.Key == k)));
