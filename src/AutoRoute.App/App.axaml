@@ -52,6 +52,19 @@
             </LinearGradientBrush>
 
             <!-- ==================== Text ==================== -->
+            <!-- Bottom of the output list: rows dissolve into the background (BgColor → alpha 0). -->
+            <LinearGradientBrush x:Key="ListFadeBottomBrush" StartPoint="0%,100%" EndPoint="0%,0%">
+                <GradientStop Offset="0" Color="{StaticResource BgColor}" />
+                <GradientStop Offset="0.5" Color="#990F1014" />
+                <GradientStop Offset="1" Color="#000F1014" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="PanelFadeBottomBrush" StartPoint="0%,100%" EndPoint="0%,0%">
+                <GradientStop Offset="0" Color="{StaticResource PanelColor}" />
+                <GradientStop Offset="0.5" Color="#9914151B" />
+                <GradientStop Offset="1" Color="#0014151B" />
+            </LinearGradientBrush>
+
             <SolidColorBrush x:Key="TextBrush" Color="#E7E9F1" />
             <SolidColorBrush x:Key="MutedBrush" Color="#9CA1B3" />
             <SolidColorBrush x:Key="FaintBrush" Color="#6C7186" />

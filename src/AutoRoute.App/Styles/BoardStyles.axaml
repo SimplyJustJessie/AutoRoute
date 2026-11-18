@@ -43,8 +43,8 @@
         <Setter Property="FontSize" Value="11" />
     </Style>
     <Style Selector="Border.tile.sm TextBlock.tileLetter">
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="Margin" Value="0,0,2,2" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Margin" Value="0,0,4,4" />
     </Style>
     <Style Selector="Path.glyph">
         <Setter Property="Stroke" Value="#C9CCD4" />

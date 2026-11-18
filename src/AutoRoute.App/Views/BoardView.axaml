@@ -53,107 +53,6 @@
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
 
-                    <Button Classes="primary" Name="NewSinkButton"
-                            IsVisible="{Binding CanManageSinks}"
-                            ToolTip.Tip="Create a virtual output — it survives reboots">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
-                            <TextBlock Text="Virtual sink" VerticalAlignment="Center" />
-                        </StackPanel>
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="300" Spacing="10" Margin="6">
-                                    <TextBox Watermark="Name (e.g. Game)" Text="{Binding NewSinkName}" />
-                                    <TextBox Watermark="Label (optional)" Text="{Binding NewSinkDescription}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="14">
-                                        <RadioButton GroupName="NewSinkChannels" Content="Stereo"
-                                                     IsChecked="{Binding !NewSinkMono}" />
-                                        <RadioButton GroupName="NewSinkChannels" Content="Mono"
-                                                     IsChecked="{Binding NewSinkMono}" />
-                                    </StackPanel>
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource UnsavedBrush}"
-                                               Text="{Binding NewSinkValidationMessage}"
-                                               IsVisible="{Binding NewSinkValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    <Button Classes="chipAction" HorizontalAlignment="Right"
-                                            Content="Create"
-                                            Command="{Binding SubmitNewSinkCommand}"
-                                            Click="OnCreateSinkClick" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <!-- Settings: layout density, sink monitors, start at login. -->
-                    <Button Classes="icon" Name="SettingsButton" Margin="4,0,0,0" ToolTip.Tip="Settings">
-                        <Path Data="{StaticResource IconGear}" />
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="300" Spacing="12" Margin="6">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Classes="body" VerticalAlignment="Center" Text="Compact layout" />
-                                        <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Ui.IsCompact}" />
-                                    </Grid>
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Classes="body" VerticalAlignment="Center" Text="Show sink monitors as sources"
-                                                   TextWrapping="Wrap" />
-                                        <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Filter.ShowMonitors}" />
-                                    </Grid>
-                                    <Panel IsVisible="{Binding CanManageAutostart}">
-                                        <StackPanel Spacing="8" DataContext="{Binding Autostart}">
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBlock Classes="body" VerticalAlignment="Center" Text="Start at login" />
-                                                <ToggleSwitch Grid.Column="1" Classes="compact"
-                                                              IsChecked="{Binding IsEnabled}"
-                                                              IsEnabled="{Binding !IsBusy}" />
-                                            </Grid>
-                                            <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                                       Foreground="{DynamicResource UnsavedBrush}"
-                                                       Text="{Binding StatusMessage}"
-                                                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                        </StackPanel>
-                                    </Panel>
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <!-- Updates (AppImage self-replace). -->
-                    <Button Classes="icon" Name="UpdatesButton"
-                            IsVisible="{Binding CanCheckUpdates}"
-                            ToolTip.Tip="Updates">
-                        <Path Data="{StaticResource IconDownload}" />
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="300" Spacing="10" Margin="6"
-                                            DataContext="{Binding Update}">
-                                    <TextBlock Classes="body"
-                                               Text="{Binding CurrentVersion, StringFormat='Version {0}'}" />
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="Check for updates"
-                                            Command="{Binding CheckCommand}"
-                                            IsEnabled="{Binding !IsBusy}"
-                                            IsVisible="{Binding CanSelfUpdate}" />
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="{Binding LatestVersion, StringFormat='Install {0}'}"
-                                            Command="{Binding InstallCommand}"
-                                            IsEnabled="{Binding !IsBusy}"
-                                            IsVisible="{Binding UpdateAvailable}" />
-                                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
-                                                 IsVisible="{Binding IsBusy}" />
-                                    <Button Classes="chipAction" HorizontalAlignment="Left"
-                                            Content="Restart now"
-                                            Command="{Binding RestartCommand}"
-                                            IsVisible="{Binding NeedsRestart}" />
-                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource FaintBrush}"
-                                               Text="{Binding StatusMessage}"
-                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                </StackPanel>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
                     <!-- Window caption controls (client-side chrome). -->
                     <Border Classes="captionSep" />
                     <Button Classes="icon caption" Name="MinimizeButton" Margin="2,0,0,0"
@@ -219,13 +118,13 @@
                 <views:PaletteView DataContext="{Binding Palette}" />
             </Border>
 
-            <GridSplitter Grid.Column="1" Grid.Row="0" Name="SidebarSplitter" Width="5"
+            <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Name="SidebarSplitter" Width="5"
                           Background="Transparent" ResizeDirection="Columns"
                           IsVisible="{Binding !Ui.IsCompact}"
                           DragCompleted="OnSidebarResized"
                           ToolTip.Tip="Drag to resize" />
 
-            <Panel Grid.Column="2" Grid.Row="0">
+            <Panel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Name="MainArea">
                 <ScrollViewer Name="BoardScroll"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -245,11 +144,126 @@
                           Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" />
                     <TextBlock Classes="hint" Text="{Binding EmptyStateHint}" />
                 </StackPanel>
+
+                <!-- Soft bottom edge: rows scroll away under a fade instead of being sliced off
+                     at the window edge. Stops short of the scrollbar. -->
+                <Border Height="36" VerticalAlignment="Bottom" Margin="0,0,14,0" IsHitTestVisible="False"
+                        Background="{DynamicResource ListFadeBottomBrush}" />
             </Panel>
 
-            <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1" Classes="panel"
-                    BorderThickness="0,1,0,0" IsVisible="{Binding Ui.IsCompact}">
-                <views:SourceTrayView DataContext="{Binding Palette}" />
+            <!-- Bottom bar: under the sidebar in Comfortable (like a chat app's user panel), full
+                 width in Compact where it also carries the sources tray. Placement is set from
+                 code-behind (ApplyLayout). -->
+            <Border Grid.Column="0" Grid.Row="1" Name="BottomBar" Classes="panel" BorderThickness="0,1,1,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Panel Grid.Column="0" IsVisible="{Binding Ui.IsCompact}">
+                        <views:SourceTrayView DataContext="{Binding Palette}" />
+                    </Panel>
+                    <Grid Grid.Column="1" Name="Actions" ColumnDefinitions="*,Auto,Auto"
+                          Margin="12,10" VerticalAlignment="Center">
+                            <Button Grid.Column="0" Classes="primary" Name="NewSinkButton"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    IsVisible="{Binding CanManageSinks}"
+                                    ToolTip.Tip="Create a virtual output — it survives reboots">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Path Data="{StaticResource StrokePlus}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Virtual sink" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="10" Margin="6">
+                                            <TextBox Watermark="Name (e.g. Game)" Text="{Binding NewSinkName}" />
+                                            <TextBox Watermark="Label (optional)" Text="{Binding NewSinkDescription}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                                <RadioButton GroupName="NewSinkChannels" Content="Stereo"
+                                                             IsChecked="{Binding !NewSinkMono}" />
+                                                <RadioButton GroupName="NewSinkChannels" Content="Mono"
+                                                             IsChecked="{Binding NewSinkMono}" />
+                                            </StackPanel>
+                                            <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource UnsavedBrush}"
+                                                       Text="{Binding NewSinkValidationMessage}"
+                                                       IsVisible="{Binding NewSinkValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Right"
+                                                    Content="Create"
+                                                    Command="{Binding SubmitNewSinkCommand}"
+                                                    Click="OnCreateSinkClick" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- Settings: layout density, sink monitors, start at login. -->
+                            <Button Grid.Column="1" Classes="icon" Name="SettingsButton" Margin="6,0,0,0" ToolTip.Tip="Settings">
+                                <Path Data="{StaticResource IconGear}" />
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="12" Margin="6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Classes="body" VerticalAlignment="Center" Text="Compact layout" />
+                                                <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Ui.IsCompact}" />
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Classes="body" VerticalAlignment="Center" Text="Show sink monitors as sources"
+                                                           TextWrapping="Wrap" />
+                                                <ToggleSwitch Grid.Column="1" Classes="compact" IsChecked="{Binding Filter.ShowMonitors}" />
+                                            </Grid>
+                                            <Panel IsVisible="{Binding CanManageAutostart}">
+                                                <StackPanel Spacing="8" DataContext="{Binding Autostart}">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Classes="body" VerticalAlignment="Center" Text="Start at login" />
+                                                        <ToggleSwitch Grid.Column="1" Classes="compact"
+                                                                      IsChecked="{Binding IsEnabled}"
+                                                                      IsEnabled="{Binding !IsBusy}" />
+                                                    </Grid>
+                                                    <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                               Foreground="{DynamicResource UnsavedBrush}"
+                                                               Text="{Binding StatusMessage}"
+                                                               IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </StackPanel>
+                                            </Panel>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- Updates (AppImage self-replace). -->
+                            <Button Grid.Column="2" Classes="icon" Name="UpdatesButton" Margin="2,0,0,0"
+                                    IsVisible="{Binding CanCheckUpdates}"
+                                    ToolTip.Tip="Updates">
+                                <Path Data="{StaticResource IconDownload}" />
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <StackPanel Width="300" Spacing="10" Margin="6"
+                                                    DataContext="{Binding Update}">
+                                            <TextBlock Classes="body"
+                                                       Text="{Binding CurrentVersion, StringFormat='Version {0}'}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="Check for updates"
+                                                    Command="{Binding CheckCommand}"
+                                                    IsEnabled="{Binding !IsBusy}"
+                                                    IsVisible="{Binding CanSelfUpdate}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="{Binding LatestVersion, StringFormat='Install {0}'}"
+                                                    Command="{Binding InstallCommand}"
+                                                    IsEnabled="{Binding !IsBusy}"
+                                                    IsVisible="{Binding UpdateAvailable}" />
+                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}"
+                                                         IsVisible="{Binding IsBusy}" />
+                                            <Button Classes="chipAction" HorizontalAlignment="Left"
+                                                    Content="Restart now"
+                                                    Command="{Binding RestartCommand}"
+                                                    IsVisible="{Binding NeedsRestart}" />
+                                            <TextBlock Classes="legendText" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource FaintBrush}"
+                                                       Text="{Binding StatusMessage}"
+                                                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 

@@ -42,8 +42,9 @@ public partial class BoardView : UserControl
     private void ApplySidebarWidth()
     {
         if (_boundVm is null || this.FindControl<Grid>("BodyGrid") is not { } grid) return;
+        var compact = _boundVm.Ui.IsCompact;
         var col = grid.ColumnDefinitions[0];
-        if (_boundVm.Ui.IsCompact)
+        if (compact)
         {
             col.MinWidth = 0;
             col.Width = new GridLength(0);
@@ -52,6 +53,21 @@ public partial class BoardView : UserControl
         {
             col.MinWidth = Services.UiSettings.MinSidebarWidth;
             col.Width = new GridLength(_boundVm.Ui.SidebarWidth);
+        }
+
+        // Comfortable: the bottom bar sits under the sidebar only and the output list runs to the
+        // window's bottom edge. Compact: the bar spans the window (tray left, actions right).
+        if (this.FindControl<Panel>("MainArea") is { } main)
+            Grid.SetRowSpan(main, compact ? 1 : 2);
+        if (this.FindControl<Border>("BottomBar") is { } bar)
+        {
+            Grid.SetColumnSpan(bar, compact ? 3 : 1);
+            bar.BorderThickness = compact ? new Thickness(0, 1, 0, 0) : new Thickness(0, 1, 1, 0);
+        }
+        if (this.FindControl<Grid>("Actions") is { } actions)
+        {
+            Grid.SetColumn(actions, compact ? 1 : 0);
+            Grid.SetColumnSpan(actions, compact ? 1 : 2);
         }
     }
 

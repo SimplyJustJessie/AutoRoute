@@ -81,5 +81,9 @@
 
         <TextBlock Classes="hint" VerticalAlignment="Center" HorizontalAlignment="Center"
                    IsVisible="{Binding IsEmpty}" Text="Nothing playing" />
+
+        <!-- Entries scroll away under a fade above the footer bar, not into a hard edge. -->
+        <Border Height="28" VerticalAlignment="Bottom" Margin="0,0,12,0" IsHitTestVisible="False"
+                Background="{DynamicResource PanelFadeBottomBrush}" />
     </Panel>
 </UserControl>
