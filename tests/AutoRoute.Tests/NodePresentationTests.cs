@@ -76,12 +76,18 @@ public sealed class NodePresentationTests
         var g = Graph(headsetSink, headsetMic, codecSink, codecIn);
 
         Assert.Equal(NodeGlyph.Headset, NodePresentation.ForTarget(headsetSink, g, "PRO X 2", MediaKind.Audio).Glyph);
-        Assert.Equal(NodeGlyph.Headset, NodePresentation.ForSource(headsetMic, g, "PRO X 2", SourceKind.Capture, MediaKind.Audio).Glyph);
+        // The boom mic draws as a mic, so as a chip it can't pass for the headphones.
+        Assert.Equal(NodeGlyph.Mic, NodePresentation.ForSource(headsetMic, g, "PRO X 2", SourceKind.Capture, MediaKind.Audio).Glyph);
         Assert.Equal(NodeGlyph.Interface, NodePresentation.ForTarget(codecSink, g, "PCM2900C", MediaKind.Audio).Glyph);
 
         var mic = NodePresentation.ForSource(headsetMic, g, "PRO X 2", SourceKind.Capture, MediaKind.Audio);
         Assert.True(mic.IsInput);
         Assert.Equal("USB", mic.TypeLine);
+
+        // ALSA names both sides of the hardware alike; the input side says which it is.
+        Assert.Equal("PRO X 2 LIGHTSPEED mic", NodePresentation.SourceName(headsetMic, g));
+        Assert.Equal("PCM2900C Audio CODEC input", NodePresentation.SourceName(codecIn, g));
+        Assert.Equal("PRO X 2 LIGHTSPEED", NodeRoles.TargetTitle(headsetSink));
     }
 
     [Fact]

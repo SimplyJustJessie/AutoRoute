@@ -7,7 +7,7 @@ using AutoRoute.PipeWire.Models;
 namespace AutoRoute.App.Services;
 
 /// <summary>What a node's tile shows when there is no app letter tile.</summary>
-public enum NodeGlyph { App, Headset, Speaker, Monitor, Interface, Virtual, Wave, Camera }
+public enum NodeGlyph { App, Headset, Mic, Speaker, Monitor, Interface, Virtual, Wave, Camera }
 
 /// <summary>Where an output row sits on the board.</summary>
 public enum TargetGroup { Virtual = 0, Device = 1, AppInput = 2 }
@@ -223,8 +223,24 @@ public static class NodePresentation
         return n.Info.DeviceBus == "usb" ? NodeGlyph.Interface : NodeGlyph.Speaker;
     }
 
+    // A headset's boom mic draws as a mic, never the headset: as a chip on some output it would
+    // otherwise look exactly like the headphones themselves.
     private static NodeGlyph SourceDeviceGlyph(PwNode n, PwGraph graph) =>
-        IsHeadset(n, graph) ? NodeGlyph.Headset : NodeGlyph.Interface;
+        IsHeadset(n, graph) ? NodeGlyph.Mic : NodeGlyph.Interface;
+
+    /// <summary>
+    /// A source's display name. A capture device that also has an output on the same hardware gets
+    /// " mic" (headset) or " input" (interface) appended, since ALSA names both sides the same and
+    /// "PRO X 2 LIGHTSPEED" on a chip would read as the headphones.
+    /// </summary>
+    public static string SourceName(PwNode n, PwGraph graph)
+    {
+        var title = NodeRoles.SourceTitle(n);
+        if (!IsDevice(n) || n.MediaClass is not "Audio/Source" || n.Info.DeviceId is not { } dev) return title;
+        var hasOutput = graph.Nodes.Any(o => o.Info.DeviceId == dev && o.MediaClass is "Audio/Sink");
+        if (!hasOutput) return title;
+        return title + (IsHeadset(n, graph) ? " mic" : " input");
+    }
 
     // Virtual nodes an app owns (Easy Effects' sink/source) get that app's letter tile.
     private static NodeGlyph AppishGlyph(PwNode n) =>

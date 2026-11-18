@@ -118,6 +118,7 @@
                  Own drawings, not Bootstrap: the device tiles and in/out badges read better as
                  thin outlines at 16–22 px. Keys are "Glyph" + NodeGlyph name (GlyphConverter). -->
             <StreamGeometry x:Key="GlyphHeadset">M4 15V12A8 8 0 0 1 20 12V15 M3 14H7V21H3Z M17 14H21V21H17Z</StreamGeometry>
+            <StreamGeometry x:Key="GlyphMic">M9 3.5A3 3 0 0 1 15 3.5V11A3 3 0 0 1 9 11Z M5.5 10.5A6.5 6.5 0 0 0 18.5 10.5 M12 17V21 M8.5 21H15.5</StreamGeometry>
             <StreamGeometry x:Key="GlyphSpeaker">M11 5L6 9H3V15H6L11 19Z M15.5 8.5A5 5 0 0 1 15.5 15.5 M18.5 5.5A9 9 0 0 1 18.5 18.5</StreamGeometry>
             <StreamGeometry x:Key="GlyphMonitor">M3 4H21V16H3Z M8 20H16 M12 16V20</StreamGeometry>
             <StreamGeometry x:Key="GlyphInterface">M9 3V8 M15 3V8 M6 8H18V11A6 6 0 0 1 6 11Z M12 17V21</StreamGeometry>

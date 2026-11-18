@@ -142,6 +142,7 @@ public partial class SinkColumnViewModel : VolumeNodeViewModel
         foreach (var src in _addCandidates())
         {
             if (present.Contains(src.Key) || src.IsProtected) continue;
+            if (src.AllNodeIds.Contains(TargetNodeId)) continue; // never an output's own sound
             var nodeId = src.RepresentativeNodeId;
             AddOptions.Add(new AddOption(src, new AsyncRelayCommand(() => Connect(nodeId))));
         }

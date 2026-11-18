@@ -206,7 +206,12 @@ public sealed class PwDumpReader
 
         uint? serial = props is { } pr && TryGetInt(pr, "object.serial", out var ser) && ser >= 0 ? (uint)ser : null;
 
+        var monitorVolume = props is { } pv && pv.TryGetProperty("monitor.channel-volumes", out var mcv)
+            && (mcv.ValueKind == JsonValueKind.True
+                || (mcv.ValueKind == JsonValueKind.String && mcv.GetString() == "true"));
+
         return new NodeMeta(
+            MonitorHasVolume: monitorVolume,
             Serial: serial,
             Nick: PropString(props, "node.nick"),
             DeviceBus: PropString(props, "device.bus"),

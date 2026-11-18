@@ -173,13 +173,13 @@ public static class BoardModelBuilder
                     Key: g.Key,
                     RepresentativeNodeId: rep.Id,
                     AllNodeIds: g.Select(n => n.Id).ToList(),
-                    Title: NodeRoles.SourceTitle(rep),
+                    Title: NodePresentation.SourceName(rep, graph),
                     Subtitle: NodeRoles.SourceSubtitle(rep),
                     Kind: NodeRoles.KindOf(rep, kind),
                     IsMonitor: monitor,
                     Protected: protectedIds.Contains(rep.Id),
                     Format: NodeRoles.FormatLabel(rep),
-                    Look: NodePresentation.ForSource(rep, graph, NodeRoles.SourceTitle(rep),
+                    Look: NodePresentation.ForSource(rep, graph, NodePresentation.SourceName(rep, graph),
                         NodeRoles.KindOf(rep, kind), kind),
                     MediaKind: kind);
             })
@@ -227,14 +227,14 @@ public static class BoardModelBuilder
                 RepresentativeNodeId: Representative.Id,
                 SourceIdentity: identity,
                 AllSourceNodeIds: _nodeIds.Count > 0 ? _nodeIds.ToList() : new List<int> { Representative.Id },
-                Title: NodeRoles.SourceTitle(Representative),
+                Title: NodePresentation.SourceName(Representative, graph),
                 Subtitle: NodeRoles.SourceSubtitle(Representative),
                 State: state,
                 RuleId: RuleId,
                 RuleName: RuleName,
                 LinkId: LinkId,
                 Tooltip: tooltip,
-                Look: NodePresentation.ForSource(Representative, graph, NodeRoles.SourceTitle(Representative),
+                Look: NodePresentation.ForSource(Representative, graph, NodePresentation.SourceName(Representative, graph),
                     NodeRoles.KindOf(Representative, kind), kind));
         }
     }

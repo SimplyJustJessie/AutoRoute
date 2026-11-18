@@ -190,10 +190,12 @@ public sealed class LevelMeterFeed : IDisposable
     {
         if (node.MediaClass is not { } mc) return null;
 
-        if (mc.StartsWith("Audio/Sink", StringComparison.Ordinal) && node.NodeName is { } sink)
-            return (MeterKey.SinkMonitor(sink), 1); // monitor ports carry the signal before sink volume
-
         var postVolume = 1 / Math.Max(node.Info.Volume ?? 1, 0.02);
+        // A sink's monitor normally carries the signal before the sink's volume; with
+        // monitor.channel-volumes (AutoRoute's virtual sinks) it is after it.
+        if (mc.StartsWith("Audio/Sink", StringComparison.Ordinal) && node.NodeName is { } sink)
+            return (MeterKey.SinkMonitor(sink), node.Info.MonitorHasVolume ? postVolume : 1);
+
         if (mc.StartsWith("Audio/Source", StringComparison.Ordinal) && node.NodeName is { } source)
             return (MeterKey.Source(source), postVolume);
         if (mc.StartsWith("Stream/Output/Audio", StringComparison.Ordinal) && node.Info.Serial is { } serial)

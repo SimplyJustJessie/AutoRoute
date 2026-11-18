@@ -50,7 +50,8 @@
          flickered in between rows and at their edges. Transparent background so it hit-tests. -->
     <Border Classes="rowHost" Background="Transparent" Padding="20,0"
             behaviors:DropTargetBehavior.DropCommand="{Binding ConnectCommand}"
-            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}">
+            behaviors:DropTargetBehavior.AcceptsDrop="{Binding AcceptsDrop}"
+            behaviors:DropTargetBehavior.RejectNodeId="{Binding TargetNodeId}">
     <StackPanel>
         <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
                    IsVisible="{Binding ShowGroupHeader}" Margin="2,14,0,8" />

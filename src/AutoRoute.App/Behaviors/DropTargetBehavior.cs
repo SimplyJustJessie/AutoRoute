@@ -21,6 +21,16 @@ public static class DropTargetBehavior
     public static readonly AttachedProperty<bool> AcceptsDropProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("AcceptsDrop", typeof(DropTargetBehavior), true);
 
+    /// <summary>
+    /// A source node this target refuses: the row's own node, so an output can never be fed its own
+    /// sound (dragging an output's monitor back onto it would loop). -1 = none.
+    /// </summary>
+    public static readonly AttachedProperty<int> RejectNodeIdProperty =
+        AvaloniaProperty.RegisterAttached<Control, int>("RejectNodeId", typeof(DropTargetBehavior), -1);
+
+    public static void SetRejectNodeId(Control c, int v) => c.SetValue(RejectNodeIdProperty, v);
+    public static int GetRejectNodeId(Control c) => c.GetValue(RejectNodeIdProperty);
+
     /// <summary>True while a compatible drag is hovering — for a drop-highlight style trigger.</summary>
     public static readonly AttachedProperty<bool> IsDragOverProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("IsDragOver", typeof(DropTargetBehavior));
@@ -61,7 +71,8 @@ public static class DropTargetBehavior
     // stable and functional. Kept intentionally; Wave 3 may migrate to the DataTransfer API.
 #pragma warning disable CS0618
     private static bool Compatible(Control control, DragEventArgs e) =>
-        GetAcceptsDrop(control) && e.Data.Contains(DragSourceBehavior.SourceNodeFormat);
+        GetAcceptsDrop(control) && e.Data.Contains(DragSourceBehavior.SourceNodeFormat)
+        && !(e.Data.Get(DragSourceBehavior.SourceNodeFormat) is int id && id == GetRejectNodeId(control));
 
     // Exactly one highlighted target at a time. Leave events can be missed on slow moves (and a
     // leave inside a row's own bounds is ignored on purpose), so highlighting a new target always
@@ -103,6 +114,7 @@ public static class DropTargetBehavior
         }
         else
         {
+            ClearCurrent(); // no lingering highlight on the row we just came from
             e.DragEffects = DragDropEffects.None;
         }
         e.Handled = true;

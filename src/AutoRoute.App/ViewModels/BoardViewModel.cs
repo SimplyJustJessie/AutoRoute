@@ -38,6 +38,12 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     // Per-session set of external Links the user chose to keep as Manual (not persisted policy).
     private readonly HashSet<string> _keptManual = new();
 
+    // Chips the user just removed, hidden at once while PipeWire catches up (unlinking and the
+    // next graph snapshot take a moment). Each entry clears when a snapshot no longer has that
+    // chip, or after PendingRemovalMs so a failed unlink shows the chip again.
+    private readonly Dictionary<string, long> _pendingRemovals = new();
+    private const long PendingRemovalMs = 5000;
+
     public ObservableCollection<SinkColumnViewModel> Columns { get; } = new();
     public SourcesPaletteViewModel Palette { get; }
 
@@ -237,8 +243,8 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         // keep the previous board and recover on the next snapshot.
         try
         {
-            var snapshot = BoardModelBuilder.Build(
-                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors, _kind);
+            var snapshot = HidePendingRemovals(BoardModelBuilder.Build(
+                graph, _ruleStore.Current, _matcher, _keptManual, Filter.ShowMonitors, _kind));
 
             MergeColumns(snapshot.Columns);
             Palette.Merge(snapshot.Palette);
@@ -253,6 +259,28 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             _log?.LogError(ex, "board rebuild failed; keeping the previous board");
             StatusText = "Board update failed — will retry on the next change";
         }
+    }
+
+    private BoardSnapshot HidePendingRemovals(BoardSnapshot snapshot)
+    {
+        if (_pendingRemovals.Count == 0) return snapshot;
+        var now = Environment.TickCount64;
+        var present = new HashSet<string>();
+        var columns = snapshot.Columns.Select(col =>
+        {
+            var kept = col.Cards.Where(card =>
+            {
+                var key = BoardModelBuilder.CardKey(col.TargetNodeId, card.Key);
+                if (!_pendingRemovals.ContainsKey(key)) return true;
+                present.Add(key);
+                return false;
+            }).ToList();
+            return kept.Count == col.Cards.Count ? col : col with { Cards = kept };
+        }).ToList();
+
+        foreach (var (key, expires) in _pendingRemovals.ToArray())
+            if (!present.Contains(key) || now > expires) _pendingRemovals.Remove(key);
+        return snapshot with { Columns = columns };
     }
 
     private void MergeColumns(IReadOnlyList<ColumnModel> models)
@@ -330,6 +358,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     public async Task ConnectAsync(int sourceNodeId, int targetNodeId)
     {
+        if (sourceNodeId == targetNodeId) return; // an output's own sound fed back into it loops
         var g = _graph.Current;
         var source = g.Node(sourceNodeId);
         var target = g.Node(targetNodeId);
@@ -369,6 +398,11 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
         var g = _graph.Current;
         var target = g.Node(card.TargetNodeId);
         var source = g.Node(card.RepresentativeNodeId);
+
+        // Gone from the board now; the rule write and unlink follow.
+        _pendingRemovals[BoardModelBuilder.CardKey(card.TargetNodeId, card.Key)] =
+            Environment.TickCount64 + PendingRemovalMs;
+        RebuildFromCurrent();
 
         if (card.State == CardState.Managed)
         {

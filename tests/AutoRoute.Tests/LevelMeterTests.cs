@@ -54,6 +54,14 @@ public sealed class LevelMeterTests
     }
 
     [Fact]
+    public void Sinks_whose_monitor_carries_volume_divide_it_out()
+    {
+        var node = new PwNode(1, "TITS", null, "Audio/Sink", null, null, null, System.Array.Empty<PwPort>(),
+            Meta: new NodeMeta(State: "running", Volume: 0.5, MonitorHasVolume: true));
+        Assert.Equal(2, LevelMeterFeed.TapFor(node)!.Value.Scale, 3);
+    }
+
+    [Fact]
     public void App_streams_and_mics_are_measured_after_volume_so_it_is_divided_back_out()
     {
         var app = LevelMeterFeed.TapFor(Node("Stream/Output/Audio", "running", 0.5, serial: 544));
