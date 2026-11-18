@@ -14,8 +14,10 @@ namespace AutoRoute.App.Services;
 /// them: <see cref="Active"/> is driven by the window being shown on the Audio tab. Inactive, it holds
 /// no meter streams and no server connection and runs no timer, so the app in the tray pays nothing.
 /// <para>
-/// Only nodes that are already running get a meter (a stream on an idle device would only ever read
-/// silence, and opening one on a mic nobody uses would look like we were listening). Levels are
+/// Every node gets its meter up front, idle or not, so sound shows the moment it starts instead of
+/// after a graph refresh and a stream setup. That costs nearly nothing: meter streams are passive,
+/// so an idle device stays suspended and an unused mic stays closed, and no data flows until the
+/// node runs. New nodes are picked up as soon as the graph changes. Levels are
 /// normalised to "before this entry's volume" (<see cref="VolumeNodeViewModel.Level"/>): a sink's
 /// monitor already is, while app streams and capture sources are measured after their volume, so
 /// those are divided back out. Shown levels rise instantly and fall back gently.
@@ -24,7 +26,7 @@ namespace AutoRoute.App.Services;
 public sealed class LevelMeterFeed : IDisposable
 {
     private static readonly TimeSpan Frame = TimeSpan.FromMilliseconds(33);
-    private const int PlanEveryTicks = 15;   // re-read which nodes run: twice a second
+    private const int PlanEveryTicks = 60;   // safety net; graph changes re-plan straight away
     private const int StaleAfterTicks = 6;   // no peak for ~200 ms: the stream paused, read silence
     private const double Release = 0.05;     // fall per frame, in fader units (~0.7 s from full)
 
@@ -71,11 +73,15 @@ public sealed class LevelMeterFeed : IDisposable
             if (value)
             {
                 _tick = 0;
+                _graph.GraphUpdated += OnGraphChanged;
+                _graph.PresentationUpdated += OnGraphChanged;
                 RefreshPlan();
                 _timer.Start();
             }
             else
             {
+                _graph.GraphUpdated -= OnGraphChanged;
+                _graph.PresentationUpdated -= OnGraphChanged;
                 _timer.Stop();
                 _meter.Stop();
                 _readings.Clear();
@@ -84,6 +90,11 @@ public sealed class LevelMeterFeed : IDisposable
             }
         }
     }
+
+    // Graph events arrive on a background thread; the board rebuilds from the same event first
+    // (it subscribed earlier), so by the time this runs the view models match the new graph.
+    private void OnGraphChanged(object? sender, PwGraph graph) =>
+        Dispatcher.UIThread.Post(() => { if (_active) RefreshPlan(); }, DispatcherPriority.Background);
 
     private void Tick()
     {
@@ -165,7 +176,7 @@ public sealed class LevelMeterFeed : IDisposable
     /// <summary>The meter for a node, and the factor that turns its reading into "before volume".</summary>
     public static (MeterKey Key, double Scale)? TapFor(PwNode node)
     {
-        if (!node.Info.IsRunning || node.MediaClass is not { } mc) return null;
+        if (node.MediaClass is not { } mc) return null;
 
         if (mc.StartsWith("Audio/Sink", StringComparison.Ordinal) && node.NodeName is { } sink)
             return (MeterKey.SinkMonitor(sink), 1); // monitor ports carry the signal before sink volume
@@ -180,6 +191,7 @@ public sealed class LevelMeterFeed : IDisposable
 
     public void Dispose()
     {
+        Active = false;
         _timer.Stop();
         _meter.Dispose();
     }

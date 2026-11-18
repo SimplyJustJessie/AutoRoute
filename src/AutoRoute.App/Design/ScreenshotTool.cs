@@ -90,7 +90,15 @@ public static class ScreenshotTool
             .Concat(board.Palette.Items).Where(v => v.IsRunning).ToList();
         foreach (var v in metered) v.IsMetered = true;
         for (var f = 0; f < 12; f++)
+        {
             foreach (var v in metered) v.Level = 0.15 + rng.NextDouble() * 0.8;
+            for (var k = 0; k < 3; k++) // the bars glide on animation frames
+            {
+                System.Threading.Thread.Sleep(16);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+            }
+        }
         Dispatcher.UIThread.RunJobs();
         if (metered.Count > 0) // the design graph has nothing running; --live usually does
             Capture(window, Path.Combine(dir, "board-meters.png"));

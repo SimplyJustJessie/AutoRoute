@@ -10,7 +10,7 @@ namespace AutoRoute.App.Controls;
 /// app down visibly shrinks them.
 /// <para>
 /// It's an activity indicator, not a precise meter (the fader fill is that), so it favours
-/// visible motion. The level is read on a dB scale that lifts quiet audio, each bar wanders
+/// visible motion. The level is read on a dB scale (-60..-6 dB), so quiet audio still shows but louder audio is clearly taller, each bar wanders
 /// towards its own random target so the three never move in lockstep, and sudden jumps in level
 /// (beats, consonants) kick the bars by different amounts.
 /// </para>
@@ -41,7 +41,7 @@ public sealed class LevelBars : Control
 
     private const int Bars = 3;
     private static readonly double[] StaticHeights = { 0.5, 1.0, 0.7 }; // short, tall, middle
-    private static readonly double[] Kick = { 1.0, 0.6, 1.3 };          // transient response per bar
+    private static readonly double[] Kick = { 0.6, 0.35, 0.8 };         // transient response per bar
     private const double Floor = 0.2;       // running but silent: three dots
     private const double QuietDb = -60;     // bottom of the scale
     private const double LoudDb = -6;       // top: loud music peaks around here
@@ -51,8 +51,11 @@ public sealed class LevelBars : Control
     private readonly double[] _mult = { 0.6, 0.9, 0.75 };
     private readonly double[] _target = { 0.6, 0.9, 0.75 };
     private readonly int[] _hold = new int[Bars];
-    private readonly double[] _height = new double[Bars];
+    private readonly double[] _goal = new double[Bars];   // set ~30×/s from the meter
+    private readonly double[] _height = new double[Bars]; // eased towards _goal every display frame
     private double _slow;
+    private TimeSpan? _lastFrame;
+    private bool _animating;
     private IPen? _pen;
 
     static LevelBars()
@@ -73,7 +76,7 @@ public sealed class LevelBars : Control
         if (change.Property == LevelProperty)
         {
             Step(Loudness(Out()));
-            InvalidateVisual();
+            Animate();
         }
         else if (change.Property == ForegroundProperty || change.Property == BarThicknessProperty)
         {
@@ -81,6 +84,7 @@ public sealed class LevelBars : Control
         }
         else if (change.Property == IsLiveProperty && !IsLive)
         {
+            Array.Clear(_goal);
             Array.Clear(_height);
             _slow = 0;
         }
@@ -90,15 +94,15 @@ public sealed class LevelBars : Control
     private double Out() => IsMuted ? 0 : Math.Clamp(Level, 0, 1) * Math.Clamp(Volume, 0, 1);
 
     /// <summary>
-    /// Fader units are the cube root of amplitude; map that onto -60..-6 dB, then lift it again
-    /// (square root) so a quiet video still reaches half height.
+    /// Fader units are the cube root of amplitude; map that linearly onto -60..-6 dB. Quiet speech
+    /// (about -44 dB) lands near a third, a normal video (-24 dB) two thirds.
     /// </summary>
     public static double Loudness(double faderUnits)
     {
         var amplitude = faderUnits * faderUnits * faderUnits;
         if (amplitude <= 1e-6) return 0;
         var db = 20 * Math.Log10(amplitude);
-        return Math.Sqrt(Math.Clamp((db - QuietDb) / (LoudDb - QuietDb), 0, 1));
+        return Math.Clamp((db - QuietDb) / (LoudDb - QuietDb), 0, 1);
     }
 
     /// <summary>One frame: advance each bar's wander and transient kick, then settle its height.</summary>
@@ -106,7 +110,7 @@ public sealed class LevelBars : Control
     {
         if (loud <= 0)
         {
-            Array.Clear(_height);
+            Array.Clear(_goal);
             _slow = 0;
             return;
         }
@@ -119,15 +123,51 @@ public sealed class LevelBars : Control
         {
             if (--_hold[i] <= 0)
             {
-                _target[i] = 0.3 + 0.7 * _rng.NextDouble();
+                _target[i] = 0.55 + 0.45 * _rng.NextDouble(); // wander, but let the level lead
                 _hold[i] = 2 + _rng.Next(5); // a new target every 70-200 ms
             }
             _mult[i] += (_target[i] - _mult[i]) * 0.45;
 
-            var want = Math.Clamp(loud * _mult[i] + transient * Kick[i], 0, 1);
-            // Up fast, down a little slower, so peaks read as jumps rather than flicker.
-            _height[i] = want > _height[i] ? want : _height[i] + (want - _height[i]) * 0.5;
+            _goal[i] = Math.Clamp(loud * _mult[i] + transient * Kick[i], 0, 1);
         }
+    }
+
+    /// <summary>
+    /// Glide the bars towards their goals at the display's frame rate, so 30 meter updates a second
+    /// read as smooth motion. Rises are quick (~45 ms), falls slower (~140 ms). Runs only until the
+    /// bars settle, and only while attached, so a hidden or silent entry costs nothing.
+    /// </summary>
+    private void Animate()
+    {
+        if (_animating) return;
+        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top)
+        {
+            Array.Copy(_goal, _height, Bars);
+            return;
+        }
+        _animating = true;
+        _lastFrame = null;
+        top.RequestAnimationFrame(OnFrame);
+    }
+
+    private void OnFrame(TimeSpan now)
+    {
+        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : 1 / 60.0;
+        _lastFrame = now;
+
+        var moving = false;
+        for (var i = 0; i < Bars; i++)
+        {
+            var diff = _goal[i] - _height[i];
+            var tau = diff > 0 ? 0.045 : 0.14;
+            _height[i] += diff * (1 - Math.Exp(-dt / tau));
+            if (Math.Abs(_goal[i] - _height[i]) > 0.003) moving = true;
+            else _height[i] = _goal[i];
+        }
+        InvalidateVisual();
+
+        if (moving && IsLive && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnFrame);
+        else _animating = false;
     }
 
     protected override Size MeasureOverride(Size availableSize) => new(14, 13);

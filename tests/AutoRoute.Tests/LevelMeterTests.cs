@@ -66,10 +66,11 @@ public sealed class LevelMeterTests
     }
 
     [Fact]
-    public void Idle_nodes_and_recording_streams_get_no_meter()
+    public void Idle_nodes_are_metered_up_front_but_recording_streams_never()
     {
-        Assert.Null(LevelMeterFeed.TapFor(Node("Audio/Sink", "suspended")));
-        Assert.Null(LevelMeterFeed.TapFor(Node("Audio/Source", "idle")));       // never open an unused mic
+        // Passive meters: opening them early never wakes the device, and sound shows instantly.
+        Assert.NotNull(LevelMeterFeed.TapFor(Node("Audio/Sink", "suspended")));
+        Assert.NotNull(LevelMeterFeed.TapFor(Node("Audio/Source", "idle")));
         Assert.Null(LevelMeterFeed.TapFor(Node("Stream/Input/Audio", "running", serial: 9)));
         Assert.Null(LevelMeterFeed.TapFor(Node("Stream/Output/Audio", "running", serial: null)));
     }
@@ -80,9 +81,12 @@ public sealed class LevelBarsTests
     private static double FaderUnits(double db) => Math.Cbrt(Math.Pow(10, db / 20));
 
     [Fact]
-    public void Quiet_audio_still_reaches_about_half_height_and_loud_audio_the_top()
+    public void Quiet_audio_still_shows_but_louder_audio_is_clearly_taller()
     {
-        Assert.InRange(AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-44)), 0.45, 0.65);
+        var quiet = AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-44));
+        var normal = AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-24));
+        Assert.InRange(quiet, 0.25, 0.35);
+        Assert.True(normal > 2 * quiet);
         Assert.Equal(1, AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-3)), 3);
         Assert.Equal(0, AutoRoute.App.Controls.LevelBars.Loudness(0));
     }
