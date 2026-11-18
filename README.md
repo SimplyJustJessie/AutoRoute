@@ -6,7 +6,7 @@
 
 AutoRoute is a background service and GUI for Linux that remembers your PipeWire connections and re-applies them as apps come and go. It's a *persistent* [Helvum](https://gitlab.freedesktop.org/pipewire/helvum): you patch things the way you want, and AutoRoute keeps them that way — even though PipeWire hands out fresh node IDs every time an app restarts.
 
-![The AutoRoute board — a palette of draggable sources on the left, one column per target sink, an unsaved link ready to save](screenshots/board.png)
+![The AutoRoute board — sources on the left, one row per output with the sources feeding it as chips](screenshots/board.png)
 
 ## The problem
 
@@ -24,9 +24,11 @@ AutoRoute makes those patches stick, in **both directions**:
 - **Fan-out** — send one source to several sinks at once (your headset *and* a capture sink for streaming).
 - **Keep-connected and keep-disconnected** — positive rules hold a link open; suppressions keep it closed on every cycle.
 - **Protected nodes** — mark routing that another tool owns (e.g. an EasyEffects chain) as off-limits, and AutoRoute won't touch it. Precedence is absolute: *protected > suppression > connect*.
-- **A board, not a patchbay** — a clean dark UI with one column per sink and a palette of draggable sources; drag to connect, drop into several columns to fan out, filter by name. Channels are paired for you, and each card's state — *managed*, *unsaved*, *manual*, or *protected* — is spelled out at a glance.
+- **A board, not a patchbay** — one row per output (virtual sinks, devices, app inputs), with the sources feeding it as chips. Drag a source onto a row to connect it, or use **+ Add**; drop it on several rows to fan out. Channels are paired for you. Real device names, app icons from your icon theme, and a mic stays visibly a mic. Two layouts: Comfortable (sources in a sidebar) and Compact (one-line rows, sources in a tray), switched in Settings.
+- **Volume and live levels** — every app, output and input has a fader that doubles as a level meter, and a playing indicator that moves with the sound. The meters only run while the window is visible.
+- **Undo, and nothing hidden** — removing a route offers Undo for a few seconds. Saved routes stay visible when they aren't live: a faded chip when the app isn't running, a *Disconnected* row when the device is unplugged. Click a source to highlight the outputs it feeds.
 - **Sample rate & bit depth at a glance** — every source and sink wears a small badge showing what it's running at (e.g. `48 kHz · 24-bit`, `44.1 kHz · 32-bit float`), read straight from the live graph.
-- **Video too, same rules** — PipeWire carries video, so the board has an **Audio / Video** switch in the toolbar. Route a Spout2PW sender (VTube Studio, an overlay, …) into OBS's PipeWire Video Capture exactly the way you route audio, and stop re-connecting it by hand every session.
+- **Video too, same rules** — PipeWire carries video, so the board has an **Audio / Video** switch in the top bar. Route a Spout2PW sender (VTube Studio, an overlay, …) into OBS's PipeWire Video Capture exactly the way you route audio, and stop re-connecting it by hand every session.
 - **Runs in the background** — a tray app (and an optional systemd service) reconcile the graph continuously; closing the window just hides it.
 - **Non-destructive** — AutoRoute only ever removes links it created or ones you explicitly suppressed. Your other manual patches are never touched.
 
@@ -41,7 +43,7 @@ AutoRoute makes those patches stick, in **both directions**:
 **AppImage** (no .NET required): grab `AutoRoute-*-x86_64.AppImage` from the latest
 [release](https://git.bussy.cloud/jessie/AutoRoute/releases) (or the `AutoRoute-AppImage`
 artifact on any CI run), `chmod +x` it, run it. Built by `scripts/build-appimage.sh`.
-Once running, an AppImage keeps itself current: the ⬇ toolbar button checks the Gitea releases for
+Once running, an AppImage keeps itself current: the ⬇ button checks the Gitea releases for
 a newer version and installs it in place (download → checksum + boot self-test → atomic swap →
 restart). `AutoRoute --check-update` is the headless equivalent.
 
@@ -80,15 +82,14 @@ Flags:
 
 ## Using it
 
-1. Launch AutoRoute — the board mirrors your current audio graph. Links that already exist show up as **unsaved**.
-2. Hit **+ New Sink** to spin up a virtual sink (name, description, stereo or mono). It appears as a column tagged **VIRTUAL** and is recreated on every boot; its delete button tears it down and cleans up any rules pointing at it.
-3. Drag a source (an app stream, a microphone, or a sink's monitor) from the palette into a target sink's column to connect it. Drop it into more than one column to fan out.
-4. Remove a card to disconnect. Removing an external link records a **suppression** so it stays gone.
-5. Mark a node **protected** to tell AutoRoute to leave it and everything touching it alone.
+1. Launch AutoRoute — the board mirrors your current audio graph. Links that already exist show up as amber chips with **Keep**: keep one to have it restored after a restart, or right-click for *Leave as is*. A brand-new setup is offered a few ready-made sets of virtual outputs to start with.
+2. Hit **+ Virtual sink** to create a virtual output (name, description, stereo or mono). It is recreated on every boot; deleting it from its row's **⋯** menu also cleans up any rules pointing at it.
+3. Drag a source (an app, a microphone, or an output's monitor) onto an output's row to connect it, or use the row's **+ Add**. Drop it on more rows to fan out.
+4. Remove a chip with **✕** to disconnect (Undo is offered for a few seconds). Removing a link someone else made records a **suppression** so it stays gone.
+5. Mark an output or source **Hands off** to tell AutoRoute to leave it and everything touching it alone.
+6. The **Auto-route** switch in the top bar (and the tray) pauses AutoRoute entirely; flip it back on and it catches up.
 
-Every card wears its state on its sleeve — **managed**, **unsaved**, **manual**, or **protected**. The circled **?** in the toolbar opens a legend explaining each:
-
-![The card-state legend — managed, unsaved, manual, and protected explained](screenshots/board-help.png)
+![Focus a source — the outputs it feeds stay lit, the rest step back](screenshots/board-focus.png)
 
 Rules are written to `~/.config/autoroute/rules.json` the moment you make a change — there is no Save button.
 
@@ -96,23 +97,23 @@ Rules are written to `~/.config/autoroute/rules.json` the moment you make a chan
 
 PipeWire carries video alongside audio, and the same "the IDs changed, re-patch it by hand" problem
 applies — which is why reconnecting VTube Studio to OBS becomes a ritual every time you start them.
-The **Video** switch in the toolbar shows the video half of the graph: video Sources on the left
-(a [Spout2PW](https://github.com/SimplyJustJessie/spout2pw) sender, a screen-capture stream), video
-Target Sinks as columns (OBS's *PipeWire Video Capture* source).
+The **Video** switch in the top bar shows the video half of the graph: video sources
+(a [Spout2PW](https://github.com/SimplyJustJessie/spout2pw) sender, a screen-capture stream) and the
+video inputs they can feed, one row each (OBS's *PipeWire Video Capture* source).
 
 ![The Video tab — a Spout2PW sender routed into OBS's PipeWire Video Capture](screenshots/board-video.png)
 
-It works exactly like the audio board: drag a Source onto a column once, and the link is re-created
+It works exactly like the audio board: drag a source onto a row once, and the link is re-created
 every time both apps come back. The rules live in the same `rules.json` and are re-applied by the
 same background reconciler — there is nothing extra to configure or enable.
 
 Both apps have to be running for their nodes to exist, so start VTube Studio (with Spout2PW) and OBS
-first, then make the connection once. Virtual-sink creation is audio-only, so **+ New Sink** is
+first, then make the connection once. Virtual-sink creation is audio-only, so **+ Virtual sink** is
 hidden on this tab.
 
 ## Autostart
 
-**Easiest:** open the ⚙ menu in the toolbar and flip **Start AutoRoute when I log in**. AutoRoute
+**Easiest:** open the ⚙ menu (bottom bar) and flip **Start at login**. AutoRoute
 detects its own path (the AppImage included — no symlink, no hand-edited unit) and adds a desktop
 autostart entry (`~/.config/autostart`). Your desktop launches it as part of your session, so it
 inherits the display and tray environment a GUI app needs. Flip it off to remove it.
