@@ -6,11 +6,18 @@ using Avalonia.Media;
 namespace AutoRoute.App.Controls;
 
 /// <summary>
-/// The green "playing" equaliser: four bars that follow the live level after volume, so turning an
-/// app down visibly shrinks them. Each bar reads the level a frame or two later than its neighbour,
-/// which makes them ripple rather than pump in lockstep. Without a live feed
-/// (<see cref="IsLive"/> false) it draws the static icon shape. It only redraws when
-/// <see cref="Level"/> changes, which only happens while the meter feed runs.
+/// The green "playing" equaliser: three bars driven by the live level after volume, so turning an
+/// app down visibly shrinks them.
+/// <para>
+/// It's an activity indicator, not a precise meter (the fader fill is that), so it favours
+/// visible motion. The level is read on a dB scale that lifts quiet audio, each bar wanders
+/// towards its own random target so the three never move in lockstep, and sudden jumps in level
+/// (beats, consonants) kick the bars by different amounts.
+/// </para>
+/// <para>
+/// Without a live feed (<see cref="IsLive"/> false) it draws the static icon shape. It only redraws
+/// when <see cref="Level"/> changes, which only happens while the meter feed runs.
+/// </para>
 /// </summary>
 public sealed class LevelBars : Control
 {
@@ -30,17 +37,22 @@ public sealed class LevelBars : Control
         AvaloniaProperty.Register<LevelBars, IBrush?>(nameof(Foreground));
 
     public static readonly StyledProperty<double> BarThicknessProperty =
-        AvaloniaProperty.Register<LevelBars, double>(nameof(BarThickness), 2.2);
+        AvaloniaProperty.Register<LevelBars, double>(nameof(BarThickness), 3);
 
-    // The static icon: bars 7, 15, 10 and 5 units tall out of 15.
-    private static readonly double[] StaticHeights = { 7 / 15.0, 1, 10 / 15.0, 5 / 15.0 };
-    // Per bar: how many frames behind it reads, and how tall it gets at full level.
-    private static readonly int[] Lag = { 1, 0, 2, 3 };
-    private static readonly double[] Weight = { 0.78, 1.0, 0.9, 0.66 };
-    private const double Floor = 0.18; // a running but silent stream still shows a little
+    private const int Bars = 3;
+    private static readonly double[] StaticHeights = { 0.5, 1.0, 0.7 }; // short, tall, middle
+    private static readonly double[] Kick = { 1.0, 0.6, 1.3 };          // transient response per bar
+    private const double Floor = 0.2;       // running but silent: three dots
+    private const double QuietDb = -60;     // bottom of the scale
+    private const double LoudDb = -6;       // top: loud music peaks around here
 
-    private readonly double[] _history = new double[4];
-    private int _head;
+    private static int _seed = 17;
+    private readonly Random _rng = new(System.Threading.Interlocked.Increment(ref _seed) * 7919);
+    private readonly double[] _mult = { 0.6, 0.9, 0.75 };
+    private readonly double[] _target = { 0.6, 0.9, 0.75 };
+    private readonly int[] _hold = new int[Bars];
+    private readonly double[] _height = new double[Bars];
+    private double _slow;
     private IPen? _pen;
 
     static LevelBars()
@@ -60,10 +72,7 @@ public sealed class LevelBars : Control
         base.OnPropertyChanged(change);
         if (change.Property == LevelProperty)
         {
-            var v = Out();
-            if (v <= 0) Array.Clear(_history); // settled: no lagging bar left hanging up
-            _head = (_head + 1) % _history.Length;
-            _history[_head] = v;
+            Step(Loudness(Out()));
             InvalidateVisual();
         }
         else if (change.Property == ForegroundProperty || change.Property == BarThicknessProperty)
@@ -72,12 +81,54 @@ public sealed class LevelBars : Control
         }
         else if (change.Property == IsLiveProperty && !IsLive)
         {
-            Array.Clear(_history);
+            Array.Clear(_height);
+            _slow = 0;
         }
     }
 
-    /// <summary>What actually comes out: the level after this entry's volume and mute.</summary>
+    /// <summary>What actually comes out: the level after this entry's volume and mute (fader units).</summary>
     private double Out() => IsMuted ? 0 : Math.Clamp(Level, 0, 1) * Math.Clamp(Volume, 0, 1);
+
+    /// <summary>
+    /// Fader units are the cube root of amplitude; map that onto -60..-6 dB, then lift it again
+    /// (square root) so a quiet video still reaches half height.
+    /// </summary>
+    public static double Loudness(double faderUnits)
+    {
+        var amplitude = faderUnits * faderUnits * faderUnits;
+        if (amplitude <= 1e-6) return 0;
+        var db = 20 * Math.Log10(amplitude);
+        return Math.Sqrt(Math.Clamp((db - QuietDb) / (LoudDb - QuietDb), 0, 1));
+    }
+
+    /// <summary>One frame: advance each bar's wander and transient kick, then settle its height.</summary>
+    private void Step(double loud)
+    {
+        if (loud <= 0)
+        {
+            Array.Clear(_height);
+            _slow = 0;
+            return;
+        }
+
+        if (_slow <= 0) _slow = loud; // starting up: no fake burst from silence
+        var transient = Math.Max(0, loud - _slow); // how much louder than the recent average
+        _slow += (loud - _slow) * 0.15;
+
+        for (var i = 0; i < Bars; i++)
+        {
+            if (--_hold[i] <= 0)
+            {
+                _target[i] = 0.3 + 0.7 * _rng.NextDouble();
+                _hold[i] = 2 + _rng.Next(5); // a new target every 70-200 ms
+            }
+            _mult[i] += (_target[i] - _mult[i]) * 0.45;
+
+            var want = Math.Clamp(loud * _mult[i] + transient * Kick[i], 0, 1);
+            // Up fast, down a little slower, so peaks read as jumps rather than flicker.
+            _height[i] = want > _height[i] ? want : _height[i] + (want - _height[i]) * 0.5;
+        }
+    }
 
     protected override Size MeasureOverride(Size availableSize) => new(14, 13);
 
@@ -91,17 +142,11 @@ public sealed class LevelBars : Control
         var h = Bounds.Height;
         var bottom = h - t / 2;
         var span = bottom - t / 2;     // round caps poke out half a thickness at each end
-        var step = (w - t) / 3;
+        var step = (w - t) / (Bars - 1);
 
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < Bars; i++)
         {
-            double frac;
-            if (!IsLive) frac = StaticHeights[i];
-            else
-            {
-                var v = _history[(_head - Lag[i] + _history.Length) % _history.Length] * Weight[i];
-                frac = Floor + (1 - Floor) * Math.Clamp(v, 0, 1);
-            }
+            var frac = IsLive ? Floor + (1 - Floor) * _height[i] : StaticHeights[i];
             var x = t / 2 + step * i;
             ctx.DrawLine(_pen, new Point(x, bottom), new Point(x, bottom - span * frac + 0.01));
         }

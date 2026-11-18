@@ -74,3 +74,16 @@ public sealed class LevelMeterTests
         Assert.Null(LevelMeterFeed.TapFor(Node("Stream/Output/Audio", "running", serial: null)));
     }
 }
+
+public sealed class LevelBarsTests
+{
+    private static double FaderUnits(double db) => Math.Cbrt(Math.Pow(10, db / 20));
+
+    [Fact]
+    public void Quiet_audio_still_reaches_about_half_height_and_loud_audio_the_top()
+    {
+        Assert.InRange(AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-44)), 0.45, 0.65);
+        Assert.Equal(1, AutoRoute.App.Controls.LevelBars.Loudness(FaderUnits(-3)), 3);
+        Assert.Equal(0, AutoRoute.App.Controls.LevelBars.Loudness(0));
+    }
+}

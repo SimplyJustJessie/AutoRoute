@@ -26,7 +26,7 @@ public sealed class LevelMeterFeed : IDisposable
     private static readonly TimeSpan Frame = TimeSpan.FromMilliseconds(33);
     private const int PlanEveryTicks = 15;   // re-read which nodes run: twice a second
     private const int StaleAfterTicks = 6;   // no peak for ~200 ms: the stream paused, read silence
-    private const double Release = 0.035;    // fall per frame, in fader units (~1 s from full)
+    private const double Release = 0.05;     // fall per frame, in fader units (~0.7 s from full)
 
     private readonly ILevelMeter _meter;
     private readonly IPwGraphService _graph;
@@ -113,7 +113,8 @@ public sealed class LevelMeterFeed : IDisposable
 
             e.Shown = raw >= e.Shown ? raw : Math.Max(raw, e.Shown - Release);
             if (e.Shown < 0.004) e.Shown = 0;
-            if (Math.Abs(e.Vm.Level - e.Shown) > 0.002 || (e.Shown == 0 && e.Vm.Level != 0))
+            // Every frame that differs: the playing bars step their animation on each change.
+            if (e.Vm.Level != e.Shown)
                 e.Vm.Level = e.Shown;
         }
     }
