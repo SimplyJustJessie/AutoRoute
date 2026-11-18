@@ -28,6 +28,10 @@ public sealed partial class UiSettings : ObservableObject
     [ObservableProperty]
     private double _sidebarWidth = DefaultSidebarWidth;
 
+    /// <summary>The first-run "Start with" choice was made (or skipped); never offered again.</summary>
+    [ObservableProperty]
+    private bool _setupDone;
+
     /// <summary>In-memory only (tests, design data).</summary>
     public UiSettings() { }
 
@@ -49,7 +53,9 @@ public sealed partial class UiSettings : ObservableObject
 
     partial void OnSidebarWidthChanged(double value) => Save();
 
-    private sealed record Dto(bool Compact, double? SidebarWidth = null);
+    partial void OnSetupDoneChanged(bool value) => Save();
+
+    private sealed record Dto(bool Compact, double? SidebarWidth = null, bool SetupDone = false);
 
     private void Load()
     {
@@ -62,6 +68,7 @@ public sealed partial class UiSettings : ObservableObject
             IsCompact = dto.Compact;
             if (dto.SidebarWidth is { } w && double.IsFinite(w))
                 SidebarWidth = Math.Clamp(w, MinSidebarWidth, MaxSidebarWidth);
+            SetupDone = dto.SetupDone;
         }
         catch (Exception) { /* defaults */ }
         finally { _loading = false; }
@@ -74,7 +81,7 @@ public sealed partial class UiSettings : ObservableObject
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(new Dto(IsCompact, SidebarWidth)));
+            File.WriteAllText(tmp, JsonSerializer.Serialize(new Dto(IsCompact, SidebarWidth, SetupDone)));
             File.Move(tmp, _path, overwrite: true);
         }
         catch (Exception) { /* preference only */ }

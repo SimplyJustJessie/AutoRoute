@@ -131,13 +131,41 @@
                 <ScrollViewer Name="BoardScroll" behaviors:SmoothScroll.IsEnabled="True"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Columns}" Margin="0,6,0,20">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:SinkColumnViewModel">
-                                <views:SinkColumnView IsVisible="{Binding IsVisible}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel>
+                        <!-- First run only: a few ready-made sets of virtual outputs. -->
+                        <Border Classes="setupCard" IsVisible="{Binding ShowSetup}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Classes="setupTitle" Text="Start with" />
+                                <ItemsControl ItemsSource="{x:Static vm:BoardViewModel.SetupPresets}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:BoardViewModel+SetupPreset">
+                                            <Button Classes="setupOption"
+                                                    Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).ChooseSetupCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Classes="nm" Text="{Binding Title}" />
+                                                    <TextBlock Classes="typeLine" Text="{Binding Outputs}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding Columns}" Margin="0,6,0,20">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SinkColumnViewModel">
+                                    <views:SinkColumnView IsVisible="{Binding IsVisible}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <StackPanel Spacing="10" MaxWidth="380"

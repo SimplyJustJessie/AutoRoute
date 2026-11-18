@@ -505,4 +505,34 @@
         <Setter Property="FontSize" Value="12.5" />
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
     </Style>
+
+    <!-- First-run "Start with" card above the outputs. -->
+    <Style Selector="Border.setupCard">
+        <Setter Property="Background" Value="{DynamicResource ColumnBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentDimBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="Margin" Value="20,14,20,4" />
+    </Style>
+    <Style Selector="TextBlock.setupTitle">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#ECEDEF" />
+    </Style>
+    <Style Selector="Button.setupOption">
+        <Setter Property="Background" Value="#22242B" />
+        <Setter Property="BorderBrush" Value="#30333C" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Margin" Value="0,0,10,0" />
+        <Setter Property="MinWidth" Value="170" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.setupOption:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#2A2C34" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
 </Styles>

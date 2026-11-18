@@ -248,6 +248,38 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     /// <summary>Rebuild the board from the latest snapshot (synchronous; safe for headless/VM tests).</summary>
     public void RebuildFromCurrent() => Rebuild(_graph.Current);
 
+    // ===== First run: "Start with" presets ================================================
+
+    /// <summary>One first-run starting point: the virtual outputs it creates.</summary>
+    public sealed record SetupPreset(string Key, string Title, string Outputs, IReadOnlyList<string> Sinks);
+
+    public static IReadOnlyList<SetupPreset> SetupPresets { get; } = new[]
+    {
+        new SetupPreset("streaming", "Streaming", "Game · Music · Chat", new[] { "Game", "Music", "Chat" }),
+        new SetupPreset("voice", "Voice chat", "Chat · Media", new[] { "Chat", "Media" }),
+        new SetupPreset("empty", "Empty", "No outputs yet", Array.Empty<string>()),
+    };
+
+    /// <summary>
+    /// A brand-new setup (no saved routes, no virtual outputs, never chosen before) gets the
+    /// "Start with" card. Existing setups never see it.
+    /// </summary>
+    [ObservableProperty]
+    private bool _showSetup;
+
+    private void RefreshSetup() =>
+        ShowSetup = CanManageSinks && !Ui.SetupDone
+                    && _ruleStore.Current.Rules.Count == 0 && _ruleStore.Current.VirtualSinks.Count == 0;
+
+    [RelayCommand]
+    private async Task ChooseSetup(SetupPreset preset)
+    {
+        Ui.SetupDone = true;
+        ShowSetup = false;
+        foreach (var name in preset.Sinks)
+            await CreateSinkAsync(name, name, mono: false).ConfigureAwait(true);
+    }
+
     // ===== Focus a Source =================================================================
 
     /// <summary>The focused Source's key, or null: its outputs light up, the rest dim.</summary>
@@ -297,6 +329,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
             MergeColumns(snapshot.Columns);
             Palette.Merge(snapshot.Palette);
             ApplyFocus();
+            RefreshSetup();
             HasColumns = Columns.Count > 0;
             StatusText = Columns.Count == 0
                 ? "No Target Sinks in the graph"
@@ -796,8 +829,14 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
     private static void PostToUi(Action action)
     {
-        // Marshal onto the UI thread. In a headless/VM context (no Avalonia dispatcher running)
-        // fall back to running inline so the smoke check and design-time init still work.
+        // Marshal onto the UI thread. With no Avalonia app running (unit tests, tools) run inline:
+        // in Avalonia 12 merely reading Dispatcher.UIThread binds it to the calling thread, so
+        // view models used from several test threads would otherwise post into a loop nobody runs.
+        if (Avalonia.Application.Current is null)
+        {
+            action();
+            return;
+        }
         try
         {
             var dispatcher = Dispatcher.UIThread;

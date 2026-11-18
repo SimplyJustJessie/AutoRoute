@@ -121,6 +121,13 @@ public static class ScreenshotTool
         foreach (var v in metered) { v.Level = 0; v.IsSounding = false; v.IsMetered = false; }
         Dispatcher.UIThread.RunJobs();
 
+        // The first-run "Start with" card (a real first run has no outputs saved yet).
+        board.ShowSetup = true;
+        Dispatcher.UIThread.RunJobs();
+        Capture(window, Path.Combine(dir, "board-setup.png"));
+        board.ShowSetup = false;
+        Dispatcher.UIThread.RunJobs();
+
         // The undo toast after removing a route.
         board.ToastText = "Spotify removed from Music";
         Dispatcher.UIThread.RunJobs();
