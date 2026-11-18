@@ -47,8 +47,8 @@ public interface ILevelMeter : IDisposable
 
 /// <summary>
 /// <see cref="ILevelMeter"/> over pipewire-pulse peak-detect record streams, the way pavucontrol
-/// meters: one 1-channel float stream per tap at 30 Hz with <c>PEAK_DETECT</c>, which pipewire-pulse
-/// turns into a peak resampler, so the server hands over one peak value per 33 ms and nothing else.
+/// meters: one 1-channel float stream per tap at 25 Hz with <c>PEAK_DETECT</c>, which pipewire-pulse
+/// turns into a peak resampler, so the server hands over one peak value per 40 ms and nothing else.
 /// The streams are passive (they never wake a suspended device) and pinned (<c>DONT_MOVE</c>: when
 /// the app stops, the meter dies with it instead of wandering onto the default device). Each is
 /// tagged <see cref="MeterProperty"/> so the graph reader can leave it out of the board.
@@ -61,7 +61,7 @@ public sealed unsafe class PulseLevelMeter : ILevelMeter
     /// <summary>Stream property marking a meter stream; <see cref="PwDumpReader"/> drops nodes carrying it.</summary>
     public const string MeterProperty = "autoroute.meter";
 
-    private const uint Rate = 30;
+    private const uint Rate = 25; // readings per second, as pavucontrol
     private static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(5);
 
     private readonly ILogger _log;

@@ -25,12 +25,12 @@ namespace AutoRoute.App.Services;
 /// </summary>
 public sealed class LevelMeterFeed : IDisposable
 {
-    private static readonly TimeSpan Frame = TimeSpan.FromMilliseconds(33);
+    private static readonly TimeSpan Frame = TimeSpan.FromMilliseconds(40);
     private const int PlanEveryTicks = 60;   // safety net; graph changes re-plan straight away
-    private const int StaleAfterTicks = 6;   // no peak for ~200 ms: the stream paused, read silence
-    private const int SoundHoldTicks = 30;   // keep the bars up for 1 s across gaps between words
+    private const int StaleAfterTicks = 6;   // no peak for ~240 ms: the stream paused, read silence
+    private const int SoundHoldTicks = 25;   // keep the bars up for 1 s across gaps between words
     private const double Audible = 0.05;     // fader units after volume: about -78 dB
-    private const double Release = 0.05;     // fall per frame, in fader units (~0.7 s from full)
+    private const double Release = 0.05;     // fall per frame, in fader units (~0.8 s from full)
 
     private readonly ILevelMeter _meter;
     private readonly IPwGraphService _graph;

@@ -51,7 +51,7 @@ public sealed class LevelBars : Control
     private readonly double[] _mult = { 0.6, 0.9, 0.75 };
     private readonly double[] _target = { 0.6, 0.9, 0.75 };
     private readonly int[] _hold = new int[Bars];
-    private readonly double[] _goal = new double[Bars];   // set ~30×/s from the meter
+    private readonly double[] _goal = new double[Bars];   // set 25×/s from the meter
     private readonly double[] _height = new double[Bars]; // eased towards _goal every display frame
     private double _slow;
     private TimeSpan? _lastFrame;
@@ -130,7 +130,7 @@ public sealed class LevelBars : Control
             if (--_hold[i] <= 0)
             {
                 _target[i] = _rng.NextDouble();
-                _hold[i] = 2 + _rng.Next(4); // a new target every 70-170 ms
+                _hold[i] = 2 + _rng.Next(4); // a new target every 80-200 ms
             }
             _mult[i] += (_target[i] - _mult[i]) * 0.5;
 
@@ -142,7 +142,7 @@ public sealed class LevelBars : Control
     }
 
     /// <summary>
-    /// Glide the bars towards their goals at the display's frame rate, so 30 meter updates a second
+    /// Glide the bars towards their goals at the display's frame rate, so 25 meter updates a second
     /// read as smooth motion. Rises are quick (~45 ms), falls slower (~140 ms). Runs only until the
     /// bars settle, and only while attached, so a hidden or silent entry costs nothing.
     /// </summary>

@@ -39,6 +39,14 @@ public sealed class Fader : Control
     private const double KnobRadius = 7;
 
     private bool _dragging;
+
+    // The drawn level glides towards Level on display frames, so small wobbles in loudness don't
+    // make the fill vibrate: up in ~80 ms, down in ~300 ms.
+    private double _shownLevel;
+    private TimeSpan? _lastFrame;
+    private bool _animating;
+    private const double RiseSeconds = 0.08;
+    private const double FallSeconds = 0.3;
     private long _hoverSince = long.MaxValue;
 
     /// <summary>
@@ -49,7 +57,7 @@ public sealed class Fader : Control
 
     static Fader()
     {
-        AffectsRender<Fader>(ValueProperty, LevelProperty, IsMutedProperty);
+        AffectsRender<Fader>(ValueProperty, IsMutedProperty);
         FocusableProperty.OverrideDefaultValue<Fader>(true);
         CursorProperty.OverrideDefaultValue<Fader>(new Cursor(StandardCursorType.Hand));
     }
@@ -75,7 +83,7 @@ public sealed class Fader : Control
         if (knobX < x0 + usable)
             ctx.DrawRectangle(Rest, null, new RoundedRect(new Rect(knobX, y, x0 + usable - knobX, TrackHeight), 0, TrackHeight / 2, TrackHeight / 2, 0));
 
-        var level = Math.Clamp(Level, 0, 1) * Value;
+        var level = Math.Clamp(_shownLevel, 0, 1) * Value;
         if (level > 0.001)
             ctx.DrawRectangle(IsMuted ? MutedLevel : LevelBrush, null,
                 new RoundedRect(new Rect(x0, y, usable * level, TrackHeight), TrackHeight / 2));
@@ -84,6 +92,41 @@ public sealed class Fader : Control
         if (IsFocused)
             ctx.DrawEllipse(null, FocusPen, center, KnobRadius + 2.5, KnobRadius + 2.5);
         ctx.DrawEllipse(IsMuted ? KnobMuted : Knob, null, center, KnobRadius, KnobRadius);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == LevelProperty) AnimateLevel();
+    }
+
+    private void AnimateLevel()
+    {
+        if (_animating) return;
+        if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top)
+        {
+            _shownLevel = Level;
+            InvalidateVisual();
+            return;
+        }
+        _animating = true;
+        _lastFrame = null;
+        top.RequestAnimationFrame(OnLevelFrame);
+    }
+
+    private void OnLevelFrame(TimeSpan now)
+    {
+        var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.1) : 1 / 60.0;
+        _lastFrame = now;
+        var target = Math.Clamp(Level, 0, 1);
+        var diff = target - _shownLevel;
+        _shownLevel += diff * (1 - Math.Exp(-dt / (diff > 0 ? RiseSeconds : FallSeconds)));
+        var settled = Math.Abs(target - _shownLevel) < 0.002;
+        if (settled) _shownLevel = target;
+        InvalidateVisual();
+
+        if (!settled && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnLevelFrame);
+        else _animating = false;
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
