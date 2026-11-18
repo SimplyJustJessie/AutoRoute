@@ -33,8 +33,11 @@
          draws the corners; without one they render as plain square corners). Squared off when
          maximized (BoardStyles). -->
     <Border Name="Frame" Classes="windowFrame" Background="{DynamicResource BgBrush}"
-            BorderBrush="#4A4E5E" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
-    <Grid>
+            BorderBrush="#060709" BorderThickness="1" CornerRadius="10">
+    <!-- Border.ClipToBounds clips to a plain rectangle, so the title bar and panel backgrounds
+         painted over the rounded corners. The content gets a rounded clip of its own instead
+         (MainWindow.axaml.cs). -->
+    <Grid Name="FrameContent">
         <!-- IsVisible="False" also stops a board from hit-testing, so drag/drop and clicks on the
              hidden one never fire. -->
         <Panel IsVisible="{Binding Tabs.IsAudioSelected}">
