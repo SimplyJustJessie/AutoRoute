@@ -49,7 +49,7 @@
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Classes="nm" Text="{Binding Title}" />
                                             <controls:LevelBars Grid.Column="1" Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" Margin="8,0,2,0"
-                                                     IsVisible="{Binding IsRunning}" />
+                                                     IsVisible="{Binding ShowPlaying}" />
                                         </Grid>
                                         <WrapPanel>
                                             <TextBlock Classes="typeLine" Text="{Binding TypeLine}" MaxWidth="200" Margin="0,0,8,2"

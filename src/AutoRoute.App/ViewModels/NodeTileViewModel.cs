@@ -97,7 +97,13 @@ public abstract partial class VolumeNodeViewModel : NodeTileViewModel
 
     /// <summary>A live meter is feeding <see cref="Level"/> right now.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPlaying))]
     private bool _isMetered;
+
+    /// <summary>The meter heard something audible come out in the last second.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPlaying))]
+    private bool _isSounding;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(VolumePercent))]
@@ -109,9 +115,17 @@ public abstract partial class VolumeNodeViewModel : NodeTileViewModel
     [ObservableProperty]
     private bool _hasVolume;
 
-    /// <summary>Audio is flowing right now (drives the playing indicator).</summary>
+    /// <summary>PipeWire says the node is running (it may still be playing silence).</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPlaying))]
     private bool _isRunning;
+
+    /// <summary>
+    /// Show the playing bars only once the meter has actually heard audio come out: a paused video
+    /// keeps its stream running but silent, and right after the window opens nothing is measured
+    /// yet, so a running flag alone would flash bars that aren't real.
+    /// </summary>
+    public bool ShowPlaying => IsMetered && IsSounding;
 
     public string VolumePercent => Math.Round(Volume * 100).ToString("0");
 

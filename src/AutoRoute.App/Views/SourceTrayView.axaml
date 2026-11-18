@@ -36,7 +36,7 @@
                             </Border>
                         </Panel>
                         <TextBlock Classes="nm" FontSize="13" Text="{Binding Title}" MaxWidth="160" VerticalAlignment="Center" />
-                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding IsRunning}" />
+                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding ShowPlaying}" />
                         <Button Classes="mute" Width="24" Height="24" Classes.on="{Binding IsMuted}"
                                 IsVisible="{Binding HasVolume}" ToolTip.Tip="Volume">
                             <Panel>

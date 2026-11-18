@@ -28,6 +28,8 @@ public sealed class LevelMeterFeed : IDisposable
     private static readonly TimeSpan Frame = TimeSpan.FromMilliseconds(33);
     private const int PlanEveryTicks = 60;   // safety net; graph changes re-plan straight away
     private const int StaleAfterTicks = 6;   // no peak for ~200 ms: the stream paused, read silence
+    private const int SoundHoldTicks = 30;   // keep the bars up for 1 s across gaps between words
+    private const double Audible = 0.05;     // fader units after volume: about -78 dB
     private const double Release = 0.05;     // fall per frame, in fader units (~0.7 s from full)
 
     private readonly ILevelMeter _meter;
@@ -52,6 +54,7 @@ public sealed class LevelMeterFeed : IDisposable
         public readonly VolumeNodeViewModel Vm = vm;
         public readonly (MeterKey Key, double Scale)[] Taps = taps;
         public double Shown = vm.Level;
+        public int LastSoundTick = int.MinValue / 2;
     }
 
     public LevelMeterFeed(ILevelMeter meter, IPwGraphService graph, BoardViewModel board)
@@ -85,7 +88,7 @@ public sealed class LevelMeterFeed : IDisposable
                 _timer.Stop();
                 _meter.Stop();
                 _readings.Clear();
-                foreach (var e in _plan) { e.Vm.Level = 0; e.Vm.IsMetered = false; }
+                foreach (var e in _plan) { e.Vm.Level = 0; e.Vm.IsSounding = false; e.Vm.IsMetered = false; }
                 _plan.Clear();
             }
         }
@@ -122,6 +125,10 @@ public sealed class LevelMeterFeed : IDisposable
                     raw = Math.Max(raw, r.Value * scale);
             raw = Math.Min(raw, 1);
 
+            if (!e.Vm.IsMuted && raw * e.Vm.Volume > Audible) e.LastSoundTick = _tick;
+            var sounding = _tick - e.LastSoundTick <= SoundHoldTicks;
+            if (e.Vm.IsSounding != sounding) e.Vm.IsSounding = sounding;
+
             e.Shown = raw >= e.Shown ? raw : Math.Max(raw, e.Shown - Release);
             if (e.Shown < 0.004) e.Shown = 0;
             // Every frame that differs: the playing bars step their animation on each change.
@@ -152,10 +159,15 @@ public sealed class LevelMeterFeed : IDisposable
             if (taps.Count == 0)
             {
                 if (vm.Level != 0) vm.Level = 0;
+                vm.IsSounding = false;
                 continue;
             }
             var entry = new Entry(vm, taps.ToArray());
-            if (old.TryGetValue(vm, out var prev)) entry.Shown = prev.Shown;
+            if (old.TryGetValue(vm, out var prev))
+            {
+                entry.Shown = prev.Shown;
+                entry.LastSoundTick = prev.LastSoundTick;
+            }
             _plan.Add(entry);
         }
 

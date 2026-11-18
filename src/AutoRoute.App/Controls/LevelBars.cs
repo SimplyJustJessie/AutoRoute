@@ -41,8 +41,8 @@ public sealed class LevelBars : Control
 
     private const int Bars = 3;
     private static readonly double[] StaticHeights = { 0.5, 1.0, 0.7 }; // short, tall, middle
-    private static readonly double[] Kick = { 0.6, 0.35, 0.8 };         // transient response per bar
-    private const double Floor = 0.2;       // running but silent: three dots
+    private static readonly double[] Kick = { 0.6, -0.4, 0.8 };         // transient shake per bar
+    private const double Floor = 0.2;       // the shortest a bar gets while shown
     private const double QuietDb = -60;     // bottom of the scale
     private const double LoudDb = -6;       // top: loud music peaks around here
 
@@ -82,6 +82,10 @@ public sealed class LevelBars : Control
         {
             _pen = null;
         }
+        else if (change.Property == IsVisibleProperty && IsVisible)
+        {
+            Array.Clear(_height); // appear from the bottom, never at full height
+        }
         else if (change.Property == IsLiveProperty && !IsLive)
         {
             Array.Clear(_goal);
@@ -119,16 +123,21 @@ public sealed class LevelBars : Control
         var transient = Math.Max(0, loud - _slow); // how much louder than the recent average
         _slow += (loud - _slow) * 0.15;
 
+        // A jump in level shakes the bars up; it never makes them taller than the level allows.
+        var shake = Math.Min(1, transient * 3);
         for (var i = 0; i < Bars; i++)
         {
             if (--_hold[i] <= 0)
             {
-                _target[i] = 0.55 + 0.45 * _rng.NextDouble(); // wander, but let the level lead
-                _hold[i] = 2 + _rng.Next(5); // a new target every 70-200 ms
+                _target[i] = _rng.NextDouble();
+                _hold[i] = 2 + _rng.Next(4); // a new target every 70-170 ms
             }
-            _mult[i] += (_target[i] - _mult[i]) * 0.45;
+            _mult[i] += (_target[i] - _mult[i]) * 0.5;
 
-            _goal[i] = Math.Clamp(loud * _mult[i] + transient * Kick[i], 0, 1);
+            var r = Math.Clamp(_mult[i] + shake * Kick[i], 0, 1);
+            // The loudest bar reaches the level; the others sit anywhere down to a quarter of it, so
+            // the shape keeps changing even when loud music pins the level near the top.
+            _goal[i] = loud * (0.25 + 0.75 * r);
         }
     }
 
@@ -142,7 +151,7 @@ public sealed class LevelBars : Control
         if (_animating) return;
         if (!IsEffectivelyVisible || TopLevel.GetTopLevel(this) is not { } top)
         {
-            Array.Copy(_goal, _height, Bars);
+            Array.Clear(_height); // hidden: when it shows, the bars grow in from the bottom
             return;
         }
         _animating = true;

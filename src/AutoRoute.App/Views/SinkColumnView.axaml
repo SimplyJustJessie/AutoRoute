@@ -87,7 +87,7 @@
                 <StackPanel Classes="who" Width="220" VerticalAlignment="Center" Spacing="5" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Classes="nm" Text="{Binding Title}" MaxWidth="196" />
-                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding IsRunning}" />
+                        <controls:LevelBars Classes="playing" Level="{Binding Level}" Volume="{Binding Volume}" IsMuted="{Binding IsMuted}" IsLive="{Binding IsMetered}" IsVisible="{Binding ShowPlaying}" />
                     </StackPanel>
                     <WrapPanel IsVisible="{Binding !IsCompact}">
                         <TextBlock Classes="typeLine" Text="{Binding TypeLine}" Margin="0,0,8,2" MaxWidth="200"

@@ -88,7 +88,7 @@ public static class ScreenshotTool
         var rng = new Random(7);
         var metered = board.Columns.Cast<ViewModels.VolumeNodeViewModel>()
             .Concat(board.Palette.Items).Where(v => v.IsRunning).ToList();
-        foreach (var v in metered) v.IsMetered = true;
+        foreach (var v in metered) { v.IsMetered = true; v.IsSounding = true; }
         for (var f = 0; f < 12; f++)
         {
             foreach (var v in metered) v.Level = 0.15 + rng.NextDouble() * 0.8;
@@ -102,7 +102,7 @@ public static class ScreenshotTool
         Dispatcher.UIThread.RunJobs();
         if (metered.Count > 0) // the design graph has nothing running; --live usually does
             Capture(window, Path.Combine(dir, "board-meters.png"));
-        foreach (var v in metered) { v.Level = 0; v.IsMetered = false; }
+        foreach (var v in metered) { v.Level = 0; v.IsSounding = false; v.IsMetered = false; }
         Dispatcher.UIThread.RunJobs();
 
         // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
