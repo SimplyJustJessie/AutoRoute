@@ -15,6 +15,10 @@ public partial class SourceCardViewModel : NodeTileViewModel
 {
     private readonly IBoardCoordinator _coordinator;
 
+    /// <summary>This chip is the focused Source.</summary>
+    [ObservableProperty]
+    private bool _isFocused;
+
     /// <summary>Diff-merge key within a column (the Source's app-granularity identity).</summary>
     public string Key { get; }
 

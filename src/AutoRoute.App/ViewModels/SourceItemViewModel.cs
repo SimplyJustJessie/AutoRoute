@@ -55,6 +55,13 @@ public partial class SourceItemViewModel : VolumeNodeViewModel
     [ObservableProperty]
     private bool _isVisible = true;
 
+    /// <summary>This Source is focused: the board highlights the outputs it feeds.</summary>
+    [ObservableProperty]
+    private bool _isFocused;
+
+    [RelayCommand]
+    private void ToggleFocus() => _coordinator.ToggleFocus(Key);
+
     public SourceItemViewModel(IBoardCoordinator coordinator, PaletteItemModel model)
     {
         _coordinator = coordinator;

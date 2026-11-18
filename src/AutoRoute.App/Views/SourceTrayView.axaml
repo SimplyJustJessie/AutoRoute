@@ -22,7 +22,8 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
             <DataTemplate DataType="vm:SourceItemViewModel">
-                <Border Classes="trayChip" IsVisible="{Binding IsVisible}"
+                <Border Classes="trayChip" IsVisible="{Binding IsVisible}" Classes.focused="{Binding IsFocused}"
+                        behaviors:DragSourceBehavior.ClickCommand="{Binding ToggleFocusCommand}"
                         behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
                         behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
                     <StackPanel Orientation="Horizontal" Spacing="8">

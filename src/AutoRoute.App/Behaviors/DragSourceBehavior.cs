@@ -28,6 +28,19 @@ public static class DragSourceBehavior
     public static readonly AttachedProperty<int?> SourceNodeIdProperty =
         AvaloniaProperty.RegisterAttached<Control, int?>("SourceNodeId", typeof(DragSourceBehavior));
 
+    /// <summary>
+    /// Run on a plain click: press and release without starting a drag. Presses its fader or
+    /// buttons keep to themselves never count (they mark the press handled).
+    /// </summary>
+    public static readonly AttachedProperty<System.Windows.Input.ICommand?> ClickCommandProperty =
+        AvaloniaProperty.RegisterAttached<Control, System.Windows.Input.ICommand?>("ClickCommand", typeof(DragSourceBehavior));
+
+    public static void SetClickCommand(Control control, System.Windows.Input.ICommand? value) =>
+        control.SetValue(ClickCommandProperty, value);
+
+    public static System.Windows.Input.ICommand? GetClickCommand(Control control) =>
+        control.GetValue(ClickCommandProperty);
+
     /// <summary>Label shown on the floating drag ghost (bind to the Source's title).</summary>
     public static readonly AttachedProperty<string?> DragLabelProperty =
         AvaloniaProperty.RegisterAttached<Control, string?>("DragLabel", typeof(DragSourceBehavior));
@@ -109,7 +122,16 @@ public static class DragSourceBehavior
     private static void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (sender is not Control control) return;
-        if (State.TryGetValue(control, out var st)) st.Armed = false;
+        if (State.TryGetValue(control, out var st) && st.Armed)
+        {
+            st.Armed = false; // pressed and released without a drag: a click
+            if (GetClickCommand(control) is { } click && click.CanExecute(null))
+            {
+                click.Execute(null);
+                e.Handled = true;
+            }
+            return;
+        }
         if (_active is not { } drag || drag.Source != control) return;
 
         var target = DropTargetBehavior.TargetAt(drag.Top, e.GetPosition(drag.Top));

@@ -22,6 +22,16 @@ public partial class BoardView : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) => BindLayout();
 
+        // Esc clears a focused Source (a drag in flight takes Esc first; it handles the key).
+        AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.Key == Key.Escape && _boundVm is { FocusedSourceKey: not null } vm)
+            {
+                vm.ClearFocusCommand.Execute(null);
+                e.Handled = true;
+            }
+        });
+
         // Opening the Updates menu is when a package install checks (see UpdateViewModel).
         if (this.FindControl<Button>("UpdatesButton")?.Flyout is { } updates)
             updates.Opened += (_, _) => _ = _boundVm?.Update?.EnsureCheckedAsync();

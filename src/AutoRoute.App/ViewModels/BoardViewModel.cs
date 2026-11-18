@@ -242,6 +242,42 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
     /// <summary>Rebuild the board from the latest snapshot (synchronous; safe for headless/VM tests).</summary>
     public void RebuildFromCurrent() => Rebuild(_graph.Current);
 
+    // ===== Focus a Source =================================================================
+
+    /// <summary>The focused Source's key, or null: its outputs light up, the rest dim.</summary>
+    [ObservableProperty]
+    private string? _focusedSourceKey;
+
+    public void ToggleFocus(string sourceKey) =>
+        FocusedSourceKey = FocusedSourceKey == sourceKey ? null : sourceKey;
+
+    [RelayCommand]
+    private void ClearFocus() => FocusedSourceKey = null;
+
+    partial void OnFocusedSourceKeyChanged(string? value) => ApplyFocus();
+
+    private void ApplyFocus()
+    {
+        var key = FocusedSourceKey;
+        if (key is not null && Palette.Items.All(i => i.Key != key))
+        {
+            FocusedSourceKey = null; // the Source went away
+            return;
+        }
+        foreach (var item in Palette.Items) item.IsFocused = item.Key == key;
+        foreach (var column in Columns)
+        {
+            var feeds = false;
+            foreach (var card in column.Cards)
+            {
+                card.IsFocused = card.Key == key;
+                feeds |= card.IsFocused;
+            }
+            column.IsFocusMatch = key is not null && feeds;
+            column.IsDimmed = key is not null && !feeds;
+        }
+    }
+
     private void Rebuild(PwGraph graph)
     {
         // A rebuild runs inside a Dispatcher callback — an escaped exception there aborts the
@@ -254,6 +290,7 @@ public partial class BoardViewModel : ViewModelBase, IBoardCoordinator
 
             MergeColumns(snapshot.Columns);
             Palette.Merge(snapshot.Palette);
+            ApplyFocus();
             HasColumns = Columns.Count > 0;
             StatusText = Columns.Count == 0
                 ? "No Target Sinks in the graph"

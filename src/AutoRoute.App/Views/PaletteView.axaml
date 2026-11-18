@@ -24,7 +24,8 @@
                         <StackPanel IsVisible="{Binding IsVisible}">
                             <TextBlock Classes="groupHeader" Text="{Binding GroupLabel}"
                                        IsVisible="{Binding ShowGroupHeader}" Margin="8,10,0,4" />
-                            <Border Classes="srcEntry"
+                            <Border Classes="srcEntry" Classes.focused="{Binding IsFocused}"
+                                    behaviors:DragSourceBehavior.ClickCommand="{Binding ToggleFocusCommand}"
                                     behaviors:DragSourceBehavior.SourceNodeId="{Binding RepresentativeNodeId}"
                                     behaviors:DragSourceBehavior.DragLabel="{Binding Title}">
                                 <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">

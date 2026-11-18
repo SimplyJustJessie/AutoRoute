@@ -224,6 +224,15 @@
         <Setter Property="Opacity" Value="0.75" />
     </Style>
     <!-- Compact: a dense one-line row, no card chrome — rows sit flush in their group. -->
+    <!-- Focus a Source: the outputs it feeds keep full strength with an accent edge, the rest
+         step back. -->
+    <Style Selector="Border.row.dimmed">
+        <Setter Property="Opacity" Value="0.38" />
+    </Style>
+    <Style Selector="Border.row.focusMatch">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentDimBrush}" />
+    </Style>
+
     <Style Selector="Border.row.compact">
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Padding" Value="12,4" />
@@ -413,6 +422,9 @@
     <Style Selector="Border.srcEntry:pointerover">
         <Setter Property="Background" Value="#1B1C21" />
     </Style>
+    <Style Selector="Border.srcEntry.focused, Border.srcEntry.focused:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
+    </Style>
     <Style Selector="Border.srcEntry.dragging">
         <Setter Property="Opacity" Value="0.5" />
     </Style>
@@ -428,7 +440,17 @@
     <Style Selector="Border.trayChip:pointerover">
         <Setter Property="BorderBrush" Value="#4A4D57" />
     </Style>
+    <Style Selector="Border.trayChip.focused">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
+    </Style>
     <Style Selector="Border.trayChip.dragging">
         <Setter Property="Opacity" Value="0.5" />
+    </Style>
+
+    <!-- Focused Source's chip (after the chip styles so it wins over saved/unsaved). -->
+    <Style Selector="Border.chip2.focused">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentFaintBrush}" />
     </Style>
 </Styles>

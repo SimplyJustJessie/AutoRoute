@@ -113,6 +113,18 @@ public static class ScreenshotTool
         foreach (var v in metered) { v.Level = 0; v.IsSounding = false; v.IsMetered = false; }
         Dispatcher.UIThread.RunJobs();
 
+        // Focus a Source: pick one that feeds at least one output.
+        var focusKey = board.Palette.Items.Select(i => i.Key)
+            .FirstOrDefault(k => board.Columns.Any(c => c.Cards.Any(card => card.Key == k)));
+        if (focusKey is not null)
+        {
+            board.ToggleFocus(focusKey);
+            Dispatcher.UIThread.RunJobs();
+            Capture(window, Path.Combine(dir, "board-focus.png"));
+            board.ToggleFocus(focusKey);
+            Dispatcher.UIThread.RunJobs();
+        }
+
         // The Video tab: switch to it and capture the VTube Studio → OBS routing on its own board.
         var videoTab = window.GetVisualDescendants().OfType<Button>()
             .FirstOrDefault(b => b.Content as string == "Video");

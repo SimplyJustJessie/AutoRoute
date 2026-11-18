@@ -68,6 +68,14 @@ public partial class SinkColumnViewModel : VolumeNodeViewModel
 
     public ObservableCollection<SourceCardViewModel> Cards { get; } = new();
 
+    /// <summary>A Source is focused and feeds this output.</summary>
+    [ObservableProperty]
+    private bool _isFocusMatch;
+
+    /// <summary>A Source is focused and doesn't feed this output.</summary>
+    [ObservableProperty]
+    private bool _isDimmed;
+
     /// <summary>A Protected column is locked — drops are refused.</summary>
     public bool AcceptsDrop => !IsProtected;
 

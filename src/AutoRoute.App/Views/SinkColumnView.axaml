@@ -59,6 +59,8 @@
 
         <Border Classes="row"
                 Classes.compact="{Binding IsCompact}"
+                Classes.dimmed="{Binding IsDimmed}"
+                Classes.focusMatch="{Binding IsFocusMatch}"
                 Classes.protected="{Binding IsProtected}">
             <!-- Tile | identity + volume | row menu, then the chips on their own line below,
                  aligned with the name. -->

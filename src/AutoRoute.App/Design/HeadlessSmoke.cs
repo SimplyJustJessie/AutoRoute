@@ -113,6 +113,7 @@ public static class HeadlessSmoke
         Dispatcher.UIThread.RunJobs();
 
         CheckDragToConnect(window, Check); // first: the flyout check leaves a light-dismiss popup open
+        CheckFocusSource(window, board, Check);
         CheckCreateFlyoutRegression(window, board, Check);
         CheckHorizontalContainment(window, Check);
 
@@ -208,6 +209,40 @@ public static class HeadlessSmoke
         check(dropped is null && !Behaviors.DragSourceBehavior.IsDragging, "drag: Escape cancels without connecting");
 
         row.ClearValue(Behaviors.DropTargetBehavior.DropCommandProperty);
+    }
+
+    /// <summary>
+    /// Focus a Source: a click (no drag) on a sidebar entry lights the outputs it feeds and dims
+    /// the rest; a second click clears it.
+    /// </summary>
+    private static void CheckFocusSource(Window window, ViewModels.BoardViewModel board, Action<bool, string> check)
+    {
+        var entry = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("srcEntry") && b.IsEffectivelyVisible)
+            .FirstOrDefault(b => b.DataContext is ViewModels.SourceItemViewModel item
+                                 && board.Columns.Any(c => c.Cards.Any(k => k.Key == item.Key)));
+        if (entry?.DataContext is not ViewModels.SourceItemViewModel src)
+        {
+            check(false, "focus: found a Source that feeds an output");
+            return;
+        }
+        var at = entry.TranslatePoint(new Point(20, 16), window) ?? default;
+        void Click()
+        {
+            window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+            window.MouseUp(at, Avalonia.Input.MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        Click();
+        var fed = board.Columns.Where(c => c.Cards.Any(k => k.Key == src.Key)).ToList();
+        var rest = board.Columns.Except(fed).ToList();
+        check(src.IsFocused && board.FocusedSourceKey == src.Key, "focus: clicking a Source focuses it");
+        check(fed.All(c => c.IsFocusMatch && !c.IsDimmed) && rest.All(c => c.IsDimmed),
+            $"focus: its {fed.Count} output(s) stay lit, the other {rest.Count} dim");
+        Click();
+        check(board.FocusedSourceKey is null && board.Columns.All(c => !c.IsDimmed && !c.IsFocusMatch),
+            "focus: clicking it again clears the focus");
     }
 
     /// <summary>

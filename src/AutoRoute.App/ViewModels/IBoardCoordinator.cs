@@ -27,6 +27,9 @@ public interface IBoardCoordinator
     /// <summary>Drop: connect a Source (by live node id) into a Target Sink → positive Rule + managed Link(s).</summary>
     Task ConnectAsync(int sourceNodeId, int targetNodeId);
 
+    /// <summary>Focus a Source (highlight the outputs it feeds, dim the rest); again to clear.</summary>
+    void ToggleFocus(string sourceKey);
+
     /// <summary>Remove a card: delete its Rule (managed) or write a Suppression (manual/unsaved external).</summary>
     Task RemoveCardAsync(SourceCardViewModel card);
 
